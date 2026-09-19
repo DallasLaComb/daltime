@@ -1,5 +1,7 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { PostSwapShiftBody, SwapShiftPathParams } from '@daltime/contracts';
 import { getCallerSub, getCallerGroups } from '../../shared/auth.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   ok,
   created,
@@ -57,15 +59,24 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       const claimMatch = rawPath.match(/^\/employee\/swap-shifts\/([^/]+)\/claim$/);
       if (claimMatch) {
         // POST /employee/swap-shifts/{swapId}/claim
-        const swapId = claimMatch[1];
-        const result = await claimSwapShift(callerSub, swapId ?? '');
+        //
+        // The swapId comes out of the raw path, so it is validated against the
+        // same schema that documents this route in contracts/openapi.json
+        // before it can reach a DynamoDB key expression.
+        const { swapId } = parseWithContract(SwapShiftPathParams, { swapId: claimMatch[1] });
+        const result = await claimSwapShift(callerSub, swapId);
         return ok(result);
       }
 
       // POST /employee/swap-shifts — post a shift for swap.
+      //
+      // PostSwapShiftBody is the schema that generates this route's requestBody
+      // in the contract, so a body the published spec calls invalid is rejected
+      // with a 400 here rather than reaching the service.
       const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
-      const result = await postSwapShift(callerSub, parsed.data);
+      const body = parseWithContract(PostSwapShiftBody, parsed.data);
+      const result = await postSwapShift(callerSub, body);
       return created(result);
     }
 

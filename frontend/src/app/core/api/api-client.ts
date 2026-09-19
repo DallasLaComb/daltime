@@ -47,16 +47,36 @@ type ResponseOf<O> = O extends { responses: infer R }
       : void
   : void;
 
-/** The `application/json` request body for an operation. */
+/**
+ * The `application/json` request body for an operation.
+ *
+ * Operations that declare no body resolve to `undefined`, not `never`: a POST
+ * can legitimately carry nothing (see `POST /employee/swap-shifts/{swapId}/claim`,
+ * where the swapId in the path is the whole request), and `never` would make
+ * such a route impossible to call at all.
+ */
 type BodyOf<O> = O extends { requestBody: { content: { 'application/json': infer T } } }
   ? T
-  : never;
+  : undefined;
 
-/** Path parameters for an operation, or `never` when it takes none. */
-type PathParamsOf<O> = O extends { parameters: { path: infer T } } ? T : never;
+/**
+ * Path parameters for an operation, or `never` when it takes none.
+ *
+ * Matched through an optional key because openapi-typescript emits absent
+ * parameter groups as `path?: never` and all-optional groups as `path?: {…}`.
+ * Requiring `path:` here would silently resolve both to `never`.
+ */
+type PathParamsOf<O> = O extends { parameters: { path?: infer T } } ? NonNullable<T> : never;
 
-/** Query parameters for an operation, or `never` when it takes none. */
-type QueryParamsOf<O> = O extends { parameters: { query: infer T } } ? T : never;
+/**
+ * Query parameters for an operation, or `never` when it takes none.
+ *
+ * Optional-key matching matters more here than for paths: an operation whose
+ * query parameters are all optional (`GET /employee/shifts`) is emitted as
+ * `query?: {…}`, so the stricter form would have made its month/date/week
+ * parameters unreachable.
+ */
+type QueryParamsOf<O> = O extends { parameters: { query?: infer T } } ? NonNullable<T> : never;
 
 /**
  * Per-operation request options.

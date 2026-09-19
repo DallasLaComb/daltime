@@ -1,6 +1,6 @@
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
-import type { Shift } from '../../shared/models/manager/shift.model.js';
+import type { ShiftRecord } from '@daltime/contracts';
 
 /**
  * Fetch the USER#<userId>/METADATA record to resolve the caller's org_id and
@@ -26,7 +26,7 @@ export async function listAvailableShifts(
   orgId: string,
   callerId: string,
   date: string,
-): Promise<Shift[]> {
+): Promise<ShiftRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -47,5 +47,5 @@ export async function listAvailableShifts(
       },
     }),
   );
-  return (result.Items ?? []) as Shift[];
+  return (result.Items ?? []) as ShiftRecord[];
 }
