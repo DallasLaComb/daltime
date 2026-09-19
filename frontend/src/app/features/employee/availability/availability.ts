@@ -7,7 +7,7 @@ import type {
   TimeSlot,
   WeeklySchedule,
   DateOverrides,
-} from '../../../core/models/employee-availability.model';
+} from './availability.service';
 import { ButtonComponent } from '@common-daltime';
 
 interface DayRow {

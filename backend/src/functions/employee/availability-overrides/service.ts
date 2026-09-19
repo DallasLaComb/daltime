@@ -4,7 +4,7 @@ import type {
   TimeSlot,
   DateOverrides,
   UpsertOverridesBody,
-} from '../../shared/models/employee/availability.model.js';
+} from '@daltime/contracts';
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError } from '../../shared/errors.js';

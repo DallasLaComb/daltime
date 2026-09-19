@@ -35,9 +35,15 @@ export const WeeklySchedule = z
 /**
  * One-off overrides that take precedence over the weekly pattern, keyed by
  * ISO date (`YYYY-MM-DD`).
+ *
+ * The key pattern mirrors `ISO_DATE_RE` in
+ * `backend/src/functions/employee/availability-overrides/service.ts` exactly —
+ * month `01`–`12` and day `01`–`31`, not a loose `\d{2}-\d{2}`. A looser
+ * contract would have advertised `2026-13-99` as an acceptable key while the
+ * service rejects it with a 400.
  */
 export const DateOverrides = z
-  .record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/), DayAvailability)
+  .record(z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/), DayAvailability)
   .meta({
     id: 'DateOverrides',
     description: 'Per-date availability overrides, keyed by YYYY-MM-DD.',

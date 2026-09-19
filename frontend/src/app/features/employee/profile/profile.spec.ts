@@ -3,7 +3,7 @@ import { of, throwError, Subject } from 'rxjs';
 import { EmployeeProfileComponent } from './profile';
 import { EmployeeProfileService } from './profile.service';
 import { APP_TEST_PROVIDERS } from '../../../../test-setup';
-import type { EmployeeProfileResponse } from '../../../core/models/employee-profile.model';
+import type { EmployeeProfileResponse } from './profile.service';
 
 const mockProfile: EmployeeProfileResponse = {
   employee_id: 'emp-123',

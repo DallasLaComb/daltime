@@ -1,7 +1,8 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { UpsertOverridesBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
-import type { UpsertOverridesBody } from '../../shared/models/employee/availability.model.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { getAvailabilityOverrides, upsertAvailabilityOverrides } from './service.js';
 
@@ -24,9 +25,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<UpsertOverridesBody>(event.body);
+      const parsed = parseBody<unknown>(event.body);
       if (!parsed.ok) return parsed.response;
-      return ok(await upsertAvailabilityOverrides(callerSub, parsed.data));
+      // UpsertOverridesBody is the same schema that generates this route's entry
+      // in contracts/openapi.json — including the YYYY-MM-DD key pattern, which
+      // is now rejected here rather than only inside the service.
+      const body = parseWithContract(UpsertOverridesBody, parsed.data);
+      return ok(await upsertAvailabilityOverrides(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
