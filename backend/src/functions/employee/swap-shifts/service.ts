@@ -7,8 +7,7 @@ import {
   ConflictError,
 } from '../../shared/errors.js';
 import { putNotification } from '../../shared/notifications/db.js';
-import type { PublicSwapShift, SwapShift } from '../../shared/models/employee/swap-shift.model.js';
-import type { Notification } from '../../shared/models/notifications/notification.model.js';
+import type { NotificationRecord, SwapShiftApiFields, SwapShiftRecord } from '@daltime/contracts';
 import * as db from './db.js';
 
 /**
@@ -81,7 +80,7 @@ async function resolveCallerEmployee(sub: string): Promise<{
  * The notification SK follows the NOTIFICATION#<created_at>#<rawId> pattern
  * established by the existing notification infrastructure.
  */
-function buildNotification(managerId: string, message: string): Notification {
+function buildNotification(managerId: string, message: string): NotificationRecord {
   const now = new Date().toISOString();
   const rawId = randomUUID();
   return {
@@ -119,8 +118,8 @@ async function tryNotifyManager(managerId: string, message: string): Promise<voi
  * "mine" array so the UI can show both panels from one request.
  */
 export async function listSwapShifts(callerSub: string): Promise<{
-  available: PublicSwapShift[];
-  mine: PublicSwapShift[];
+  available: SwapShiftApiFields[];
+  mine: SwapShiftApiFields[];
 }> {
   const { org_id, employee_id } = await resolveCallerEmployee(callerSub);
 
@@ -153,7 +152,7 @@ export async function listSwapShifts(callerSub: string): Promise<{
 export async function postSwapShift(
   callerSub: string,
   body: Record<string, unknown>,
-): Promise<PublicSwapShift> {
+): Promise<SwapShiftApiFields> {
   const shiftId = validateShiftId(body['shift_id']);
 
   const { org_id, employee_id, first_name, last_name } = await resolveCallerEmployee(callerSub);
@@ -197,7 +196,7 @@ export async function postSwapShift(
   const now = new Date().toISOString();
   const swapId = randomUUID();
 
-  const swap: SwapShift = {
+  const swap: SwapShiftRecord = {
     PK: `ORG#${org_id}`,
     SK: `SWAP#${swapId}`,
     GSI1PK: `ORG_SWAP#${org_id}`,
@@ -242,7 +241,10 @@ export async function postSwapShift(
  * Updates SWAP# status to 'claimed' and transfers SHIFT# employee ownership,
  * both in parallel. Writes a manager notification (non-blocking) after success.
  */
-export async function claimSwapShift(callerSub: string, swapId: string): Promise<PublicSwapShift> {
+export async function claimSwapShift(
+  callerSub: string,
+  swapId: string,
+): Promise<SwapShiftApiFields> {
   const validSwapId = validateSwapId(swapId);
 
   const { org_id, employee_id, first_name, last_name } = await resolveCallerEmployee(callerSub);
@@ -276,7 +278,7 @@ export async function claimSwapShift(callerSub: string, swapId: string): Promise
   }
 
   // Build the updated swap shape to return without re-fetching from DynamoDB.
-  const updatedSwap: SwapShift = {
+  const updatedSwap: SwapShiftRecord = {
     ...swap,
     status: 'claimed',
     GSI1SK: `STATUS#claimed#${swap.created_at}`,

@@ -1,18 +1,22 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  SwapShiftsResponse,
-  SwapShift,
-  PostSwapShiftBody,
-} from '../../../core/models/swap-shift.model';
-import type { Shift } from '../../../core/models/shift.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates requests
+ * against, so the two sides cannot drift apart silently.
+ */
+export type SwapShift = ApiSchema<'SwapShift'>;
+export type SwapShiftsResponse = ApiSchema<'SwapShiftsListResponse'>;
+export type PostSwapShiftBody = ApiSchema<'PostSwapShiftBody'>;
+
+/** One shift from the caller's own month listing, used to populate the post picker. */
+export type EmployeeShift = ApiSchema<'EmployeeShiftsResponse'>[number];
 
 @Injectable({ providedIn: 'root' })
 export class SwapShiftsService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/employee`;
+  private readonly api = inject(ApiClient);
 
   /**
    * Fetches both panels in one request.
@@ -20,7 +24,7 @@ export class SwapShiftsService {
    * need two separate round-trips on page load.
    */
   list(): Observable<SwapShiftsResponse> {
-    return this.http.get<SwapShiftsResponse>(`${this.baseUrl}/swap-shifts`);
+    return this.api.get('/employee/swap-shifts');
   }
 
   /**
@@ -30,15 +34,19 @@ export class SwapShiftsService {
    */
   postShift(shiftId: string): Observable<SwapShift> {
     const body: PostSwapShiftBody = { shift_id: shiftId };
-    return this.http.post<SwapShift>(`${this.baseUrl}/swap-shifts`, body);
+    return this.api.post('/employee/swap-shifts', body);
   }
 
   /**
    * Claims an open swap listing, transferring the shift to the caller.
    * POST /employee/swap-shifts/{swapId}/claim → 200 with the updated SwapShift.
+   * The contract declares no request body for this route — the swapId in the
+   * path is the entire request — so none is sent.
    */
   claimShift(swapId: string): Observable<SwapShift> {
-    return this.http.post<SwapShift>(`${this.baseUrl}/swap-shifts/${swapId}/claim`, {});
+    return this.api.post('/employee/swap-shifts/{swapId}/claim', undefined, {
+      params: { swapId },
+    });
   }
 
   /**
@@ -46,7 +54,7 @@ export class SwapShiftsService {
    * DELETE /employee/swap-shifts/{swapId} → 204 No Content.
    */
   cancelShift(swapId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/swap-shifts/${swapId}`);
+    return this.api.delete('/employee/swap-shifts/{swapId}', { params: { swapId } });
   }
 
   /**
@@ -54,7 +62,7 @@ export class SwapShiftsService {
    * Used to populate the shift picker when an employee wants to post a shift for swap.
    * GET /employee/shifts?month=YYYY-MM.
    */
-  listMyShiftsForMonth(month: string): Observable<Shift[]> {
-    return this.http.get<Shift[]>(`${this.baseUrl}/shifts`, { params: { month } });
+  listMyShiftsForMonth(month: string): Observable<EmployeeShift[]> {
+    return this.api.get('/employee/shifts', { query: { month } });
   }
 }

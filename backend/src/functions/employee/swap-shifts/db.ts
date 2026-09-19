@@ -1,8 +1,6 @@
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME, GSI1_INDEX, getMetadataRecord } from '../../shared/dynamo.js';
-import type { SwapShift } from '../../shared/models/employee/swap-shift.model.js';
-import type { Shift } from '../../shared/models/manager/shift.model.js';
-import type { Employee } from '../../shared/models/org-admin/employee.model.js';
+import type { EmployeeRecord, ShiftRecord, SwapShiftRecord } from '@daltime/contracts';
 
 /**
  * Fetch the USER#<userId>/METADATA reverse-lookup record to resolve the
@@ -30,14 +28,14 @@ export async function getCallerLookup(userId: string): Promise<{
  * Used to validate that the shift belongs to the caller and is published
  * before allowing a swap post.
  */
-export async function getShiftById(orgId: string, shiftId: string): Promise<Shift | null> {
+export async function getShiftById(orgId: string, shiftId: string): Promise<ShiftRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: { PK: `ORG#${orgId}`, SK: `SHIFT#${shiftId}` },
     }),
   );
-  return (result.Item as Shift) ?? null;
+  return (result.Item as ShiftRecord) ?? null;
 }
 
 /**
@@ -45,14 +43,14 @@ export async function getShiftById(orgId: string, shiftId: string): Promise<Shif
  * Org-scoped via PK so a caller from a different org always gets null (404, not 403),
  * avoiding leaking the existence of swap listings from other orgs.
  */
-export async function getSwapById(orgId: string, swapId: string): Promise<SwapShift | null> {
+export async function getSwapById(orgId: string, swapId: string): Promise<SwapShiftRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: { PK: `ORG#${orgId}`, SK: `SWAP#${swapId}` },
     }),
   );
-  return (result.Item as SwapShift) ?? null;
+  return (result.Item as SwapShiftRecord) ?? null;
 }
 
 /**
@@ -64,7 +62,7 @@ export async function findOpenSwapForShift(
   orgId: string,
   shiftId: string,
   employeeId: string,
-): Promise<SwapShift | null> {
+): Promise<SwapShiftRecord | null> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -81,7 +79,7 @@ export async function findOpenSwapForShift(
     }),
   );
   const items = result.Items ?? [];
-  return items.length > 0 ? (items[0] as SwapShift) : null;
+  return items.length > 0 ? (items[0] as SwapShiftRecord) : null;
 }
 
 /**
@@ -93,7 +91,7 @@ export async function findOpenSwapForShift(
 export async function listOpenSwapsForOrg(
   orgId: string,
   excludeEmployeeId: string,
-): Promise<SwapShift[]> {
+): Promise<SwapShiftRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -108,7 +106,7 @@ export async function listOpenSwapsForOrg(
       ScanIndexForward: false,
     }),
   );
-  return (result.Items ?? []) as SwapShift[];
+  return (result.Items ?? []) as SwapShiftRecord[];
 }
 
 /**
@@ -117,7 +115,10 @@ export async function listOpenSwapsForOrg(
  * partition, then filters by posted_by_employee_id. This avoids a delete/GSI
  * approach and shows full history (open + claimed + cancelled) for the employee.
  */
-export async function listMyPostedSwaps(orgId: string, employeeId: string): Promise<SwapShift[]> {
+export async function listMyPostedSwaps(
+  orgId: string,
+  employeeId: string,
+): Promise<SwapShiftRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -130,7 +131,7 @@ export async function listMyPostedSwaps(orgId: string, employeeId: string): Prom
       },
     }),
   );
-  return (result.Items ?? []) as SwapShift[];
+  return (result.Items ?? []) as SwapShiftRecord[];
 }
 
 /**
@@ -138,7 +139,7 @@ export async function listMyPostedSwaps(orgId: string, employeeId: string): Prom
  * (service.ts) has already verified no open duplicate exists via findOpenSwapForShift
  * before calling this function.
  */
-export async function putSwap(swap: SwapShift): Promise<void> {
+export async function putSwap(swap: SwapShiftRecord): Promise<void> {
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: swap }));
 }
 
@@ -234,12 +235,12 @@ export async function claimSwapAndTransferShift(
 export async function getEmployeeByIdInOrg(
   orgId: string,
   employeeId: string,
-): Promise<Employee | null> {
+): Promise<EmployeeRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: { PK: `ORG#${orgId}`, SK: `EMPLOYEE#${employeeId}` },
     }),
   );
-  return (result.Item as Employee) ?? null;
+  return (result.Item as EmployeeRecord) ?? null;
 }

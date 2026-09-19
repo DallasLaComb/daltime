@@ -10,7 +10,10 @@ const IMPLEMENTATION = [
 ];
 
 /** Additionally writes a manager notification (best-effort, non-blocking). */
-const IMPLEMENTATION_WITH_NOTIFY = [...IMPLEMENTATION, 'backend/src/functions/shared/notifications/db.ts'];
+const IMPLEMENTATION_WITH_NOTIFY = [
+  ...IMPLEMENTATION,
+  'backend/src/functions/shared/notifications/db.ts',
+];
 
 /**
  * `409` isn't in the shared `errorResponses` map (only the pilot's 400/403/404/500
@@ -22,9 +25,36 @@ const conflictResponse = {
   content: { 'application/json': { schema: ErrorResponse } },
 };
 
-/** Path parameter shared by the two `{swapId}` routes. */
-const SwapIdPathParam = z.object({
-  swapId: z.string().meta({ description: 'The swap listing’s swap_id.' }),
+/**
+ * A single swap listing as returned to the client.
+ *
+ * Named (rather than inlined per response) because all three swap responses
+ * return this exact shape, and the frontend needs one type to hold a listing in
+ * a signal — `ApiSchema<'SwapShift'>`.
+ */
+export const SwapShiftListing = SwapShiftApiFields.meta({
+  id: 'SwapShift',
+  description: 'A shift swap listing, with the shift’s details denormalized onto it.',
+});
+
+/**
+ * Path parameter shared by the two `{swapId}` routes.
+ *
+ * The regex mirrors `service.ts`'s `SWAP_ID_REGEX` exactly — alphanumeric and
+ * hyphens, 1–128 characters. A bare `z.string()` here would have understated
+ * the route: the service already rejects anything else with a 400, and the
+ * character restriction is what keeps a swapId out of a DynamoDB key
+ * expression it has no business reaching.
+ */
+export const SwapShiftPathParams = z.object({
+  swapId: z
+    .string()
+    .trim()
+    .regex(
+      /^[a-zA-Z0-9-]{1,128}$/,
+      'swapId must contain only alphanumeric characters and hyphens (max 128 chars)',
+    )
+    .meta({ description: 'The swap listing’s swap_id.' }),
 });
 
 /**
@@ -51,15 +81,18 @@ export const PostSwapShiftBody = z
 export const SwapShiftsListResponse = z
   .object({
     available: z
-      .array(SwapShiftApiFields)
+      .array(SwapShiftListing)
       .meta({ description: 'Open listings posted by OTHER employees in the org, newest first.' }),
     mine: z
-      .array(SwapShiftApiFields)
-      .meta({ description: 'All listings posted by the caller, any status (open/claimed/cancelled).' }),
+      .array(SwapShiftListing)
+      .meta({
+        description: 'All listings posted by the caller, any status (open/claimed/cancelled).',
+      }),
   })
   .meta({
     id: 'SwapShiftsListResponse',
-    description: 'The two swap-shifts panels: what the caller can take, and what the caller has posted.',
+    description:
+      'The two swap-shifts panels: what the caller can take, and what the caller has posted.',
   });
 
 registerOperation('get', '/employee/swap-shifts', {
@@ -149,7 +182,7 @@ registerOperation('post', '/employee/swap-shifts', {
   responses: {
     201: {
       description: 'The created swap listing.',
-      content: { 'application/json': { schema: SwapShiftApiFields } },
+      content: { 'application/json': { schema: SwapShiftListing } },
     },
     400: errorResponses[400],
     403: errorResponses[403],
@@ -167,7 +200,7 @@ registerOperation('post', '/employee/swap-shifts/{swapId}/claim', {
     'Transfers an open listing’s shift to the claiming employee. Notifies the shift’s manager (best-effort) ' +
     'once the transfer succeeds.',
   implementation: IMPLEMENTATION_WITH_NOTIFY,
-  requestParams: { path: SwapIdPathParam },
+  requestParams: { path: SwapShiftPathParams },
   dynamodb: [
     {
       command: 'Get',
@@ -203,8 +236,9 @@ registerOperation('post', '/employee/swap-shifts/{swapId}/claim', {
   responses: {
     200: {
       description: 'The claimed swap listing.',
-      content: { 'application/json': { schema: SwapShiftApiFields } },
+      content: { 'application/json': { schema: SwapShiftListing } },
     },
+    400: errorResponses[400],
     403: errorResponses[403],
     404: errorResponses[404],
     409: conflictResponse,
@@ -220,7 +254,7 @@ registerOperation('delete', '/employee/swap-shifts/{swapId}', {
     'Lets the poster take a listing back off the board. The record is never deleted — its status moves ' +
     'to cancelled so history is preserved and it drops out of the "available" GSI query.',
   implementation: IMPLEMENTATION,
-  requestParams: { path: SwapIdPathParam },
+  requestParams: { path: SwapShiftPathParams },
   dynamodb: [
     {
       command: 'Get',
@@ -240,6 +274,7 @@ registerOperation('delete', '/employee/swap-shifts/{swapId}', {
   ],
   responses: {
     204: { description: 'The listing was cancelled.' },
+    400: errorResponses[400],
     403: errorResponses[403],
     404: errorResponses[404],
     409: conflictResponse,
@@ -248,4 +283,6 @@ registerOperation('delete', '/employee/swap-shifts/{swapId}', {
 });
 
 export type PostSwapShiftBody = z.infer<typeof PostSwapShiftBody>;
+export type SwapShiftListing = z.infer<typeof SwapShiftListing>;
+export type SwapShiftPathParams = z.infer<typeof SwapShiftPathParams>;
 export type SwapShiftsListResponse = z.infer<typeof SwapShiftsListResponse>;

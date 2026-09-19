@@ -820,115 +820,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "swap_id": {
-                      "type": "string"
-                    },
-                    "org_id": {
-                      "type": "string"
-                    },
-                    "shift_id": {
-                      "type": "string"
-                    },
-                    "posted_by_employee_id": {
-                      "type": "string"
-                    },
-                    "posted_by_employee_name": {
-                      "type": "string"
-                    },
-                    "manager_id": {
-                      "type": "string",
-                      "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
-                    },
-                    "status": {
-                      "$ref": "#/components/schemas/SwapStatus"
-                    },
-                    "claimed_by_employee_id": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Cognito sub of the claiming employee; null until claimed."
-                    },
-                    "claimed_by_employee_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Full name of the claiming employee; null until claimed."
-                    },
-                    "date": {
-                      "type": "string",
-                      "format": "date",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-                      "description": "Calendar date, YYYY-MM-DD.",
-                      "example": "2026-05-27"
-                    },
-                    "start_time": {
-                      "type": "string",
-                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                      "description": "Wall-clock time, HH:MM 24-hour.",
-                      "example": "09:00"
-                    },
-                    "end_time": {
-                      "type": "string",
-                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                      "description": "Wall-clock time, HH:MM 24-hour.",
-                      "example": "09:00"
-                    },
-                    "type": {
-                      "$ref": "#/components/schemas/ShiftType"
-                    },
-                    "location_id": {
-                      "type": "string"
-                    },
-                    "location_name": {
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "ISO 8601 timestamp.",
-                      "example": "2026-02-23T18:04:11.000Z"
-                    },
-                    "updated_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "ISO 8601 timestamp.",
-                      "example": "2026-02-23T18:04:11.000Z"
-                    }
-                  },
-                  "required": [
-                    "swap_id",
-                    "org_id",
-                    "shift_id",
-                    "posted_by_employee_id",
-                    "posted_by_employee_name",
-                    "manager_id",
-                    "status",
-                    "claimed_by_employee_id",
-                    "claimed_by_employee_name",
-                    "date",
-                    "start_time",
-                    "end_time",
-                    "type",
-                    "location_id",
-                    "location_name",
-                    "created_at",
-                    "updated_at"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/SwapShift"
                 }
               }
             }
@@ -1034,6 +926,7 @@
             "name": "swapId",
             "schema": {
               "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,128}$",
               "description": "The swap listing’s swap_id."
             },
             "required": true,
@@ -1046,115 +939,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "swap_id": {
-                      "type": "string"
-                    },
-                    "org_id": {
-                      "type": "string"
-                    },
-                    "shift_id": {
-                      "type": "string"
-                    },
-                    "posted_by_employee_id": {
-                      "type": "string"
-                    },
-                    "posted_by_employee_name": {
-                      "type": "string"
-                    },
-                    "manager_id": {
-                      "type": "string",
-                      "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
-                    },
-                    "status": {
-                      "$ref": "#/components/schemas/SwapStatus"
-                    },
-                    "claimed_by_employee_id": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Cognito sub of the claiming employee; null until claimed."
-                    },
-                    "claimed_by_employee_name": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Full name of the claiming employee; null until claimed."
-                    },
-                    "date": {
-                      "type": "string",
-                      "format": "date",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-                      "description": "Calendar date, YYYY-MM-DD.",
-                      "example": "2026-05-27"
-                    },
-                    "start_time": {
-                      "type": "string",
-                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                      "description": "Wall-clock time, HH:MM 24-hour.",
-                      "example": "09:00"
-                    },
-                    "end_time": {
-                      "type": "string",
-                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                      "description": "Wall-clock time, HH:MM 24-hour.",
-                      "example": "09:00"
-                    },
-                    "type": {
-                      "$ref": "#/components/schemas/ShiftType"
-                    },
-                    "location_id": {
-                      "type": "string"
-                    },
-                    "location_name": {
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "ISO 8601 timestamp.",
-                      "example": "2026-02-23T18:04:11.000Z"
-                    },
-                    "updated_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "ISO 8601 timestamp.",
-                      "example": "2026-02-23T18:04:11.000Z"
-                    }
-                  },
-                  "required": [
-                    "swap_id",
-                    "org_id",
-                    "shift_id",
-                    "posted_by_employee_id",
-                    "posted_by_employee_name",
-                    "manager_id",
-                    "status",
-                    "claimed_by_employee_id",
-                    "claimed_by_employee_name",
-                    "date",
-                    "start_time",
-                    "end_time",
-                    "type",
-                    "location_id",
-                    "location_name",
-                    "created_at",
-                    "updated_at"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/SwapShift"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1238,6 +1033,7 @@
             "name": "swapId",
             "schema": {
               "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,128}$",
               "description": "The swap listing’s swap_id."
             },
             "required": true,
@@ -1247,6 +1043,16 @@
         "responses": {
           "204": {
             "description": "The listing was cancelled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "403": {
             "description": "Caller lacks the required role, or their organization could not be resolved.",
@@ -3641,230 +3447,14 @@
           "available": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "swap_id": {
-                  "type": "string"
-                },
-                "org_id": {
-                  "type": "string"
-                },
-                "shift_id": {
-                  "type": "string"
-                },
-                "posted_by_employee_id": {
-                  "type": "string"
-                },
-                "posted_by_employee_name": {
-                  "type": "string"
-                },
-                "manager_id": {
-                  "type": "string",
-                  "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
-                },
-                "status": {
-                  "$ref": "#/components/schemas/SwapStatus"
-                },
-                "claimed_by_employee_id": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Cognito sub of the claiming employee; null until claimed."
-                },
-                "claimed_by_employee_name": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Full name of the claiming employee; null until claimed."
-                },
-                "date": {
-                  "type": "string",
-                  "format": "date",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-                  "description": "Calendar date, YYYY-MM-DD.",
-                  "example": "2026-05-27"
-                },
-                "start_time": {
-                  "type": "string",
-                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                  "description": "Wall-clock time, HH:MM 24-hour.",
-                  "example": "09:00"
-                },
-                "end_time": {
-                  "type": "string",
-                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                  "description": "Wall-clock time, HH:MM 24-hour.",
-                  "example": "09:00"
-                },
-                "type": {
-                  "$ref": "#/components/schemas/ShiftType"
-                },
-                "location_id": {
-                  "type": "string"
-                },
-                "location_name": {
-                  "type": "string"
-                },
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                  "description": "ISO 8601 timestamp.",
-                  "example": "2026-02-23T18:04:11.000Z"
-                },
-                "updated_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                  "description": "ISO 8601 timestamp.",
-                  "example": "2026-02-23T18:04:11.000Z"
-                }
-              },
-              "required": [
-                "swap_id",
-                "org_id",
-                "shift_id",
-                "posted_by_employee_id",
-                "posted_by_employee_name",
-                "manager_id",
-                "status",
-                "claimed_by_employee_id",
-                "claimed_by_employee_name",
-                "date",
-                "start_time",
-                "end_time",
-                "type",
-                "location_id",
-                "location_name",
-                "created_at",
-                "updated_at"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/SwapShift"
             },
             "description": "Open listings posted by OTHER employees in the org, newest first."
           },
           "mine": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "swap_id": {
-                  "type": "string"
-                },
-                "org_id": {
-                  "type": "string"
-                },
-                "shift_id": {
-                  "type": "string"
-                },
-                "posted_by_employee_id": {
-                  "type": "string"
-                },
-                "posted_by_employee_name": {
-                  "type": "string"
-                },
-                "manager_id": {
-                  "type": "string",
-                  "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
-                },
-                "status": {
-                  "$ref": "#/components/schemas/SwapStatus"
-                },
-                "claimed_by_employee_id": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Cognito sub of the claiming employee; null until claimed."
-                },
-                "claimed_by_employee_name": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Full name of the claiming employee; null until claimed."
-                },
-                "date": {
-                  "type": "string",
-                  "format": "date",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-                  "description": "Calendar date, YYYY-MM-DD.",
-                  "example": "2026-05-27"
-                },
-                "start_time": {
-                  "type": "string",
-                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                  "description": "Wall-clock time, HH:MM 24-hour.",
-                  "example": "09:00"
-                },
-                "end_time": {
-                  "type": "string",
-                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                  "description": "Wall-clock time, HH:MM 24-hour.",
-                  "example": "09:00"
-                },
-                "type": {
-                  "$ref": "#/components/schemas/ShiftType"
-                },
-                "location_id": {
-                  "type": "string"
-                },
-                "location_name": {
-                  "type": "string"
-                },
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                  "description": "ISO 8601 timestamp.",
-                  "example": "2026-02-23T18:04:11.000Z"
-                },
-                "updated_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                  "description": "ISO 8601 timestamp.",
-                  "example": "2026-02-23T18:04:11.000Z"
-                }
-              },
-              "required": [
-                "swap_id",
-                "org_id",
-                "shift_id",
-                "posted_by_employee_id",
-                "posted_by_employee_name",
-                "manager_id",
-                "status",
-                "claimed_by_employee_id",
-                "claimed_by_employee_name",
-                "date",
-                "start_time",
-                "end_time",
-                "type",
-                "location_id",
-                "location_name",
-                "created_at",
-                "updated_at"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/SwapShift"
             },
             "description": "All listings posted by the caller, any status (open/claimed/cancelled)."
           }
@@ -3875,6 +3465,118 @@
         ],
         "additionalProperties": false,
         "description": "The two swap-shifts panels: what the caller can take, and what the caller has posted."
+      },
+      "SwapShift": {
+        "type": "object",
+        "properties": {
+          "swap_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "shift_id": {
+            "type": "string"
+          },
+          "posted_by_employee_id": {
+            "type": "string"
+          },
+          "posted_by_employee_name": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
+          },
+          "status": {
+            "$ref": "#/components/schemas/SwapStatus"
+          },
+          "claimed_by_employee_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cognito sub of the claiming employee; null until claimed."
+          },
+          "claimed_by_employee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Full name of the claiming employee; null until claimed."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "swap_id",
+          "org_id",
+          "shift_id",
+          "posted_by_employee_id",
+          "posted_by_employee_name",
+          "manager_id",
+          "status",
+          "claimed_by_employee_id",
+          "claimed_by_employee_name",
+          "date",
+          "start_time",
+          "end_time",
+          "type",
+          "location_id",
+          "location_name",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "A shift swap listing, with the shift’s details denormalized onto it."
       },
       "SwapStatus": {
         "type": "string",

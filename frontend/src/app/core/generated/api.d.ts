@@ -758,97 +758,55 @@ export interface components {
         /** @description The two swap-shifts panels: what the caller can take, and what the caller has posted. */
         SwapShiftsListResponse: {
             /** @description Open listings posted by OTHER employees in the org, newest first. */
-            available: {
-                swap_id: string;
-                org_id: string;
-                shift_id: string;
-                posted_by_employee_id: string;
-                posted_by_employee_name: string;
-                /** @description Manager's Cognito sub, denormalized at post time so claim can notify directly. */
-                manager_id: string;
-                status: components["schemas"]["SwapStatus"];
-                /** @description Cognito sub of the claiming employee; null until claimed. */
-                claimed_by_employee_id: string | null;
-                /** @description Full name of the claiming employee; null until claimed. */
-                claimed_by_employee_name: string | null;
-                /**
-                 * Format: date
-                 * @description Calendar date, YYYY-MM-DD.
-                 * @example 2026-05-27
-                 */
-                date: string;
-                /**
-                 * @description Wall-clock time, HH:MM 24-hour.
-                 * @example 09:00
-                 */
-                start_time: string;
-                /**
-                 * @description Wall-clock time, HH:MM 24-hour.
-                 * @example 09:00
-                 */
-                end_time: string;
-                type: components["schemas"]["ShiftType"];
-                location_id: string;
-                location_name: string;
-                /**
-                 * Format: date-time
-                 * @description ISO 8601 timestamp.
-                 * @example 2026-02-23T18:04:11.000Z
-                 */
-                created_at: string;
-                /**
-                 * Format: date-time
-                 * @description ISO 8601 timestamp.
-                 * @example 2026-02-23T18:04:11.000Z
-                 */
-                updated_at: string;
-            }[];
+            available: components["schemas"]["SwapShift"][];
             /** @description All listings posted by the caller, any status (open/claimed/cancelled). */
-            mine: {
-                swap_id: string;
-                org_id: string;
-                shift_id: string;
-                posted_by_employee_id: string;
-                posted_by_employee_name: string;
-                /** @description Manager's Cognito sub, denormalized at post time so claim can notify directly. */
-                manager_id: string;
-                status: components["schemas"]["SwapStatus"];
-                /** @description Cognito sub of the claiming employee; null until claimed. */
-                claimed_by_employee_id: string | null;
-                /** @description Full name of the claiming employee; null until claimed. */
-                claimed_by_employee_name: string | null;
-                /**
-                 * Format: date
-                 * @description Calendar date, YYYY-MM-DD.
-                 * @example 2026-05-27
-                 */
-                date: string;
-                /**
-                 * @description Wall-clock time, HH:MM 24-hour.
-                 * @example 09:00
-                 */
-                start_time: string;
-                /**
-                 * @description Wall-clock time, HH:MM 24-hour.
-                 * @example 09:00
-                 */
-                end_time: string;
-                type: components["schemas"]["ShiftType"];
-                location_id: string;
-                location_name: string;
-                /**
-                 * Format: date-time
-                 * @description ISO 8601 timestamp.
-                 * @example 2026-02-23T18:04:11.000Z
-                 */
-                created_at: string;
-                /**
-                 * Format: date-time
-                 * @description ISO 8601 timestamp.
-                 * @example 2026-02-23T18:04:11.000Z
-                 */
-                updated_at: string;
-            }[];
+            mine: components["schemas"]["SwapShift"][];
+        };
+        /** @description A shift swap listing, with the shift’s details denormalized onto it. */
+        SwapShift: {
+            swap_id: string;
+            org_id: string;
+            shift_id: string;
+            posted_by_employee_id: string;
+            posted_by_employee_name: string;
+            /** @description Manager's Cognito sub, denormalized at post time so claim can notify directly. */
+            manager_id: string;
+            status: components["schemas"]["SwapStatus"];
+            /** @description Cognito sub of the claiming employee; null until claimed. */
+            claimed_by_employee_id: string | null;
+            /** @description Full name of the claiming employee; null until claimed. */
+            claimed_by_employee_name: string | null;
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            date: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            type: components["schemas"]["ShiftType"];
+            location_id: string;
+            location_name: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
         };
         /**
          * @description Lifecycle status of a shift swap listing.
@@ -1462,51 +1420,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        swap_id: string;
-                        org_id: string;
-                        shift_id: string;
-                        posted_by_employee_id: string;
-                        posted_by_employee_name: string;
-                        /** @description Manager's Cognito sub, denormalized at post time so claim can notify directly. */
-                        manager_id: string;
-                        status: components["schemas"]["SwapStatus"];
-                        /** @description Cognito sub of the claiming employee; null until claimed. */
-                        claimed_by_employee_id: string | null;
-                        /** @description Full name of the claiming employee; null until claimed. */
-                        claimed_by_employee_name: string | null;
-                        /**
-                         * Format: date
-                         * @description Calendar date, YYYY-MM-DD.
-                         * @example 2026-05-27
-                         */
-                        date: string;
-                        /**
-                         * @description Wall-clock time, HH:MM 24-hour.
-                         * @example 09:00
-                         */
-                        start_time: string;
-                        /**
-                         * @description Wall-clock time, HH:MM 24-hour.
-                         * @example 09:00
-                         */
-                        end_time: string;
-                        type: components["schemas"]["ShiftType"];
-                        location_id: string;
-                        location_name: string;
-                        /**
-                         * Format: date-time
-                         * @description ISO 8601 timestamp.
-                         * @example 2026-02-23T18:04:11.000Z
-                         */
-                        created_at: string;
-                        /**
-                         * Format: date-time
-                         * @description ISO 8601 timestamp.
-                         * @example 2026-02-23T18:04:11.000Z
-                         */
-                        updated_at: string;
-                    };
+                    "application/json": components["schemas"]["SwapShift"];
                 };
             };
             /** @description Request was malformed or failed validation. */
@@ -1574,51 +1488,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        swap_id: string;
-                        org_id: string;
-                        shift_id: string;
-                        posted_by_employee_id: string;
-                        posted_by_employee_name: string;
-                        /** @description Manager's Cognito sub, denormalized at post time so claim can notify directly. */
-                        manager_id: string;
-                        status: components["schemas"]["SwapStatus"];
-                        /** @description Cognito sub of the claiming employee; null until claimed. */
-                        claimed_by_employee_id: string | null;
-                        /** @description Full name of the claiming employee; null until claimed. */
-                        claimed_by_employee_name: string | null;
-                        /**
-                         * Format: date
-                         * @description Calendar date, YYYY-MM-DD.
-                         * @example 2026-05-27
-                         */
-                        date: string;
-                        /**
-                         * @description Wall-clock time, HH:MM 24-hour.
-                         * @example 09:00
-                         */
-                        start_time: string;
-                        /**
-                         * @description Wall-clock time, HH:MM 24-hour.
-                         * @example 09:00
-                         */
-                        end_time: string;
-                        type: components["schemas"]["ShiftType"];
-                        location_id: string;
-                        location_name: string;
-                        /**
-                         * Format: date-time
-                         * @description ISO 8601 timestamp.
-                         * @example 2026-02-23T18:04:11.000Z
-                         */
-                        created_at: string;
-                        /**
-                         * Format: date-time
-                         * @description ISO 8601 timestamp.
-                         * @example 2026-02-23T18:04:11.000Z
-                         */
-                        updated_at: string;
-                    };
+                    "application/json": components["schemas"]["SwapShift"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
@@ -1677,6 +1556,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {

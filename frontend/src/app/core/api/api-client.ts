@@ -47,28 +47,51 @@ type ResponseOf<O> = O extends { responses: infer R }
       : void
   : void;
 
-/** The `application/json` request body for an operation. */
+/**
+ * The `application/json` request body for an operation.
+ *
+ * Operations that declare no body resolve to `undefined`, not `never`: a POST
+ * can legitimately carry nothing (see `POST /employee/swap-shifts/{swapId}/claim`,
+ * where the swapId in the path is the whole request), and `never` would make
+ * such a route impossible to call at all.
+ */
 type BodyOf<O> = O extends { requestBody: { content: { 'application/json': infer T } } }
   ? T
-  : never;
+  : undefined;
 
 /**
  * The body argument for an operation.
  *
- * An operation that declares no `requestBody` (openapi-typescript emits those
- * as `requestBody?: never`) resolves to `Record<string, never>` — the empty
- * object literal and nothing else. That keeps bodyless routes callable as
- * `patch(path, {})`, which is the wire format they have always used, while an
- * actual payload stays a compile error. Operations that DO declare a body are
- * unaffected and remain exactly as strict as `BodyOf` makes them.
+ * `BodyOf` resolves a bodyless operation to `undefined`, and two call styles
+ * for such routes are both in use and both correct: `patch(path, {})` sends the
+ * empty object those routes have always put on the wire, while
+ * `post(path, undefined)` sends nothing at all. Accepting either keeps both
+ * call sites honest without forcing one slice to rewrite the other's. A real
+ * payload on a bodyless route is still a compile error, and operations that DO
+ * declare a body stay exactly as strict as `BodyOf` makes them.
  */
-type RequestBodyOf<O> = [BodyOf<O>] extends [never] ? Record<string, never> : BodyOf<O>;
+type RequestBodyOf<O> = [BodyOf<O>] extends [undefined]
+  ? Record<string, never> | undefined
+  : BodyOf<O>;
 
-/** Path parameters for an operation, or `never` when it takes none. */
-type PathParamsOf<O> = O extends { parameters: { path: infer T } } ? T : never;
+/**
+ * Path parameters for an operation, or `never` when it takes none.
+ *
+ * Matched through an optional key because openapi-typescript emits absent
+ * parameter groups as `path?: never` and all-optional groups as `path?: {…}`.
+ * Requiring `path:` here would silently resolve both to `never`.
+ */
+type PathParamsOf<O> = O extends { parameters: { path?: infer T } } ? NonNullable<T> : never;
 
-/** Query parameters for an operation, or `never` when it takes none. */
-type QueryParamsOf<O> = O extends { parameters: { query: infer T } } ? T : never;
+/**
+ * Query parameters for an operation, or `never` when it takes none.
+ *
+ * Optional-key matching matters more here than for paths: an operation whose
+ * query parameters are all optional (`GET /employee/shifts`) is emitted as
+ * `query?: {…}`, so the stricter form would have made its month/date/week
+ * parameters unreachable.
+ */
+type QueryParamsOf<O> = O extends { parameters: { query?: infer T } } ? NonNullable<T> : never;
 
 /**
  * Per-operation request options.
