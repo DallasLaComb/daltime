@@ -2,7 +2,7 @@
 
 Companion to [`openapi-contract-goal.md`](openapi-contract-goal.md) (_why_, and what "done" means) and [`openapi-contract-blueprint.md`](openapi-contract-blueprint.md) (_how_ — the per-slice recipe every agent follows). **This file is the shared state.** It is the one place that records what is finished and what is left. Every agent reads it before starting; who writes to it depends on the execution mode below.
 
-**Progress: 37 of ~87 operations registered; 3 of 28 slices fully migrated.**
+**Progress: 37 of ~87 operations registered; 3 of 28 slices migrated end-to-end.** Eight further slices are registered in the contract but not yet consumed by both sides — those are Wave 1.
 
 The API exposes **92 distinct path+method pairs** in `infra/template.yaml`. Five of those are the `/web-admin/impersonate/{userId}/{proxy+}` catch-alls, which are not operations in their own right — they re-dispatch to real handlers via `web-admin/impersonate/route-registry.ts`. That leaves **~87 real operations**, of which 37 are registered in `contracts/openapi.json`.
 
@@ -79,6 +79,10 @@ If your slice needs a change to a **shared** file, make the smallest additive ch
 
 **Response schemas are documentation, not enforcement.** Responses are not validated at runtime. Do not start validating them without first checking that Cognito enrichment doesn't add fields the schema forbids.
 
+**An operation that declares no request body needs `{}` at the call site.** openapi-typescript emits an absent `requestBody` as `requestBody?: never`, which made `ApiClient`'s `BodyOf` resolve to `never` — and no argument satisfies `never`, so those routes were uncallable. `RequestBodyOf` now maps that case to the empty object literal: bodyless POST/PUT/PATCH routes accept `{}` and nothing else, and routes that do declare a body are unaffected.
+
+**Role-parameterized routes need a literal-path lookup, not string building.** `ApiClient` derives the response type from the literal path it is handed, so a URL assembled at runtime widens to `string` and cannot be typed. Where one service serves several roles, hold a per-role map of literal contract paths (`as const satisfies Record<UserRole, string>`) and index it — see `shared/notifications/notifications.service.ts`. Path parameters belong in `options.params`; `ApiClient.url()` already percent-encodes them, so encoding by hand double-encodes and breaks composite ids containing `#` or `:`.
+
 **Proxy routes are not operations.** `/manager/schedule/{proxy+}` and `/employee/swap-shifts/{proxy+}` exist only to give API Gateway a CORS preflight target for parameterized sub-paths; the handlers dispatch internally on `rawPath`. Register the _real_ sub-paths (`/manager/schedule/generate`, `/employee/swap-shifts/{swapId}/claim`, …), never the `{proxy+}` form.
 
 ---
@@ -99,7 +103,7 @@ These slices are already registered in `openapi.json`. No new schemas are needed
 - [ ] **employee/swap-shifts** — registered: `GET|POST /employee/swap-shifts`, `DELETE /employee/swap-shifts/{swapId}`, `POST /employee/swap-shifts/{swapId}/claim`
 - [ ] **org-admin/employees** — registered: `GET|POST /org-admin/employees`, `PUT|PATCH|DELETE /org-admin/employees/{employeeId}`
 - [ ] **org-admin/managers** — registered: `GET|POST /org-admin/managers`, `PUT|PATCH|DELETE /org-admin/managers/{managerId}`
-- [ ] **shared/notifications — frontend only** — backend already consumes the contract; `frontend/src/app/shared/notifications/notifications.service.ts` and `core/models/notification.model.ts` are the remaining half
+- [x] **shared/notifications** — done, merged. Frontend service now uses `ApiClient` + `ApiSchema`, and `core/models/notification.model.ts` is deleted. The registered contract matched the implementation field-for-field, including the `x-dynamodb-access` metadata — no schema corrections were needed.
 
 ### Wave 2 — manager and org-admin remainder (new schemas)
 
@@ -129,7 +133,7 @@ These slices are already registered in `openapi.json`. No new schemas are needed
 These are deliberately last: a `shared/models/**` file can only be deleted once _every_ consuming slice is migrated.
 
 - [ ] Delete `backend/src/functions/shared/models/` (13 files)
-- [ ] Delete `frontend/src/app/core/models/` (15 remaining files)
+- [ ] Delete `frontend/src/app/core/models/` (14 remaining files)
 - [ ] Review shared infrastructure against the finished contract: `shared/validation.ts` (likely superseded by Zod — decide delete vs. keep for non-contract checks), `shared/handler-factories.ts` (make schema parameters required now that every slice supplies one), `shared/profile-service.ts`, `shared/errors.ts`, `shared/response.ts`, `shared/route-match.ts`, `shared/auth.ts`, `shared/cognito.ts`, `shared/dynamo.ts`
 - [ ] Run the DynamoDB access-pattern audit against the completed `openapi.json` and update `docs/dynamodb-entity-map.md`
 - [ ] Confirm every operation in `infra/template.yaml` has a contract entry (expected: ~87)
@@ -167,7 +171,7 @@ Each backend slice is `handler.ts` + `service.ts` + `db.ts` under `backend/src/f
 | web-admin/org-admins            | `services/org-admins.service.ts`                                                                                | `core/models/org-admin-user.model.ts`            |
 | web-admin/generate-dummy-data   | `features/web-admin/generate-dummy-data/generate-dummy-data.service.ts`                                         | —                                                |
 | web-admin/impersonate           | `features/web-admin/impersonate/impersonate.service.ts`, `core/services/impersonation.service.ts`               | —                                                |
-| shared/notifications            | `shared/notifications/notifications.service.ts`                                                                 | `core/models/notification.model.ts`              |
+| shared/notifications            | `shared/notifications/notifications.service.ts` ✅                                                              | `core/models/notification.model.ts` ✅ deleted   |
 
 **A model marked "(shared)" is used by more than one slice.** Do not delete it when you migrate the first of those slices — switch your slice's imports to the contract and leave the file. It gets deleted in Wave 4, once nothing imports it.
 
@@ -178,4 +182,4 @@ Each backend slice is `handler.ts` + `service.ts` + `db.ts` under `backend/src/f
 - [x] **Foundation** — `contracts/` package, `openapi.json` generation with `x-implementation-path` / `x-dynamodb-access`, CI drift gate, `ApiClient` typed over `HttpClient`, vendoring into the SAM CodeUri (commit `235c292`)
 - [x] **manager/profile** — the pilot; the reference implementation for every other slice
 - [x] **shared/health** — `GET /health`; no frontend service, no DynamoDB access
-- [x] **shared/notifications — backend** — `service.ts` and `db.ts` consume `NotificationRecord` / `NotificationResponse`. Frontend half remains, in Wave 1.
+- [x] **shared/notifications** — both halves. Backend `service.ts`/`db.ts` and the frontend service all read their types from the contract; the hand-written frontend model is gone. Eight operations across four roles.
