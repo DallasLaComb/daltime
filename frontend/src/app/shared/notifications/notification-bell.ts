@@ -11,7 +11,7 @@ import { Router } from '@angular/router';
 import { NotificationsService } from './notifications.service';
 import { ButtonComponent } from '@common-daltime';
 import type { UserRole } from '../../core/auth/user-role.model';
-import type { PublicNotification } from '../../core/models/notification.model';
+import type { NotificationResponse } from './notifications.service';
 
 /**
  * Bell icon in the shared navbar that shows an unread-count badge and navigates
@@ -39,7 +39,7 @@ export class NotificationBellComponent implements OnInit {
   /** Effective role driving which `{role}/notifications` route is called. Required — the navbar only renders this component when authenticated. */
   role = input.required<UserRole>();
 
-  protected readonly notifications = signal<PublicNotification[]>([]);
+  protected readonly notifications = signal<NotificationResponse[]>([]);
   protected readonly loading = signal(false);
 
   /** Count of unread notifications derived client-side from the list payload; no separate unread-count endpoint exists. */

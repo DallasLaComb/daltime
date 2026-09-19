@@ -52,6 +52,18 @@ type BodyOf<O> = O extends { requestBody: { content: { 'application/json': infer
   ? T
   : never;
 
+/**
+ * The body argument for an operation.
+ *
+ * An operation that declares no `requestBody` (openapi-typescript emits those
+ * as `requestBody?: never`) resolves to `Record<string, never>` — the empty
+ * object literal and nothing else. That keeps bodyless routes callable as
+ * `patch(path, {})`, which is the wire format they have always used, while an
+ * actual payload stays a compile error. Operations that DO declare a body are
+ * unaffected and remain exactly as strict as `BodyOf` makes them.
+ */
+type RequestBodyOf<O> = [BodyOf<O>] extends [never] ? Record<string, never> : BodyOf<O>;
+
 /** Path parameters for an operation, or `never` when it takes none. */
 type PathParamsOf<O> = O extends { parameters: { path: infer T } } ? T : never;
 
@@ -85,7 +97,7 @@ export class ApiClient {
 
   post<P extends PathsFor<'post'>>(
     path: P,
-    body: BodyOf<OperationOf<P, 'post'>>,
+    body: RequestBodyOf<OperationOf<P, 'post'>>,
     options?: RequestOptions<OperationOf<P, 'post'>>,
   ): Observable<ResponseOf<OperationOf<P, 'post'>>> {
     return this.http.post<ResponseOf<OperationOf<P, 'post'>>>(this.url(path, options), body, {
@@ -95,7 +107,7 @@ export class ApiClient {
 
   put<P extends PathsFor<'put'>>(
     path: P,
-    body: BodyOf<OperationOf<P, 'put'>>,
+    body: RequestBodyOf<OperationOf<P, 'put'>>,
     options?: RequestOptions<OperationOf<P, 'put'>>,
   ): Observable<ResponseOf<OperationOf<P, 'put'>>> {
     return this.http.put<ResponseOf<OperationOf<P, 'put'>>>(this.url(path, options), body, {
@@ -105,7 +117,7 @@ export class ApiClient {
 
   patch<P extends PathsFor<'patch'>>(
     path: P,
-    body: BodyOf<OperationOf<P, 'patch'>>,
+    body: RequestBodyOf<OperationOf<P, 'patch'>>,
     options?: RequestOptions<OperationOf<P, 'patch'>>,
   ): Observable<ResponseOf<OperationOf<P, 'patch'>>> {
     return this.http.patch<ResponseOf<OperationOf<P, 'patch'>>>(this.url(path, options), body, {

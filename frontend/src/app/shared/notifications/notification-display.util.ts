@@ -1,4 +1,7 @@
-import type { NotificationType } from '../../core/models/notification.model';
+import type { ApiSchema } from '../../core/api/api-client';
+
+/** Category union, sourced from the contract (`contracts/src/entities/notification.ts`). */
+type NotificationType = ApiSchema<'NotificationType'>;
 
 /**
  * Presentation metadata (label + icon glyph) for the 4 currently-known

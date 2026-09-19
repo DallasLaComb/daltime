@@ -3,9 +3,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NotificationsService } from './notifications.service';
 import { environment } from '../../../environments/environment';
-import type { PublicNotification } from '../../core/models/notification.model';
+import type { NotificationResponse } from './notifications.service';
 
-const mockNotification: PublicNotification = {
+const mockNotification: NotificationResponse = {
   notification_id: '2026-06-18T12:00:00.000Z#a1b2c3d4-0000-0000-0000-000000000000',
   recipient_sub: 'sub-123',
   type: 'INFO',
