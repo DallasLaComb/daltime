@@ -1,0 +1,37 @@
+{
+  "name": "@daltime/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single source of truth for every DalTime API request/response shape. Zod schemas here generate both the committed openapi.json and the frontend's types.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "npm run build && node dist/generate.js",
+    "check": "npm run generate && git diff --exit-code -- openapi.json"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true
+  },
+  "author": "Dallas LaComb",
+  "license": "ISC",
+  "dependencies": {
+    "zod": "^4.4.3",
+    "zod-openapi": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,4281 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DalTime API",
+    "version": "1.0.0",
+    "description": "Generated from the Zod schemas in `contracts/src/schemas`. Do not edit by hand — run `npm run generate` in `contracts/` instead.\n\nBeyond the standard OpenAPI fields, every operation carries two vendor extensions:\n- `x-implementation-path`: the repo-relative files implementing it.\n- `x-dynamodb-access`: the real DynamoDB commands and key conditions it issues, so the full set of access patterns can be read from this file alone."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:47200",
+      "description": "SAM local (see backend/package.json start)"
+    },
+    {
+      "url": "https://dev.daltime.com",
+      "description": "dev"
+    },
+    {
+      "url": "https://qa.daltime.com",
+      "description": "qa"
+    },
+    {
+      "url": "https://daltime.com",
+      "description": "prod"
+    }
+  ],
+  "tags": [
+    {
+      "name": "employee",
+      "description": "Routes callable by the Employee role."
+    },
+    {
+      "name": "manager",
+      "description": "Routes callable by the Manager role."
+    },
+    {
+      "name": "org-admin",
+      "description": "Routes callable by the OrgAdmin role."
+    },
+    {
+      "name": "web-admin",
+      "description": "Routes callable by the WebAdmin role."
+    },
+    {
+      "name": "shared",
+      "description": "Routes callable by more than one role."
+    }
+  ],
+  "security": [
+    {
+      "cognitoJwt": []
+    }
+  ],
+  "paths": {
+    "/employee/availability/overrides": {
+      "get": {
+        "operationId": "getEmployeeAvailabilityOverrides",
+        "summary": "Get the calling employee’s date-specific availability overrides",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the employee availability screen’s per-date override panel — one-off exceptions that take precedence over the recurring weekly schedule.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/availability-overrides/handler.ts",
+          "backend/src/functions/employee/availability-overrides/service.ts",
+          "backend/src/functions/employee/availability-overrides/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY_OVERRIDES",
+            "note": "Point read for the employee’s own record. Returns {} (not 404) when none exists yet."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling employee’s date-specific overrides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeAvailabilityOverridesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateEmployeeAvailabilityOverrides",
+        "summary": "Replace the calling employee’s date-specific availability overrides",
+        "tags": [
+          "employee"
+        ],
+        "description": "Saves per-date exceptions set on the employee availability screen. This is a full replace of the overrides map, not a merge.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/availability-overrides/handler.ts",
+          "backend/src/functions/employee/availability-overrides/service.ts",
+          "backend/src/functions/employee/availability-overrides/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id before the write; a missing record fails closed with 403."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY_OVERRIDES",
+            "note": "Full-item replace of the employee’s date overrides."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertOverridesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved date overrides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeAvailabilityOverridesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/availability": {
+      "get": {
+        "operationId": "getEmployeeAvailability",
+        "summary": "Get the calling employee’s recurring weekly availability",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the employee availability screen (frontend/src/app/features/employee/availability), where an employee sets which days/windows they are willing to work.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/availability/handler.ts",
+          "backend/src/functions/employee/availability/service.ts",
+          "backend/src/functions/employee/availability/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY",
+            "note": "Point read for the employee’s own record. Returns {} (not 404) when none exists yet."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling employee’s weekly availability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateEmployeeAvailability",
+        "summary": "Replace the calling employee’s recurring weekly availability",
+        "tags": [
+          "employee"
+        ],
+        "description": "Saves the schedule set on the employee availability screen. Every day of the week must be present in the payload — this is a full replace, not a merge.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/availability/handler.ts",
+          "backend/src/functions/employee/availability/service.ts",
+          "backend/src/functions/employee/availability/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id before the write; a missing record fails closed with 403."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY",
+            "note": "Full-item replace of the employee’s weekly schedule."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertAvailabilityBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved weekly availability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/available-shifts": {
+      "get": {
+        "operationId": "listAvailableShifts",
+        "summary": "List shifts other employees have offered up for pickup on a date",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the \"Available to Take\" panel (frontend/src/app/features/employee/available-shifts) — shifts from OTHER employees in the caller’s org that are published and flagged available_for_pickup for the requested date. An employee can never pick up their own shift.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/available-shifts/handler.ts",
+          "backend/src/functions/employee/available-shifts/service.ts",
+          "backend/src/functions/employee/available-shifts/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and employee_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SHIFT#\")",
+            "filter": "#date = :date AND available_for_pickup = :true AND employee_id <> :callerId AND (#status = :published OR attribute_not_exists(#status))",
+            "note": "Base-table query narrowed to the org partition. The filter excludes the caller’s own shifts, requires the assigned employee to have opted the shift into pickup, and requires published status."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "description": "The calendar day to look for available shifts.",
+              "example": "2026-05-27"
+            },
+            "required": true,
+            "description": "The calendar day to look for available shifts."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shifts available for pickup on the requested date. Empty array when none exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailableShiftsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/profile": {
+      "get": {
+        "operationId": "getEmployeeProfile",
+        "summary": "Get the calling employee’s profile",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the employee profile screen (frontend/src/app/features/employee/profile). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/profile/handler.ts",
+          "backend/src/functions/employee/profile/service.ts",
+          "backend/src/functions/employee/profile/db.ts",
+          "backend/src/functions/shared/handler-factories.ts",
+          "backend/src/functions/shared/profile-service.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Reverse lookup that resolves the caller’s org_id before the org-partition read."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<callerSub>",
+            "note": "Fetches the employee record itself; status is then enriched from Cognito."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling employee’s profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeProfileResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateEmployeeProfile",
+        "summary": "Update the calling employee’s profile",
+        "tags": [
+          "employee"
+        ],
+        "description": "Saves edits made on the employee profile screen. Only name and phone are mutable — email, org, manager, and status are owned by Cognito or by the manager/org-admin who created the employee.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/profile/handler.ts",
+          "backend/src/functions/employee/profile/service.ts",
+          "backend/src/functions/employee/profile/db.ts",
+          "backend/src/functions/shared/handler-factories.ts",
+          "backend/src/functions/shared/profile-service.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id before the org-partition write."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<callerSub>",
+            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeeProfileBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/shifts": {
+      "get": {
+        "operationId": "listEmployeeShifts",
+        "summary": "List the calling employee’s own shifts within a time window",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the employee shifts calendar (frontend/src/app/features/employee/shifts), scoped to exactly one of a month, a single day, or a 7-day week starting on a given date.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/shifts/handler.ts",
+          "backend/src/functions/employee/shifts/service.ts",
+          "backend/src/functions/employee/shifts/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and employee_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SHIFT#\")",
+            "filter": "employee_id = :employeeId AND begins_with(#date, :month) AND (#status = :published OR attribute_not_exists(#status))",
+            "note": "Variant used when ?month=YYYY-MM is supplied."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SHIFT#\")",
+            "filter": "employee_id = :employeeId AND #date = :date AND (#status = :published OR attribute_not_exists(#status))",
+            "note": "Variant used when ?date=YYYY-MM-DD is supplied."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SHIFT#\")",
+            "filter": "employee_id = :employeeId AND #date >= :weekStart AND #date <= :weekEnd AND (#status = :published OR attribute_not_exists(#status))",
+            "note": "Variant used when ?week=YYYY-MM-DD is supplied. weekEnd = weekStart + 6 days; YYYY-MM-DD lexicographic order matches chronological order so no GSI is needed."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "description": "YYYY-MM — all shifts in the given calendar month.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            },
+            "description": "YYYY-MM — all shifts in the given calendar month."
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "description": "YYYY-MM-DD — shifts on a single day.",
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "example": "2026-05-27"
+            },
+            "description": "YYYY-MM-DD — shifts on a single day."
+          },
+          {
+            "in": "query",
+            "name": "week",
+            "schema": {
+              "description": "YYYY-MM-DD week-start date. Returns the 7-day window starting on (and including) this date.",
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "example": "2026-05-27"
+            },
+            "description": "YYYY-MM-DD week-start date. Returns the 7-day window starting on (and including) this date."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling employee’s shifts in the requested window. Empty array when none exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeShiftsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/swap-shifts": {
+      "get": {
+        "operationId": "listSwapShifts",
+        "summary": "List open swap listings from peers and the caller’s own posted listings",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs both panels of the swap-shifts screen (frontend/src/app/features/employee/swap-shifts): \"Available to Take\" (other employees’ open listings) and \"My Posted Shifts\" (the caller’s own, any status).",
+        "x-implementation-path": [
+          "backend/src/functions/employee/swap-shifts/handler.ts",
+          "backend/src/functions/employee/swap-shifts/service.ts",
+          "backend/src/functions/employee/swap-shifts/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and employee_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Query",
+            "index": "GSI1",
+            "keyCondition": "GSI1PK = ORG_SWAP#<orgId> AND begins_with(GSI1SK, \"STATUS#open#\")",
+            "filter": "posted_by_employee_id <> :callerId",
+            "note": "The \"available\" list. Newest first (ScanIndexForward: false); excludes the caller’s own listings."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SWAP#\")",
+            "filter": "posted_by_employee_id = :employeeId",
+            "note": "The \"mine\" list — base-table query scoped to the org partition, all statuses."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s available-to-take and posted swap listings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwapShiftsListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postSwapShift",
+        "summary": "Post one of the caller’s own published shifts for swap",
+        "tags": [
+          "employee"
+        ],
+        "description": "Lets an employee offer a shift they no longer want for a coworker to claim. Notifies the shift’s manager (best-effort) once the listing is created.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/swap-shifts/handler.ts",
+          "backend/src/functions/employee/swap-shifts/service.ts",
+          "backend/src/functions/employee/swap-shifts/db.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id, employee_id, and display name; a missing record fails closed with 403."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT#<shiftId>",
+            "note": "Validates the shift exists, belongs to the caller, is published, and is not in the past."
+          },
+          {
+            "command": "Query",
+            "index": "GSI1",
+            "keyCondition": "GSI1PK = ORG_SWAP#<orgId> AND begins_with(GSI1SK, \"STATUS#open#\")",
+            "filter": "shift_id = :shiftId AND posted_by_employee_id = :employeeId",
+            "note": "Duplicate-post guard — rejects with 409 if the caller already has an open listing for this shift."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Reads the caller’s manager_id (not present on the METADATA reverse-lookup) to denormalize onto the listing."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SWAP#<swapId>",
+            "note": "Creates the listing with GSI1SK = STATUS#open#<created_at>."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<managerId> AND SK = NOTIFICATION#<created_at>#<rawId>",
+            "note": "Best-effort manager notification; a write failure here does not fail the request."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostSwapShiftBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created swap listing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "swap_id": {
+                      "type": "string"
+                    },
+                    "org_id": {
+                      "type": "string"
+                    },
+                    "shift_id": {
+                      "type": "string"
+                    },
+                    "posted_by_employee_id": {
+                      "type": "string"
+                    },
+                    "posted_by_employee_name": {
+                      "type": "string"
+                    },
+                    "manager_id": {
+                      "type": "string",
+                      "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
+                    },
+                    "status": {
+                      "$ref": "#/components/schemas/SwapStatus"
+                    },
+                    "claimed_by_employee_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Cognito sub of the claiming employee; null until claimed."
+                    },
+                    "claimed_by_employee_name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Full name of the claiming employee; null until claimed."
+                    },
+                    "date": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                      "description": "Calendar date, YYYY-MM-DD.",
+                      "example": "2026-05-27"
+                    },
+                    "start_time": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "Wall-clock time, HH:MM 24-hour.",
+                      "example": "09:00"
+                    },
+                    "end_time": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "Wall-clock time, HH:MM 24-hour.",
+                      "example": "09:00"
+                    },
+                    "type": {
+                      "$ref": "#/components/schemas/ShiftType"
+                    },
+                    "location_id": {
+                      "type": "string"
+                    },
+                    "location_name": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "ISO 8601 timestamp.",
+                      "example": "2026-02-23T18:04:11.000Z"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "ISO 8601 timestamp.",
+                      "example": "2026-02-23T18:04:11.000Z"
+                    }
+                  },
+                  "required": [
+                    "swap_id",
+                    "org_id",
+                    "shift_id",
+                    "posted_by_employee_id",
+                    "posted_by_employee_name",
+                    "manager_id",
+                    "status",
+                    "claimed_by_employee_id",
+                    "claimed_by_employee_name",
+                    "date",
+                    "start_time",
+                    "end_time",
+                    "type",
+                    "location_id",
+                    "location_name",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The swap listing is no longer open — already claimed, cancelled, or a duplicate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/swap-shifts/{swapId}/claim": {
+      "post": {
+        "operationId": "claimSwapShift",
+        "summary": "Claim an open swap listing",
+        "tags": [
+          "employee"
+        ],
+        "description": "Transfers an open listing’s shift to the claiming employee. Notifies the shift’s manager (best-effort) once the transfer succeeds.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/swap-shifts/handler.ts",
+          "backend/src/functions/employee/swap-shifts/service.ts",
+          "backend/src/functions/employee/swap-shifts/db.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id, employee_id, and display name; a missing record fails closed with 403."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SWAP#<swapId>",
+            "note": "Org-scoped, so a cross-org swapId returns null (404, not 403) — avoids leaking listing existence across orgs. Also rejects self-claim and non-open status."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SWAP#<swapId>",
+            "filter": "ConditionExpression: #status = :open",
+            "note": "Marks the listing claimed and flips GSI1SK to STATUS#claimed#<created_at>. The condition makes the claim atomic: a losing concurrent claimer gets ConditionalCheckFailedException, mapped to 409."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT#<shiftId>",
+            "note": "Transfers the shift’s employee_id/employee_name to the claimer. Run in parallel with the SWAP# update."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<managerId> AND SK = NOTIFICATION#<created_at>#<rawId>",
+            "note": "Best-effort manager notification; a write failure here does not fail the request."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "swapId",
+            "schema": {
+              "type": "string",
+              "description": "The swap listing’s swap_id."
+            },
+            "required": true,
+            "description": "The swap listing’s swap_id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The claimed swap listing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "swap_id": {
+                      "type": "string"
+                    },
+                    "org_id": {
+                      "type": "string"
+                    },
+                    "shift_id": {
+                      "type": "string"
+                    },
+                    "posted_by_employee_id": {
+                      "type": "string"
+                    },
+                    "posted_by_employee_name": {
+                      "type": "string"
+                    },
+                    "manager_id": {
+                      "type": "string",
+                      "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
+                    },
+                    "status": {
+                      "$ref": "#/components/schemas/SwapStatus"
+                    },
+                    "claimed_by_employee_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Cognito sub of the claiming employee; null until claimed."
+                    },
+                    "claimed_by_employee_name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Full name of the claiming employee; null until claimed."
+                    },
+                    "date": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                      "description": "Calendar date, YYYY-MM-DD.",
+                      "example": "2026-05-27"
+                    },
+                    "start_time": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "Wall-clock time, HH:MM 24-hour.",
+                      "example": "09:00"
+                    },
+                    "end_time": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "Wall-clock time, HH:MM 24-hour.",
+                      "example": "09:00"
+                    },
+                    "type": {
+                      "$ref": "#/components/schemas/ShiftType"
+                    },
+                    "location_id": {
+                      "type": "string"
+                    },
+                    "location_name": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "ISO 8601 timestamp.",
+                      "example": "2026-02-23T18:04:11.000Z"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "ISO 8601 timestamp.",
+                      "example": "2026-02-23T18:04:11.000Z"
+                    }
+                  },
+                  "required": [
+                    "swap_id",
+                    "org_id",
+                    "shift_id",
+                    "posted_by_employee_id",
+                    "posted_by_employee_name",
+                    "manager_id",
+                    "status",
+                    "claimed_by_employee_id",
+                    "claimed_by_employee_name",
+                    "date",
+                    "start_time",
+                    "end_time",
+                    "type",
+                    "location_id",
+                    "location_name",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The swap listing is no longer open — already claimed, cancelled, or a duplicate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/swap-shifts/{swapId}": {
+      "delete": {
+        "operationId": "cancelSwapShift",
+        "summary": "Cancel (unpost) a swap listing the caller posted",
+        "tags": [
+          "employee"
+        ],
+        "description": "Lets the poster take a listing back off the board. The record is never deleted — its status moves to cancelled so history is preserved and it drops out of the \"available\" GSI query.",
+        "x-implementation-path": [
+          "backend/src/functions/employee/swap-shifts/handler.ts",
+          "backend/src/functions/employee/swap-shifts/service.ts",
+          "backend/src/functions/employee/swap-shifts/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and employee_id; a missing record fails closed with 403."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SWAP#<swapId>",
+            "note": "Validates the listing exists, the caller is the original poster, and it is still open."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SWAP#<swapId>",
+            "note": "Sets status = cancelled and flips GSI1SK to STATUS#cancelled#<created_at>."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "swapId",
+            "schema": {
+              "type": "string",
+              "description": "The swap listing’s swap_id."
+            },
+            "required": true,
+            "description": "The swap listing’s swap_id."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The listing was cancelled."
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The swap listing is no longer open — already claimed, cancelled, or a duplicate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/profile": {
+      "get": {
+        "operationId": "getManagerProfile",
+        "summary": "Get the calling manager’s profile",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager profile screen (frontend/src/app/features/manager/profile). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/profile/handler.ts",
+          "backend/src/functions/manager/profile/service.ts",
+          "backend/src/functions/manager/profile/db.ts",
+          "backend/src/functions/shared/handler-factories.ts",
+          "backend/src/functions/shared/profile-service.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Reverse lookup that resolves the caller’s org_id before the org-partition read."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<callerSub>",
+            "note": "Fetches the manager record itself; status is then enriched from Cognito."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling manager’s profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerProfileResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateManagerProfile",
+        "summary": "Update the calling manager’s profile",
+        "tags": [
+          "manager"
+        ],
+        "description": "Saves edits made on the manager profile screen. Only name and phone are mutable — email, org, and status are owned by Cognito or by the org-admin who created the manager.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/profile/handler.ts",
+          "backend/src/functions/manager/profile/service.ts",
+          "backend/src/functions/manager/profile/db.ts",
+          "backend/src/functions/shared/handler-factories.ts",
+          "backend/src/functions/shared/profile-service.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id before the org-partition write."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<callerSub>",
+            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateManagerProfileBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/employees": {
+      "get": {
+        "operationId": "listOrgAdminEmployees",
+        "summary": "List employees in the caller’s organization",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). Resolves the caller’s org_id from their JWT sub and lists every employee in that org.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/employees/handler.ts",
+          "backend/src/functions/org-admin/employees/service.ts",
+          "backend/src/functions/org-admin/employees/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every employee in the org, with live Cognito status merged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminEmployeeListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgAdminEmployee",
+        "summary": "Register a new employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the org-admin employee roster screen’s \"Add employee\" action.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/employees/handler.ts",
+          "backend/src/functions/org-admin/employees/service.ts",
+          "backend/src/functions/org-admin/employees/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeSub>",
+            "note": "Primary record. Written in parallel with the reverse-lookup record below via Promise.all."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<employeeSub> AND SK = METADATA",
+            "note": "Reverse-lookup record, so the employee can be resolved by ID alone."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmployeeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created employee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminEmployeeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A Cognito user with this email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/employees/{employeeId}": {
+      "put": {
+        "operationId": "updateOrgAdminEmployee",
+        "summary": "Update an employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Saves edits made on the org-admin employee roster screen — name, phone, or manager assignment.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/employees/handler.ts",
+          "backend/src/functions/org-admin/employees/service.ts",
+          "backend/src/functions/org-admin/employees/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated employee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminEmployeeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disableOrgAdminEmployee",
+        "summary": "Disable an employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Soft-deletes an employee from the roster screen — disables their Cognito account and marks the stored record DISABLED without deleting either, preserving the audit trail.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/employees/handler.ts",
+          "backend/src/functions/org-admin/employees/service.ts",
+          "backend/src/functions/org-admin/employees/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Sets status = DISABLED. Runs in parallel with the reverse-lookup update below via Promise.all."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Sets status = DISABLED to match the primary record."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Employee disabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "enableOrgAdminEmployee",
+        "summary": "Re-enable a disabled employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/employees/handler.ts",
+          "backend/src/functions/org-admin/employees/service.ts",
+          "backend/src/functions/org-admin/employees/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Sets status = CONFIRMED. Runs in parallel with the reverse-lookup update below via Promise.all."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Sets status = CONFIRMED to match the primary record."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Employee re-enabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/managers": {
+      "get": {
+        "operationId": "listOrgAdminManagers",
+        "summary": "List managers in the caller’s organization",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin manager roster screen (frontend/src/app/features/org-admin/managers). Resolves the caller’s org_id from their JWT sub and lists every manager in that org.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/managers/handler.ts",
+          "backend/src/functions/org-admin/managers/service.ts",
+          "backend/src/functions/org-admin/managers/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, MANAGER#)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every manager in the org, with live Cognito status merged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminManagerListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgAdminManager",
+        "summary": "Register a new manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Creates a Cognito user in the Manager group and the corresponding DynamoDB records, from the org-admin manager roster screen’s \"Add manager\" action.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/managers/handler.ts",
+          "backend/src/functions/org-admin/managers/service.ts",
+          "backend/src/functions/org-admin/managers/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and the caller’s own user_id (as org_admin_id)."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerSub>",
+            "note": "Primary record. Written in parallel with the reverse-lookup record below via Promise.all."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<managerSub> AND SK = METADATA",
+            "note": "Reverse-lookup record, so the manager can be resolved by ID alone."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<callerSub>",
+            "note": "Atomically increments manager_count (ADD) on the caller OrgAdmin’s own record."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManagerBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created manager.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminManagerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A Cognito user with this email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/managers/{managerId}": {
+      "put": {
+        "operationId": "updateOrgAdminManager",
+        "summary": "Update a manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Saves edits made on the org-admin manager roster screen — name or phone.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/managers/handler.ts",
+          "backend/src/functions/org-admin/managers/service.ts",
+          "backend/src/functions/org-admin/managers/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the manager belongs to the caller’s org."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
+            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateManagerBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated manager.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminManagerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disableOrgAdminManager",
+        "summary": "Disable a manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Soft-deletes a manager from the roster screen — disables their Cognito account, marks the stored record DISABLED, and decrements the caller OrgAdmin’s manager_count.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/managers/handler.ts",
+          "backend/src/functions/org-admin/managers/service.ts",
+          "backend/src/functions/org-admin/managers/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and own user_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the manager belongs to the caller’s org and to get their email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
+            "note": "Sets status = DISABLED. Runs in parallel with the reverse-lookup update below via Promise.all."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Sets status = DISABLED to match the primary record."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<callerSub>",
+            "filter": "manager_count > :zero",
+            "note": "Atomically decrements manager_count on the caller OrgAdmin’s own record, floored at 0. A failed condition (already 0) is swallowed."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Manager disabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "enableOrgAdminManager",
+        "summary": "Re-enable a disabled manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Does not change manager_count.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/managers/handler.ts",
+          "backend/src/functions/org-admin/managers/service.ts",
+          "backend/src/functions/org-admin/managers/db.ts",
+          "backend/src/functions/shared/dynamo.ts",
+          "backend/src/functions/shared/cognito.ts",
+          "backend/src/functions/shared/validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Reverse lookup, used to confirm the manager belongs to the caller’s org and to get their email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
+            "note": "Sets status = CONFIRMED. Runs in parallel with the reverse-lookup update below via Promise.all."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
+            "note": "Sets status = CONFIRMED to match the primary record."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Manager re-enabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Public heartbeat check",
+        "tags": [
+          "shared"
+        ],
+        "description": "Public smoke-test target with no auth requirement, hit by CI/CD post-deploy checks (frontend/src/environments + deploy workflows) to confirm the HttpApi route and Lambda runtime are alive after a deployment. The handler wraps its body in a try/catch that always returns a shaped 200, even on an internal error, so the heartbeat itself never reports a false negative.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/health/handler.ts"
+        ],
+        "x-dynamodb-access": [],
+        "responses": {
+          "200": {
+            "description": "Runtime is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web-admin/notifications": {
+      "get": {
+        "operationId": "listWebAdminNotifications",
+        "summary": "List the calling web-admin's notifications",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs the notification bell and notification list page (frontend/src/app/shared/notifications) for the web-admin role. One Lambda (`NotificationsFunction`) serves this identically across all four role prefixes — the prefix only scopes which JWT-authenticated role may call it, not the behaviour, which is always \"list the caller's own notifications by their JWT sub\".",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's notifications, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "markAllWebAdminNotificationsRead",
+        "summary": "Mark all of the calling web-admin's unread notifications as read",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs the notification list page’s \"mark all as read\" action. Distinct from the `{notificationId}` variant below: this route takes no path parameter and no request body — it marks every one of the caller’s currently-unread notifications and returns only a count, never the notifications themselves.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "filter": "#read = :unread (i.e. read = false)",
+            "note": "ScanIndexForward: false. Finds only the caller’s currently-unread notifications."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
+            "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many notifications were marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllNotificationsReadResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web-admin/notifications/{notificationId}": {
+      "patch": {
+        "operationId": "markOneWebAdminNotificationRead",
+        "summary": "Mark one of the calling web-admin's notifications as read",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs marking a single notification as read from the notification bell/list — e.g. clicking an individual unread item. Distinct from the no-id variant above: this route addresses exactly one notification by its `notificationId` path parameter and returns that notification (now read), not a count. An empty-string `notificationId` (present-but-blank path param) is rejected with 400 before the service is called, rather than silently falling through to mark-all semantics.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Scoped to the caller’s own partition — a forged/foreign notificationId simply yields no item, so the service throws NotFoundError (404), never ForbiddenError, avoiding existence leakage. This Get is also how ownership is verified; there is no separate authorization check."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Only issued if the Get above found an item that was not already read — sets `read = true`. Skipped (item returned as-is) when the notification was already read."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationId",
+            "schema": {
+              "type": "string",
+              "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+            },
+            "required": true,
+            "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notification, now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/notifications": {
+      "get": {
+        "operationId": "listOrgAdminNotifications",
+        "summary": "List the calling org-admin's notifications",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the notification bell and notification list page (frontend/src/app/shared/notifications) for the org-admin role. One Lambda (`NotificationsFunction`) serves this identically across all four role prefixes — the prefix only scopes which JWT-authenticated role may call it, not the behaviour, which is always \"list the caller's own notifications by their JWT sub\".",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's notifications, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "markAllOrgAdminNotificationsRead",
+        "summary": "Mark all of the calling org-admin's unread notifications as read",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the notification list page’s \"mark all as read\" action. Distinct from the `{notificationId}` variant below: this route takes no path parameter and no request body — it marks every one of the caller’s currently-unread notifications and returns only a count, never the notifications themselves.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "filter": "#read = :unread (i.e. read = false)",
+            "note": "ScanIndexForward: false. Finds only the caller’s currently-unread notifications."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
+            "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many notifications were marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllNotificationsReadResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/notifications/{notificationId}": {
+      "patch": {
+        "operationId": "markOneOrgAdminNotificationRead",
+        "summary": "Mark one of the calling org-admin's notifications as read",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs marking a single notification as read from the notification bell/list — e.g. clicking an individual unread item. Distinct from the no-id variant above: this route addresses exactly one notification by its `notificationId` path parameter and returns that notification (now read), not a count. An empty-string `notificationId` (present-but-blank path param) is rejected with 400 before the service is called, rather than silently falling through to mark-all semantics.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Scoped to the caller’s own partition — a forged/foreign notificationId simply yields no item, so the service throws NotFoundError (404), never ForbiddenError, avoiding existence leakage. This Get is also how ownership is verified; there is no separate authorization check."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Only issued if the Get above found an item that was not already read — sets `read = true`. Skipped (item returned as-is) when the notification was already read."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationId",
+            "schema": {
+              "type": "string",
+              "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+            },
+            "required": true,
+            "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notification, now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/notifications": {
+      "get": {
+        "operationId": "listManagerNotifications",
+        "summary": "List the calling manager's notifications",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the notification bell and notification list page (frontend/src/app/shared/notifications) for the manager role. One Lambda (`NotificationsFunction`) serves this identically across all four role prefixes — the prefix only scopes which JWT-authenticated role may call it, not the behaviour, which is always \"list the caller's own notifications by their JWT sub\".",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's notifications, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "markAllManagerNotificationsRead",
+        "summary": "Mark all of the calling manager's unread notifications as read",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the notification list page’s \"mark all as read\" action. Distinct from the `{notificationId}` variant below: this route takes no path parameter and no request body — it marks every one of the caller’s currently-unread notifications and returns only a count, never the notifications themselves.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "filter": "#read = :unread (i.e. read = false)",
+            "note": "ScanIndexForward: false. Finds only the caller’s currently-unread notifications."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
+            "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many notifications were marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllNotificationsReadResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/notifications/{notificationId}": {
+      "patch": {
+        "operationId": "markOneManagerNotificationRead",
+        "summary": "Mark one of the calling manager's notifications as read",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs marking a single notification as read from the notification bell/list — e.g. clicking an individual unread item. Distinct from the no-id variant above: this route addresses exactly one notification by its `notificationId` path parameter and returns that notification (now read), not a count. An empty-string `notificationId` (present-but-blank path param) is rejected with 400 before the service is called, rather than silently falling through to mark-all semantics.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Scoped to the caller’s own partition — a forged/foreign notificationId simply yields no item, so the service throws NotFoundError (404), never ForbiddenError, avoiding existence leakage. This Get is also how ownership is verified; there is no separate authorization check."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Only issued if the Get above found an item that was not already read — sets `read = true`. Skipped (item returned as-is) when the notification was already read."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationId",
+            "schema": {
+              "type": "string",
+              "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+            },
+            "required": true,
+            "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notification, now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/notifications": {
+      "get": {
+        "operationId": "listEmployeeNotifications",
+        "summary": "List the calling employee's notifications",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the notification bell and notification list page (frontend/src/app/shared/notifications) for the employee role. One Lambda (`NotificationsFunction`) serves this identically across all four role prefixes — the prefix only scopes which JWT-authenticated role may call it, not the behaviour, which is always \"list the caller's own notifications by their JWT sub\".",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's notifications, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "markAllEmployeeNotificationsRead",
+        "summary": "Mark all of the calling employee's unread notifications as read",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs the notification list page’s \"mark all as read\" action. Distinct from the `{notificationId}` variant below: this route takes no path parameter and no request body — it marks every one of the caller’s currently-unread notifications and returns only a count, never the notifications themselves.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<callerSub> AND begins_with(SK, \"NOTIFICATION#\")",
+            "filter": "#read = :unread (i.e. read = false)",
+            "note": "ScanIndexForward: false. Finds only the caller’s currently-unread notifications."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
+            "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many notifications were marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllNotificationsReadResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employee/notifications/{notificationId}": {
+      "patch": {
+        "operationId": "markOneEmployeeNotificationRead",
+        "summary": "Mark one of the calling employee's notifications as read",
+        "tags": [
+          "employee"
+        ],
+        "description": "Backs marking a single notification as read from the notification bell/list — e.g. clicking an individual unread item. Distinct from the no-id variant above: this route addresses exactly one notification by its `notificationId` path parameter and returns that notification (now read), not a count. An empty-string `notificationId` (present-but-blank path param) is rejected with 400 before the service is called, rather than silently falling through to mark-all semantics.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/notifications/handler.ts",
+          "backend/src/functions/shared/notifications/service.ts",
+          "backend/src/functions/shared/notifications/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Scoped to the caller’s own partition — a forged/foreign notificationId simply yields no item, so the service throws NotFoundError (404), never ForbiddenError, avoiding existence leakage. This Get is also how ownership is verified; there is no separate authorization check."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = NOTIFICATION#<notificationId>",
+            "note": "Only issued if the Get above found an item that was not already read — sets `read = true`. Skipped (item returned as-is) when the notification was already read."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationId",
+            "schema": {
+              "type": "string",
+              "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+            },
+            "required": true,
+            "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notification, now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpsertOverridesBody": {
+        "type": "object",
+        "properties": {
+          "overrides": {
+            "$ref": "#/components/schemas/DateOverrides"
+          }
+        },
+        "required": [
+          "overrides"
+        ],
+        "description": "Full date-overrides replacement for PUT /employee/availability/overrides."
+      },
+      "DateOverrides": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/DayAvailability"
+        },
+        "description": "Per-date availability overrides, keyed by YYYY-MM-DD."
+      },
+      "DayAvailability": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "slots": {
+            "description": "One or more windows. Required when `available` is true.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeSlot"
+            }
+          },
+          "max_shifts": {
+            "description": "How many shifts the employee will work that day. 1 ≤ max_shifts ≤ slots.length.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "description": "One day's availability."
+      },
+      "TimeSlot": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "description": "One availability window, HH:MM–HH:MM."
+      },
+      "UpsertAvailabilityBody": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "$ref": "#/components/schemas/WeeklySchedule"
+          }
+        },
+        "required": [
+          "schedule"
+        ],
+        "description": "Full weekly schedule replacement for PUT /employee/availability."
+      },
+      "WeeklySchedule": {
+        "type": "object",
+        "propertyNames": {
+          "$ref": "#/components/schemas/DayOfWeek"
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/DayAvailability"
+        },
+        "required": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ],
+        "description": "Recurring weekly availability, keyed by weekday."
+      },
+      "DayOfWeek": {
+        "type": "string",
+        "enum": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ]
+      },
+      "UpdateEmployeeProfileBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "description": "Partial update of the calling employee’s own profile."
+      },
+      "PostSwapShiftBody": {
+        "type": "object",
+        "properties": {
+          "shift_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,128}$"
+          }
+        },
+        "required": [
+          "shift_id"
+        ],
+        "description": "Body for POST /employee/swap-shifts — the shift being offered for swap."
+      },
+      "UpdateManagerProfileBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "description": "Partial update of the calling manager’s own profile."
+      },
+      "CreateEmployeeBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          },
+          "temp_password": {
+            "type": "string",
+            "minLength": 1
+          },
+          "manager_id": {
+            "description": "Manager this employee reports to. Empty string if omitted.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "first_name",
+          "last_name",
+          "temp_password"
+        ],
+        "description": "Fields accepted to register a new employee via Cognito."
+      },
+      "UpdateEmployeeBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": "Partial update of an employee’s name, phone, or manager assignment."
+      },
+      "CreateManagerBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          },
+          "temp_password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "first_name",
+          "last_name",
+          "temp_password"
+        ],
+        "description": "Fields accepted to register a new manager via Cognito."
+      },
+      "UpdateManagerBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "description": "Partial update of a manager’s name or phone."
+      },
+      "EmployeeAvailabilityOverridesResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/DateOverridesOutput"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The calling employee's date-specific availability overrides. Empty object when none exist yet."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable failure reason."
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false,
+        "description": "Standard error envelope."
+      },
+      "EmployeeAvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/WeeklyScheduleOutput"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The calling employee's recurring weekly availability. Empty object when none has been saved yet."
+      },
+      "AvailableShiftsResponse": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "shift_id": {
+              "type": "string"
+            },
+            "org_id": {
+              "type": "string"
+            },
+            "manager_id": {
+              "type": "string"
+            },
+            "employee_id": {
+              "type": "string"
+            },
+            "employee_name": {
+              "type": "string",
+              "description": "Denormalized at assignment time."
+            },
+            "location_id": {
+              "type": "string"
+            },
+            "location_name": {
+              "type": "string",
+              "description": "Denormalized at assignment time."
+            },
+            "date": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "description": "Calendar date, YYYY-MM-DD.",
+              "example": "2026-05-27"
+            },
+            "start_time": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "Wall-clock time, HH:MM 24-hour.",
+              "example": "09:00"
+            },
+            "end_time": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "Wall-clock time, HH:MM 24-hour.",
+              "example": "09:00"
+            },
+            "type": {
+              "$ref": "#/components/schemas/ShiftType"
+            },
+            "status": {
+              "$ref": "#/components/schemas/ShiftStatus"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+              "description": "ISO 8601 timestamp.",
+              "example": "2026-02-23T18:04:11.000Z"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+              "description": "ISO 8601 timestamp.",
+              "example": "2026-02-23T18:04:11.000Z"
+            },
+            "available_for_pickup": {
+              "description": "True when the assigned employee has offered this shift for pickup by peers.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "shift_id",
+            "org_id",
+            "manager_id",
+            "employee_id",
+            "employee_name",
+            "location_id",
+            "location_name",
+            "date",
+            "start_time",
+            "end_time",
+            "type",
+            "status",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Shifts open for pickup on the requested date."
+      },
+      "ShiftType": {
+        "type": "string",
+        "enum": [
+          "morning",
+          "afternoon",
+          "night"
+        ],
+        "description": "Time-of-day band a shift falls into."
+      },
+      "ShiftStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "draft_failed"
+        ],
+        "description": "Shift lifecycle status."
+      },
+      "EmployeeProfileResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager this employee reports to."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "manager_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "An employee's own profile, enriched with their live Cognito status."
+      },
+      "UserStatus": {
+        "type": "string",
+        "enum": [
+          "FORCE_CHANGE_PASSWORD",
+          "CONFIRMED",
+          "DISABLED"
+        ],
+        "description": "Cognito account status for a user."
+      },
+      "EmployeeShiftsResponse": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "shift_id": {
+              "type": "string"
+            },
+            "org_id": {
+              "type": "string"
+            },
+            "manager_id": {
+              "type": "string"
+            },
+            "employee_id": {
+              "type": "string"
+            },
+            "employee_name": {
+              "type": "string",
+              "description": "Denormalized at assignment time."
+            },
+            "location_id": {
+              "type": "string"
+            },
+            "location_name": {
+              "type": "string",
+              "description": "Denormalized at assignment time."
+            },
+            "date": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "description": "Calendar date, YYYY-MM-DD.",
+              "example": "2026-05-27"
+            },
+            "start_time": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "Wall-clock time, HH:MM 24-hour.",
+              "example": "09:00"
+            },
+            "end_time": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "Wall-clock time, HH:MM 24-hour.",
+              "example": "09:00"
+            },
+            "type": {
+              "$ref": "#/components/schemas/ShiftType"
+            },
+            "status": {
+              "$ref": "#/components/schemas/ShiftStatus"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+              "description": "ISO 8601 timestamp.",
+              "example": "2026-02-23T18:04:11.000Z"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+              "description": "ISO 8601 timestamp.",
+              "example": "2026-02-23T18:04:11.000Z"
+            },
+            "available_for_pickup": {
+              "description": "True when the assigned employee has offered this shift for pickup by peers.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "shift_id",
+            "org_id",
+            "manager_id",
+            "employee_id",
+            "employee_name",
+            "location_id",
+            "location_name",
+            "date",
+            "start_time",
+            "end_time",
+            "type",
+            "status",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": false
+        },
+        "description": "The calling employee’s own shifts within the requested time window."
+      },
+      "SwapShiftsListResponse": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "swap_id": {
+                  "type": "string"
+                },
+                "org_id": {
+                  "type": "string"
+                },
+                "shift_id": {
+                  "type": "string"
+                },
+                "posted_by_employee_id": {
+                  "type": "string"
+                },
+                "posted_by_employee_name": {
+                  "type": "string"
+                },
+                "manager_id": {
+                  "type": "string",
+                  "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
+                },
+                "status": {
+                  "$ref": "#/components/schemas/SwapStatus"
+                },
+                "claimed_by_employee_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Cognito sub of the claiming employee; null until claimed."
+                },
+                "claimed_by_employee_name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Full name of the claiming employee; null until claimed."
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                  "description": "Calendar date, YYYY-MM-DD.",
+                  "example": "2026-05-27"
+                },
+                "start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "end_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "type": {
+                  "$ref": "#/components/schemas/ShiftType"
+                },
+                "location_id": {
+                  "type": "string"
+                },
+                "location_name": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                }
+              },
+              "required": [
+                "swap_id",
+                "org_id",
+                "shift_id",
+                "posted_by_employee_id",
+                "posted_by_employee_name",
+                "manager_id",
+                "status",
+                "claimed_by_employee_id",
+                "claimed_by_employee_name",
+                "date",
+                "start_time",
+                "end_time",
+                "type",
+                "location_id",
+                "location_name",
+                "created_at",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Open listings posted by OTHER employees in the org, newest first."
+          },
+          "mine": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "swap_id": {
+                  "type": "string"
+                },
+                "org_id": {
+                  "type": "string"
+                },
+                "shift_id": {
+                  "type": "string"
+                },
+                "posted_by_employee_id": {
+                  "type": "string"
+                },
+                "posted_by_employee_name": {
+                  "type": "string"
+                },
+                "manager_id": {
+                  "type": "string",
+                  "description": "Manager's Cognito sub, denormalized at post time so claim can notify directly."
+                },
+                "status": {
+                  "$ref": "#/components/schemas/SwapStatus"
+                },
+                "claimed_by_employee_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Cognito sub of the claiming employee; null until claimed."
+                },
+                "claimed_by_employee_name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Full name of the claiming employee; null until claimed."
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                  "description": "Calendar date, YYYY-MM-DD.",
+                  "example": "2026-05-27"
+                },
+                "start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "end_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "type": {
+                  "$ref": "#/components/schemas/ShiftType"
+                },
+                "location_id": {
+                  "type": "string"
+                },
+                "location_name": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                }
+              },
+              "required": [
+                "swap_id",
+                "org_id",
+                "shift_id",
+                "posted_by_employee_id",
+                "posted_by_employee_name",
+                "manager_id",
+                "status",
+                "claimed_by_employee_id",
+                "claimed_by_employee_name",
+                "date",
+                "start_time",
+                "end_time",
+                "type",
+                "location_id",
+                "location_name",
+                "created_at",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            },
+            "description": "All listings posted by the caller, any status (open/claimed/cancelled)."
+          }
+        },
+        "required": [
+          "available",
+          "mine"
+        ],
+        "additionalProperties": false,
+        "description": "The two swap-shifts panels: what the caller can take, and what the caller has posted."
+      },
+      "SwapStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "claimed",
+          "cancelled"
+        ],
+        "description": "Lifecycle status of a shift swap listing."
+      },
+      "ManagerProfileResponse": {
+        "type": "object",
+        "properties": {
+          "manager_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "org_admin_id": {
+            "type": "string",
+            "description": "OrgAdmin who created this manager."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Atomic counter, managed by the employees Lambda."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "manager_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "org_admin_id",
+          "status",
+          "employee_count",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "A manager's own profile, enriched with their live Cognito status."
+      },
+      "OrgAdminEmployeeListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OrgAdminEmployeeResponse"
+        },
+        "description": "Every employee in the caller OrgAdmin’s organization."
+      },
+      "OrgAdminEmployeeResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager this employee reports to."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "manager_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "An employee record as returned to an OrgAdmin, enriched with live Cognito status."
+      },
+      "OrgAdminManagerListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OrgAdminManagerResponse"
+        },
+        "description": "Every manager in the caller OrgAdmin’s organization."
+      },
+      "OrgAdminManagerResponse": {
+        "type": "object",
+        "properties": {
+          "manager_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "org_admin_id": {
+            "type": "string",
+            "description": "OrgAdmin who created this manager."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Atomic counter, managed by the employees Lambda."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "manager_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "org_admin_id",
+          "status",
+          "employee_count",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "A manager record as returned to an OrgAdmin, enriched with live Cognito status."
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "Confirms the API Gateway route and Lambda runtime are reachable."
+      },
+      "NotificationListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/NotificationResponse"
+        },
+        "description": "The caller's own notifications only (scoped by `PK = USER#<callerSub>`), sorted newest first. Never paginated (out of scope at current scale, see the slice blueprint)."
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string",
+            "description": "Public composite id — `${created_at}#${raw_id}`, mirroring the SK suffix."
+          },
+          "recipient_sub": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NotificationType"
+          },
+          "message": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "notification_id",
+          "recipient_sub",
+          "type",
+          "message",
+          "read",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "A single notification belonging to the caller. `notification_id` is the opaque composite `<created_at>#<rawId>` token — callers must `encodeURIComponent` it before placing it in a URL path segment, since it contains literal `#` and `:` characters."
+      },
+      "NotificationType": {
+        "type": "string",
+        "enum": [
+          "INFO",
+          "APPROVAL",
+          "REQUEST",
+          "SHIFT"
+        ],
+        "description": "Category of a notification."
+      },
+      "MarkAllNotificationsReadResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "marked_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Count of notifications transitioned from unread to read."
+          }
+        },
+        "required": [
+          "success",
+          "marked_count"
+        ],
+        "additionalProperties": false,
+        "description": "Confirms how many of the caller’s unread notifications were marked read."
+      },
+      "DateOverridesOutput": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/DayAvailabilityOutput"
+        },
+        "description": "Per-date availability overrides, keyed by YYYY-MM-DD."
+      },
+      "DayAvailabilityOutput": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "slots": {
+            "description": "One or more windows. Required when `available` is true.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeSlotOutput"
+            }
+          },
+          "max_shifts": {
+            "description": "How many shifts the employee will work that day. 1 ≤ max_shifts ≤ slots.length.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "additionalProperties": false,
+        "description": "One day's availability."
+      },
+      "TimeSlotOutput": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "additionalProperties": false,
+        "description": "One availability window, HH:MM–HH:MM."
+      },
+      "WeeklyScheduleOutput": {
+        "type": "object",
+        "propertyNames": {
+          "$ref": "#/components/schemas/DayOfWeek"
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/DayAvailabilityOutput"
+        },
+        "required": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ],
+        "description": "Recurring weekly availability, keyed by weekday."
+      }
+    },
+    "securitySchemes": {
+      "cognitoJwt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Cognito access token. Attached by the frontend auth interceptor and validated by the HttpApi JWT authorizer configured in `infra/template.yaml`."
+      }
+    }
+  }
+}

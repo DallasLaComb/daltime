@@ -1,22 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  ManagerProfileResponse,
-  UpdateManagerProfileBody,
-} from '../../../core/models/manager-profile.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type ManagerProfileResponse = ApiSchema<'ManagerProfileResponse'>;
+export type UpdateManagerProfileBody = ApiSchema<'UpdateManagerProfileBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class ManagerProfileService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/profile`;
+  private readonly api = inject(ApiClient);
 
   get(): Observable<ManagerProfileResponse> {
-    return this.http.get<ManagerProfileResponse>(this.baseUrl);
+    return this.api.get('/manager/profile');
   }
 
   update(body: UpdateManagerProfileBody): Observable<ManagerProfileResponse> {
-    return this.http.put<ManagerProfileResponse>(this.baseUrl, body);
+    return this.api.put('/manager/profile', body);
   }
 }

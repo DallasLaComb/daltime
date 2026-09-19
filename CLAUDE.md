@@ -109,7 +109,7 @@ This applies to every feature pipeline agent: `angular-frontend-agent`, `backend
 After filling in the **Completion Notes** section of your sub-issue, run:
 
 ```bash
-gh issue close <sub-issue-number> --repo DallasLaComb/DalTime
+gh issue close <sub-issue-number> --repo DallasLaComb/daltime
 ```
 
 Do this as the final step of your work — after staging/committing your changes and after updating the Completion Notes. Do not leave the sub-issue open once your work is complete.

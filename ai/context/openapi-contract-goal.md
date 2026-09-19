@@ -1,8 +1,11 @@
 # Goal: Single OpenAPI Contract for Frontend + Backend
 
-**Status:** Not started. This is a goal/context doc only — no implementation, no blueprint approved yet. Read this file at the start of any session working on this initiative before writing code.
+**Status:** Foundation + pilot complete (5 / 152 files). The `contracts/` package, generation, CI drift check, and typed frontend client are built, and `manager/profile` is migrated end-to-end. The remaining ~20 vertical slices are not started. Read this file at the start of any session working on this initiative before writing code.
 
-**Companion file:** [`ai/context/openapi-contract-checklist.md`](openapi-contract-checklist.md) enumerates every one of the 152 backend/frontend files this migration touches, grouped by vertical slice, as checkboxes. Read the goal (this file) first for _why_ and _what "done" means_, then work the checklist so no slice gets missed.
+**Companion files:**
+
+- [`ai/context/openapi-contract-blueprint.md`](openapi-contract-blueprint.md) — the approved _how_: decisions made, layout, and the per-slice migration recipe. Follow this when migrating a slice.
+- [`ai/context/openapi-contract-checklist.md`](openapi-contract-checklist.md) enumerates every one of the 152 backend/frontend files this migration touches, grouped by vertical slice, as checkboxes. Read the goal (this file) first for _why_ and _what "done" means_, then work the checklist so no slice gets missed.
 
 ---
 

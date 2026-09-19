@@ -1,6 +1,8 @@
 # OpenAPI Contract Migration — File Checklist
 
-Companion to [`ai/context/openapi-contract-goal.md`](openapi-contract-goal.md). Read that file first for _why_ and _what "done" means_; this file is the enumerated _what_, so a migration pass can't accidentally skip a slice.
+Companion to [`ai/context/openapi-contract-goal.md`](openapi-contract-goal.md). Read that file first for _why_ and _what "done" means_; this file is the enumerated _what_, so a migration pass can't accidentally skip a slice. For _how_ to migrate a slice, follow the recipe in [`openapi-contract-blueprint.md`](openapi-contract-blueprint.md).
+
+**Progress: 5 / 152.** The foundation (`contracts/` package, generation, CI drift check, typed frontend client) is built, and `manager/profile` is migrated end-to-end as the pilot.
 
 **Scope:** every file that currently defines or consumes an API request/response shape, or issues a DynamoDB query — i.e. backend `handler.ts`/`service.ts`/`db.ts`/`model.ts` per vertical slice, backend `shared/models/`, frontend `core/models/`, and frontend `*.service.ts`. Config files, build tooling, tests, and pure-presentation components are intentionally excluded — see `openapi-contract-goal.md`'s "Non-goals" for why the scope stops here. This list was generated directly from the repo tree, not written from memory — re-run the `find` commands below if the tree has changed since:
 
@@ -75,9 +77,9 @@ find frontend/src/app -iname "*.service.ts" | sort
 
 **profile**
 
-- [ ] `manager/profile/handler.ts`
-- [ ] `manager/profile/service.ts`
-- [ ] `manager/profile/db.ts`
+- [x] `manager/profile/handler.ts`
+- [x] `manager/profile/service.ts`
+- [x] `manager/profile/db.ts`
 
 **schedule**
 
@@ -243,7 +245,7 @@ find frontend/src/app -iname "*.service.ts" | sort
 - [ ] `core/models/employee-profile.model.ts`
 - [ ] `core/models/employee.model.ts`
 - [ ] `core/models/manager-location.model.ts`
-- [ ] `core/models/manager-profile.model.ts`
+- [x] `core/models/manager-profile.model.ts`
 - [ ] `core/models/manager-shift-needed.model.ts`
 - [ ] `core/models/manager.model.ts`
 - [ ] `core/models/notification.model.ts`
@@ -264,7 +266,7 @@ find frontend/src/app -iname "*.service.ts" | sort
 - [ ] `features/employee/schedule/shifts.service.ts`
 - [ ] `features/employee/swap-shifts/swap-shifts.service.ts`
 - [ ] `features/manager/employees/employees.service.ts`
-- [ ] `features/manager/profile/profile.service.ts`
+- [x] `features/manager/profile/profile.service.ts`
 - [ ] `features/manager/schedule/employee-availability.service.ts`
 - [ ] `features/manager/schedule/schedule.service.ts`
 - [ ] `features/manager/schedule/shifts.service.ts`

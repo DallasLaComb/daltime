@@ -15,7 +15,7 @@
  * runs; failed test output includes the actual inputs used.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock db and notification modules before service import ───────────────────
 
@@ -205,12 +205,25 @@ function makeSwap(orgId: string, posterEmpId: string, overrides: Partial<MockSwa
   };
 }
 
+// The past-shift guard compares shift.date against the real current date, so the
+// fixture dates below silently became "past" once that day arrived — the suite
+// passed for months, then broke on 2026-09-07 with no code change. Freeze the
+// clock instead of bumping the dates, which would only rot again. Only Date is
+// faked; faking timers wholesale would stall the async service calls.
+const FROZEN_NOW = new Date('2026-08-25T12:00:00.000Z');
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(FROZEN_NOW);
   vi.clearAllMocks();
   vi.mocked(db.putSwap).mockResolvedValue(undefined);
   vi.mocked(db.claimSwapAndTransferShift).mockResolvedValue(undefined);
   vi.mocked(db.cancelSwap).mockResolvedValue(undefined);
   vi.mocked(putNotification).mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

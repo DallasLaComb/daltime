@@ -27,6 +27,14 @@ This only needs to be done once per AWS account.
 
 ### 3. Scope the Trust Policy
 
+> **The `sub` claim uses immutable IDs, not names.** GitHub issues this repo's OIDC
+> tokens as `repo:DallasLaComb@88401844/daltime@1360788820:environment:<env>` — the
+> owner ID and repo ID, not `DallasLaComb/daltime`. A name-based `sub` will fail with
+> `Not authorized to perform sts:AssumeRoleWithWebIdentity`. Confirm the current value
+> with `gh api repos/DallasLaComb/daltime/actions/oidc/customization/sub`. The upside:
+> these IDs survive a repo rename, and they cannot be claimed by someone re-registering
+> the old name.
+
 Use `trust-policy.json` as the trust relationship, substituting values for the target environment (see `trust-policy.blueprint.json` for a ready-made example):
 
 ```bash
@@ -35,10 +43,10 @@ sed -e 's/{{ACCOUNT_ID}}/123456789012/g' \
     trust-policy.json
 ```
 
-| Placeholder | Example |
-|---|---|
-| `{{ACCOUNT_ID}}` | The 12-digit ID of the target AWS account — get it with `aws sts get-caller-identity --profile daltime-<env> --query Account --output text` |
-| `{{ENVIRONMENT}}` | `dev`, `qa`, or `main` |
+| Placeholder       | Example                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{{ACCOUNT_ID}}`  | The 12-digit ID of the target AWS account — get it with `aws sts get-caller-identity --profile daltime-<env> --query Account --output text` |
+| `{{ENVIRONMENT}}` | `dev`, `qa`, or `main`                                                                                                                      |
 
 ### 4. Configure the GitHub Environment
 
@@ -46,15 +54,15 @@ In the GitHub repo: **Settings > Environments** > create an environment matching
 
 Add the following variables and secrets:
 
-| Name | Type | Description |
-|---|---|---|
-| `AWS_ROLE_ARN` | Secret | ARN of the IAM role created above |
-| `AWS_REGION` | Variable | AWS region (e.g., `us-east-1`) |
-| `SAM_STACK_NAME` | Variable | CloudFormation stack name (e.g., `daltime-dev`) |
-| `SAM_S3_BUCKET` | Variable | S3 bucket for SAM deployment artifacts |
-| `ALLOWED_ORIGIN` | Variable | Frontend CloudFront URL for CORS |
-| `S3_BUCKET_NAME` | Variable | S3 bucket hosting the frontend |
-| `CLOUDFRONT_DISTRIBUTION_ID` | Variable | CloudFront distribution ID |
+| Name                         | Type     | Description                                     |
+| ---------------------------- | -------- | ----------------------------------------------- |
+| `AWS_ROLE_ARN`               | Secret   | ARN of the IAM role created above               |
+| `AWS_REGION`                 | Variable | AWS region (e.g., `us-east-1`)                  |
+| `SAM_STACK_NAME`             | Variable | CloudFormation stack name (e.g., `daltime-dev`) |
+| `SAM_S3_BUCKET`              | Variable | S3 bucket for SAM deployment artifacts          |
+| `ALLOWED_ORIGIN`             | Variable | Frontend CloudFront URL for CORS                |
+| `S3_BUCKET_NAME`             | Variable | S3 bucket hosting the frontend                  |
+| `CLOUDFRONT_DISTRIBUTION_ID` | Variable | CloudFront distribution ID                      |
 
 Cognito values (`userPoolId`, `clientId`) are read directly from `frontend/src/environments/environment.<branch>.ts` during deploy — no GitHub variables needed.
 

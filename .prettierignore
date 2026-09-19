@@ -1,0 +1,5 @@
+# Generated artifacts — reformatting these would make them differ from what the
+# generator emits, which would fail the contract drift check in CI.
+contracts/openapi.json
+contracts/dist/
+frontend/src/app/core/generated/

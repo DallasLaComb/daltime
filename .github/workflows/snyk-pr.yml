@@ -29,9 +29,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read          # checkout only
-  security-events: write  # required to upload SARIF to the code-scanning API
-  pull-requests: write    # required for Snyk's inline PR annotations/comments
+  contents: read # checkout only
+  security-events: write # required to upload SARIF to the code-scanning API
+  pull-requests: write # required for Snyk's inline PR annotations/comments
 
 jobs:
   # ── Detect which projects changed, so unaffected projects are skipped entirely ──
@@ -56,6 +56,7 @@ jobs:
               - 'package-lock.json'
             backend:
               - 'backend/**'
+              - 'contracts/**'
               - 'package-lock.json'
             infra:
               - 'infra/**'
@@ -157,6 +158,16 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
+      # @daltime/contracts is a file:vendor/contracts dependency; the vendored copy
+      # must exist before `npm ci` in backend/ (see backend/scripts/sync-contracts.mjs).
+      - name: Install contract dependencies
+        run: npm ci
+        working-directory: contracts
+
+      - name: Build and vendor contracts into the backend
+        run: node scripts/sync-contracts.mjs
+        working-directory: backend
 
       - name: Install dependencies
         run: npm ci

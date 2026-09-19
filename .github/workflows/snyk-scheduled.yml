@@ -12,7 +12,7 @@ name: Snyk — Scheduled Sweep
 on:
   schedule:
     - cron: '0 6 * * 1'
-  workflow_dispatch: {}   # allow manual trigger for ad-hoc "did the new advisory affect us?" checks
+  workflow_dispatch: {} # allow manual trigger for ad-hoc "did the new advisory affect us?" checks
 
 permissions:
   contents: read
@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         project: [frontend, backend]
-      fail-fast: false   # one project's findings shouldn't hide the other's
+      fail-fast: false # one project's findings shouldn't hide the other's
     permissions:
       contents: read
       security-events: write
@@ -38,6 +38,18 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+      # @daltime/contracts is a file:vendor/contracts dependency; the vendored copy
+      # must exist before `npm ci` in backend/ (see backend/scripts/sync-contracts.mjs).
+      - name: Install contract dependencies
+        run: npm ci
+        working-directory: contracts
+        if: matrix.project == 'backend'
+
+      - name: Build and vendor contracts into the backend
+        run: node scripts/sync-contracts.mjs
+        working-directory: backend
+        if: matrix.project == 'backend'
 
       - name: Install dependencies
         run: npm ci
@@ -81,7 +93,7 @@ jobs:
             ${{ matrix.project }}/snyk-${{ matrix.project }}-report.json
             ${{ matrix.project }}/snyk-${{ matrix.project }}-report.sarif
             ${{ matrix.project }}/snyk-${{ matrix.project }}-licenses.txt
-          retention-days: 90   # longer than the 7-day build-artifact retention — these are audit trail, not build output
+          retention-days: 90 # longer than the 7-day build-artifact retention — these are audit trail, not build output
 
       - name: Upload SARIF to code scanning
         if: always() && hashFiles(format('{0}/snyk-{0}-report.sarif', matrix.project)) != ''
