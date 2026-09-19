@@ -2,7 +2,7 @@
 
 Companion to [`openapi-contract-goal.md`](openapi-contract-goal.md) (_why_, and what "done" means) and [`openapi-contract-blueprint.md`](openapi-contract-blueprint.md) (_how_ — the per-slice recipe every agent follows). **This file is the shared state.** It is the one place that records what is finished and what is left. Every agent reads it before starting; who writes to it depends on the execution mode below.
 
-**Progress: 37 of ~87 operations registered; 6 of 28 slices migrated end-to-end.** Five further slices are registered in the contract but not yet consumed by both sides — the remainder of Wave 1.
+**Progress: 37 of ~87 operations registered; 11 of 28 slices migrated end-to-end.** Wave 1 is complete: every slice already registered in the contract is now consumed by both sides. Wave 2 is next, and from here on slices require new schemas rather than just wiring.
 
 The API exposes **92 distinct path+method pairs** in `infra/template.yaml`. Five of those are the `/web-admin/impersonate/{userId}/{proxy+}` catch-alls, which are not operations in their own right — they re-dispatch to real handlers via `web-admin/impersonate/route-registry.ts`. That leaves **~87 real operations**, of which 37 are registered in `contracts/openapi.json`.
 
@@ -81,7 +81,9 @@ If your slice needs a change to a **shared** file, make the smallest additive ch
 
 **Response schemas are documentation, not enforcement.** Responses are not validated at runtime. Do not start validating them without first checking that Cognito enrichment doesn't add fields the schema forbids.
 
-**An operation that declares no request body needs `{}` at the call site.** openapi-typescript emits an absent `requestBody` as `requestBody?: never`, which made `ApiClient`'s `BodyOf` resolve to `never` — and no argument satisfies `never`, so those routes were uncallable. `RequestBodyOf` now maps that case to the empty object literal: bodyless POST/PUT/PATCH routes accept `{}` and nothing else, and routes that do declare a body are unaffected.
+**A bodyless operation was uncallable through `ApiClient`, and three separate agents hit it independently.** openapi-typescript emits an absent `requestBody` as `requestBody?: never`, so `BodyOf` resolved to `never` — and no argument whatsoever satisfies `never`. Every bodyless POST/PUT/PATCH route was therefore impossible to call: the swap-shift claim route, the org-admin PATCH re-enable routes, the notification mark-as-read routes. It went unnoticed because `manager/profile`, the only early consumer, sends a body on every mutating call. `BodyOf` now falls back to `undefined`, and `RequestBodyOf` maps that to `Record<string, never> | undefined` — so both `patch(path, {})` and `post(path, undefined)` compile, while a real payload on a bodyless route is still a compile error.
+
+**Parameter groups must be matched through their _optional_ key.** openapi-typescript emits an absent group as `path?: never` and an **all-optional** group as `query?: {…}`. Matching a required `path:` / `query:` key silently resolves both to `never`, which made the `month`/`date`/`week` parameters of `GET /employee/shifts` unreachable and turned `{ params: { employeeId } }` into a compile error. Both are now matched as `{ path?: infer T }` with `NonNullable<T>`. If a path parameter you know exists is rejected at the call site, check the operation actually declares `requestParams: { path: … }` before blaming the client.
 
 **Role-parameterized routes need a literal-path lookup, not string building.** `ApiClient` derives the response type from the literal path it is handed, so a URL assembled at runtime widens to `string` and cannot be typed. Where one service serves several roles, hold a per-role map of literal contract paths (`as const satisfies Record<UserRole, string>`) and index it — see `shared/notifications/notifications.service.ts`. Path parameters belong in `options.params`; `ApiClient.url()` already percent-encodes them, so encoding by hand double-encodes and breaks composite ids containing `#` or `:`.
 
@@ -105,14 +107,16 @@ Waves exist to keep agents off each other's files. **Do not start a wave until t
 
 These slices are already registered in `openapi.json`. No new schemas are needed: the work is steps 6–7 only (point the backend at the contract, point the frontend at `ApiClient`, delete the hand-written model). Lowest risk, and it validates the pattern at scale before anyone writes new schemas.
 
+**✅ Wave 1 is complete — all nine slices merged, gate green on the merged result.**
+
 - [x] **employee/profile** — done, merged. `handler.ts` passes `UpdateEmployeeProfileBody` through `createProfileHandler`'s existing optional `bodySchema`; `core/models/employee-profile.model.ts` deleted.
 - [x] **employee/availability** — done, merged. Hand-written handler calls `parseWithContract(UpsertAvailabilityBody, …)` after `parseBody`. Cross-field rules (`slots` non-empty when `available`, `1 ≤ max_shifts ≤ slots.length`) stay in `service.ts` — a Zod schema cannot express them, and the service's own `ValidationError` still surfaces as a 400 after contract validation passes.
 - [x] **employee/availability-overrides** — done, merged. Tightened `DateOverrides` in `contracts/src/entities/availability.ts`: its key pattern was a loose `\d{2}-\d{2}`, so the contract advertised `2026-13-99` as valid while the service 400s it. Now mirrors `ISO_DATE_RE` exactly.
-- [ ] **employee/shifts** — registered: `GET /employee/shifts`
-- [ ] **employee/available-shifts** — registered: `GET /employee/available-shifts`
-- [ ] **employee/swap-shifts** — registered: `GET|POST /employee/swap-shifts`, `DELETE /employee/swap-shifts/{swapId}`, `POST /employee/swap-shifts/{swapId}/claim`
-- [ ] **org-admin/employees** — registered: `GET|POST /org-admin/employees`, `PUT|PATCH|DELETE /org-admin/employees/{employeeId}`
-- [ ] **org-admin/managers** — registered: `GET|POST /org-admin/managers`, `PUT|PATCH|DELETE /org-admin/managers/{managerId}`
+- [x] **employee/shifts** — done, merged. `db.ts` types from `ShiftRecord`; no mutating route, so nothing to validate.
+- [x] **employee/available-shifts** — done, merged. Same pattern as `employee/shifts`.
+- [x] **employee/swap-shifts** — done, merged. `swapId` gained the `^[a-zA-Z0-9-]{1,128}$` the service has always enforced; the claim and delete routes gained the 400 they can both return; the swap listing shape became a named `SwapShift` component instead of four inline copies. `core/models/swap-shift.model.ts` deleted.
+- [x] **org-admin/employees** — done, merged. See the audit note in Completed: these schemas had never been exercised and carried seven defects.
+- [x] **org-admin/managers** — done, merged. Same audit; the `manager_count` access had recorded the caller's JWT sub as the sort key where the code uses the METADATA `user_id`, which differs under impersonation.
 - [x] **shared/notifications** — done, merged. Frontend service now uses `ApiClient` + `ApiSchema`, and `core/models/notification.model.ts` is deleted. The registered contract matched the implementation field-for-field, including the `x-dynamodb-access` metadata — no schema corrections were needed.
 
 ### Wave 2 — manager and org-admin remainder (new schemas)
@@ -143,7 +147,7 @@ These slices are already registered in `openapi.json`. No new schemas are needed
 These are deliberately last: a `shared/models/**` file can only be deleted once _every_ consuming slice is migrated.
 
 - [ ] Delete `backend/src/functions/shared/models/` (13 files)
-- [ ] Delete `frontend/src/app/core/models/` (13 remaining files)
+- [ ] Delete `frontend/src/app/core/models/` (12 remaining files)
 - [ ] Review shared infrastructure against the finished contract: `shared/validation.ts` (likely superseded by Zod — decide delete vs. keep for non-contract checks), `shared/handler-factories.ts` (make schema parameters required now that every slice supplies one), `shared/profile-service.ts`, `shared/errors.ts`, `shared/response.ts`, `shared/route-match.ts`, `shared/auth.ts`, `shared/cognito.ts`, `shared/dynamo.ts`
 - [ ] Run the DynamoDB access-pattern audit against the completed `openapi.json` and update `docs/dynamodb-entity-map.md`
 - [ ] Confirm every operation in `infra/template.yaml` has a contract entry (expected: ~87)
@@ -159,16 +163,16 @@ Each backend slice is `handler.ts` + `service.ts` + `db.ts` under `backend/src/f
 | employee/profile                | `features/employee/profile/profile.service.ts` ✅                                                               | `core/models/employee-profile.model.ts` ✅ deleted                                           |
 | employee/availability           | `features/employee/availability/availability.service.ts` ✅                                                     | `core/models/employee-availability.model.ts` — (shared) kept, still used by manager/schedule |
 | employee/availability-overrides | (same service as availability) ✅                                                                               | (same)                                                                                       |
-| employee/shifts                 | `features/employee/schedule/shifts.service.ts`                                                                  | `core/models/shift.model.ts` (shared — see note)                                             |
-| employee/available-shifts       | (same service as employee/shifts)                                                                               | (same)                                                                                       |
-| employee/swap-shifts            | `features/employee/swap-shifts/swap-shifts.service.ts`                                                          | `core/models/swap-shift.model.ts`                                                            |
+| employee/shifts                 | `features/employee/schedule/shifts.service.ts` ✅                                                               | `core/models/shift.model.ts` — (shared) kept, still used by manager + org-admin              |
+| employee/available-shifts       | (same service as employee/shifts) ✅                                                                            | (same)                                                                                       |
+| employee/swap-shifts            | `features/employee/swap-shifts/swap-shifts.service.ts` ✅                                                       | `core/models/swap-shift.model.ts` ✅ deleted                                                 |
 | manager/employees               | `features/manager/employees/employees.service.ts`, `features/manager/schedule/employee-availability.service.ts` | `core/models/employee.model.ts`                                                              |
 | manager/locations               | `features/manager/shifts-needed/locations.service.ts`                                                           | `core/models/manager-location.model.ts`                                                      |
 | manager/shifts                  | `features/manager/schedule/shifts.service.ts`                                                                   | `core/models/shift.model.ts` (shared)                                                        |
 | manager/shifts-needed           | `features/manager/shifts-needed/shifts-needed.service.ts`                                                       | `core/models/manager-shift-needed.model.ts`                                                  |
 | manager/schedule                | `features/manager/schedule/schedule.service.ts`                                                                 | —                                                                                            |
-| org-admin/employees             | `features/org-admin/employees/employees.service.ts`                                                             | `core/models/employee.model.ts` (shared)                                                     |
-| org-admin/managers              | `features/org-admin/managers/managers.service.ts`                                                               | `core/models/manager.model.ts`                                                               |
+| org-admin/employees             | `features/org-admin/employees/employees.service.ts` ✅                                                          | `core/models/employee.model.ts` — (shared) kept, components still type against it            |
+| org-admin/managers              | `features/org-admin/managers/managers.service.ts` ✅                                                            | `core/models/manager.model.ts` — kept, still imported by 4 files                             |
 | org-admin/locations             | `features/org-admin/locations/locations.service.ts`                                                             | `core/models/manager-location.model.ts` (shared)                                             |
 | org-admin/employee-locations    | `features/org-admin/employees/employee-locations.service.ts`                                                    | `core/models/user-location.model.ts`                                                         |
 | org-admin/manager-locations     | `features/org-admin/managers/manager-locations.service.ts`                                                      | `core/models/user-location.model.ts` (shared)                                                |
@@ -196,5 +200,10 @@ Each backend slice is `handler.ts` + `service.ts` + `db.ts` under `backend/src/f
 - [x] **employee/profile** — validated via the profile factory's `bodySchema`; frontend model deleted.
 - [x] **employee/availability** — validated via `parseWithContract`; cross-field rules remain in `service.ts` by necessity.
 - [x] **employee/availability-overrides** — validated via `parseWithContract`; corrected the `DateOverrides` key pattern, which the contract had advertised more loosely than the service accepts.
+- [x] **employee/shifts** and **employee/available-shifts** — types sourced from `ShiftRecord`; read-only, so nothing to validate.
+- [x] **employee/swap-shifts** — POST body and claim `swapId` validated at the handler; `SwapShift` promoted to a named component.
+- [x] **org-admin/employees** and **org-admin/managers** — ten operations. These were the first schemas audited against an implementation that had never exercised them, and they carried **seven** defects. The two that would have changed live behaviour: `manager_id` carried `.min(1)`, which would have started rejecting the empty string the UI sends to clear a manager assignment; and `email` was validated before trimming, while the service trims first and accepts whitespace-padded addresses. The rest were metadata truthfulness — a `ConditionExpression` recorded as a filter, a sort key naming the JWT sub instead of the METADATA `user_id` (they differ under impersonation), and six by-id operations declaring no path parameters at all.
 
 **Open caveat, not a defect.** `status` on the profile responses is narrowed to `UserStatus` (`FORCE_CHANGE_PASSWORD | CONFIRMED | DISABLED`), but `enrichWithCognitoStatus` copies Cognito's value verbatim and Cognito can also return `UNCONFIRMED`, `RESET_REQUIRED`, `ARCHIVED`, `COMPROMISED`, `UNKNOWN`. This is the same deliberate narrowing the `manager/profile` pilot made and is harmless while responses are unvalidated — but it must be widened before response validation is ever switched on.
+
+**Open question, needs a decision in Wave 2.** `ShiftRecord.status` is required in the contract, but both shift queries filter `(#status = :published OR attribute_not_exists(#status))` — the table explicitly tolerates items with no `status`, so a status-less shift can legitimately reach a response. It was left required because `ShiftRecord` is shared with the manager and org-admin shift slices, and loosening it would break assignability against `core/models/shift.model.ts`, which `schedule.utils.ts` and `schedule-base.ts` still use. Whoever takes `manager/shifts` decides: mark it optional in the entity, or drop the legacy `attribute_not_exists` branch from the queries.
