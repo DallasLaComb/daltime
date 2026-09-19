@@ -1,304 +1,175 @@
-# OpenAPI Contract Migration — File Checklist
+# OpenAPI Contract Migration — Agent Work Order
 
-Companion to [`ai/context/openapi-contract-goal.md`](openapi-contract-goal.md). Read that file first for _why_ and _what "done" means_; this file is the enumerated _what_, so a migration pass can't accidentally skip a slice. For _how_ to migrate a slice, follow the recipe in [`openapi-contract-blueprint.md`](openapi-contract-blueprint.md).
+Companion to [`openapi-contract-goal.md`](openapi-contract-goal.md) (_why_, and what "done" means) and [`openapi-contract-blueprint.md`](openapi-contract-blueprint.md) (_how_ — the per-slice recipe every agent follows). **This file is the shared state.** It is the one place that records what is claimed, what is finished, and what is left. Agents read it before starting and update it before finishing.
 
-**Progress: 5 / 152.** The foundation (`contracts/` package, generation, CI drift check, typed frontend client) is built, and `manager/profile` is migrated end-to-end as the pilot.
+**Progress: 37 of ~87 operations registered; 3 of 28 slices fully migrated.**
 
-**Scope:** every file that currently defines or consumes an API request/response shape, or issues a DynamoDB query — i.e. backend `handler.ts`/`service.ts`/`db.ts`/`model.ts` per vertical slice, backend `shared/models/`, frontend `core/models/`, and frontend `*.service.ts`. Config files, build tooling, tests, and pure-presentation components are intentionally excluded — see `openapi-contract-goal.md`'s "Non-goals" for why the scope stops here. This list was generated directly from the repo tree, not written from memory — re-run the `find` commands below if the tree has changed since:
+The API exposes **92 distinct path+method pairs** in `infra/template.yaml`. Five of those are the `/web-admin/impersonate/{userId}/{proxy+}` catch-alls, which are not operations in their own right — they re-dispatch to real handlers via `web-admin/impersonate/route-registry.ts`. That leaves **~87 real operations**, of which 37 are registered in `contracts/openapi.json`.
+
+---
+
+## Rules for agents
+
+### 1. Claim your slice before you start
+
+Edit this file first. Change your slice's status marker from `[ ]` to `[~] claimed by <your agent name>`, and commit that change alone before doing any other work. If a slice is already `[~]` or `[x]`, pick a different one — do not work a slice someone else holds.
+
+### 2. Follow the blueprint recipe exactly
+
+`openapi-contract-blueprint.md` → "Per-slice migration recipe", steps 1–8. Do not invent a different pattern. `manager/profile` is the reference implementation; read it before writing anything.
+
+The single most important step is **step 1**: read `db.ts` and record what it _actually does_ in `x-dynamodb-access` — every command, index, key condition and filter, in order. That metadata is the reason this migration exists. Getting it wrong is worse than leaving the slice unmigrated, because it poisons the access-pattern audit that everything downstream depends on.
+
+### 3. Pass the full gate before ticking a box
+
+All four must pass, from the repo root. A box ticked without these having passed is a defect, not progress.
 
 ```bash
-find backend/src/functions -type f | sort
-find frontend/src/app/core/models -type f | sort
-find frontend/src/app -iname "*.service.ts" | sort
+cd contracts  && npm run generate
+cd ../frontend && npm run contracts:types
+cd ../backend  && npm test        # baseline: 34 files, 796 tests
+cd ../frontend && npm test        # baseline: 37 files, 522 tests
+cd ../frontend && npx tsc -p tsconfig.app.json --noEmit
+cd ..          && git diff --exit-code -- contracts/openapi.json frontend/src/app/core/generated/
 ```
 
-## How to use this checklist
+The last command must produce **no output**. If it does, you regenerated but did not commit the result — commit it.
 
-- Check a box only when that file's contract surface (request/response shape, and DynamoDB query if it has one) is fully registered in the generated OpenAPI contract with the file-path/purpose/query metadata required by the goal doc, **and** the file itself sources its types from the generated contract instead of a hand-written duplicate.
-- Don't check a box for partial work (e.g. "types migrated but validation not wired up" is not done).
-- Work role-by-role, slice-by-slice — a slice is done when every file in its group is checked.
-- `model.ts` / `shared/models/**/*.model.ts` entries are the actual duplicated type definitions being replaced — treat these as the highest-priority items per slice, since `handler.ts`/`service.ts`/`db.ts` mostly just consume them.
+Then stage your work and run the repo's pre-commit gate, which is mandatory and lints every staged file in full:
+
+```bash
+git add <your files>
+npx lint-staged
+```
+
+### 4. Tick your boxes and record what you found
+
+Mark your slice `[x]`, and add a one-line note under it for anything the next agent needs to know — a shape that disagreed with what the frontend assumed, a DynamoDB access that surprised you, a validation rule you had to relax. These notes are how 20 sequential agents avoid rediscovering the same thing.
+
+### 5. Do not touch another slice's files
+
+If your slice needs a change to a **shared** file, make the smallest additive change that works and **call it out explicitly in your final report**. These files are contended — several agents need them at once:
+
+| Shared file                                         | Rule                                                                                                                                                                                                    |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/src/functions/shared/handler-factories.ts` | Thread your schema through as a new **optional** parameter, exactly like `createProfileHandler`'s `bodySchema`. Never make a parameter required — that breaks every unmigrated slice using the factory. |
+| `contracts/src/index.ts`                            | Already re-exports all five role barrels. You should not need to edit it.                                                                                                                               |
+| `contracts/src/schemas/<role>/index.ts`             | Your role's barrel. **Editing this is required** — see the gotcha below.                                                                                                                                |
+| `contracts/src/schemas/common.ts`                   | Add only; never change an existing shared schema without checking every consumer.                                                                                                                       |
+| `contracts/src/entities/*.ts`                       | Most entities already exist. Reuse before adding. Changing one affects every slice that derives from it.                                                                                                |
+| `backend/src/functions/shared/models/**`            | **Do not delete these yet.** See the closeout wave.                                                                                                                                                     |
 
 ---
 
-## Backend — `backend/src/functions/`
+## Gotchas that have already cost real time
 
-### employee
+**A schema file not exported from its role barrel is invisible.** This is the highest-frequency failure mode and it fails _silently_ — generation succeeds, the spec is simply missing your operations. It has already happened once: `org-admin/employees.ts` and `org-admin/managers.ts` were fully written, with 10 registered operations, but `org-admin/index.ts` read `export {};` — so none of them reached `openapi.json`. Always confirm your operation count rises after `npm run generate`.
 
-**availability-overrides**
+**The backend bundles a vendored copy of the contract.** `backend/` depends on `file:vendor/contracts`, mirrored in by `backend/scripts/sync-contracts.mjs`, because SAM's esbuild builder cannot resolve a path dependency outside its CodeUri. `pretest`/`prebuild` run the sync automatically, so `npm test` is self-sufficient — but anything calling `sam build` directly is not. After changing a schema, re-sync before `sam build` or you will bundle a stale contract.
 
-- [ ] `employee/availability-overrides/handler.ts`
-- [ ] `employee/availability-overrides/service.ts`
-- [ ] `employee/availability-overrides/db.ts`
+**Never hand-edit generated files.** `contracts/openapi.json` and `frontend/src/app/core/generated/api.d.ts` are generated and committed. Both are exempt from prettier (`.prettierignore`) and eslint (`frontend/eslint.config.js`) specifically so tooling cannot reformat them into drift. Regenerate; don't edit.
 
-**availability**
+**Zod strips unknown request keys rather than rejecting them.** `zod-openapi` reflects this by omitting `additionalProperties: false` on input schemas while emitting it on response schemas. Do not "fix" this with `.strict()` without confirming the spec still matches runtime behavior.
 
-- [ ] `employee/availability/handler.ts`
-- [ ] `employee/availability/service.ts`
-- [ ] `employee/availability/db.ts`
+**Response schemas are documentation, not enforcement.** Responses are not validated at runtime. Do not start validating them without first checking that Cognito enrichment doesn't add fields the schema forbids.
 
-**available-shifts**
-
-- [ ] `employee/available-shifts/handler.ts`
-- [ ] `employee/available-shifts/service.ts`
-- [ ] `employee/available-shifts/db.ts`
-
-**profile**
-
-- [ ] `employee/profile/handler.ts`
-- [ ] `employee/profile/service.ts`
-- [ ] `employee/profile/db.ts`
-
-**shifts**
-
-- [ ] `employee/shifts/handler.ts`
-- [ ] `employee/shifts/service.ts`
-- [ ] `employee/shifts/db.ts`
-
-**swap-shifts**
-
-- [ ] `employee/swap-shifts/handler.ts`
-- [ ] `employee/swap-shifts/service.ts`
-- [ ] `employee/swap-shifts/db.ts`
-
-### manager
-
-**employees**
-
-- [ ] `manager/employees/handler.ts`
-- [ ] `manager/employees/service.ts`
-- [ ] `manager/employees/db.ts`
-
-**locations**
-
-- [ ] `manager/locations/handler.ts`
-- [ ] `manager/locations/service.ts`
-- [ ] `manager/locations/db.ts`
-
-**profile**
-
-- [x] `manager/profile/handler.ts`
-- [x] `manager/profile/service.ts`
-- [x] `manager/profile/db.ts`
-
-**schedule**
-
-- [ ] `manager/schedule/handler.ts`
-- [ ] `manager/schedule/service.ts`
-- [ ] `manager/schedule/db.ts`
-
-**shifts-needed**
-
-- [ ] `manager/shifts-needed/handler.ts`
-- [ ] `manager/shifts-needed/service.ts`
-- [ ] `manager/shifts-needed/db.ts`
-
-**shifts**
-
-- [ ] `manager/shifts/handler.ts`
-- [ ] `manager/shifts/service.ts`
-- [ ] `manager/shifts/db.ts`
-
-### org-admin
-
-**employee-locations**
-
-- [ ] `org-admin/employee-locations/handler.ts`
-- [ ] `org-admin/employee-locations/service.ts`
-- [ ] `org-admin/employee-locations/db.ts`
-
-**employees**
-
-- [ ] `org-admin/employees/handler.ts`
-- [ ] `org-admin/employees/service.ts`
-- [ ] `org-admin/employees/db.ts`
-
-**locations**
-
-- [ ] `org-admin/locations/handler.ts`
-- [ ] `org-admin/locations/service.ts`
-- [ ] `org-admin/locations/db.ts`
-
-**manager-locations**
-
-- [ ] `org-admin/manager-locations/handler.ts`
-- [ ] `org-admin/manager-locations/service.ts`
-- [ ] `org-admin/manager-locations/db.ts`
-
-**managers**
-
-- [ ] `org-admin/managers/handler.ts`
-- [ ] `org-admin/managers/service.ts`
-- [ ] `org-admin/managers/db.ts`
-
-**organization**
-
-- [ ] `org-admin/organization/handler.ts`
-- [ ] `org-admin/organization/service.ts`
-- [ ] `org-admin/organization/db.ts`
-
-**profile**
-
-- [ ] `org-admin/profile/handler.ts`
-- [ ] `org-admin/profile/service.ts`
-- [ ] `org-admin/profile/db.ts`
-
-**shifts**
-
-- [ ] `org-admin/shifts/handler.ts`
-- [ ] `org-admin/shifts/service.ts`
-- [ ] `org-admin/shifts/db.ts`
-
-### web-admin
-
-**employees**
-
-- [ ] `web-admin/employees/handler.ts`
-- [ ] `web-admin/employees/service.ts`
-- [ ] `web-admin/employees/db.ts`
-
-**generate-dummy-data**
-
-- [ ] `web-admin/generate-dummy-data/handler.ts`
-- [ ] `web-admin/generate-dummy-data/service.ts`
-- [ ] `web-admin/generate-dummy-data/db.ts`
-- [ ] `web-admin/generate-dummy-data/model.ts`
-
-**impersonate**
-
-- [ ] `web-admin/impersonate/handler.ts`
-- [ ] `web-admin/impersonate/service.ts`
-- [ ] `web-admin/impersonate/db.ts`
-- [ ] `web-admin/impersonate/route-registry.ts` — not a per-operation file, but defines which routes impersonation can act on; review against the completed contract once every slice is migrated
-- [ ] `web-admin/impersonate/synthesize-event.ts` — synthesizes a Lambda event for impersonated calls; confirm it stays consistent with whatever request-shape validation the contract introduces
-
-**org-admins**
-
-- [ ] `web-admin/org-admins/handler.ts`
-- [ ] `web-admin/org-admins/service.ts`
-- [ ] `web-admin/org-admins/db.ts`
-
-**organizations**
-
-- [ ] `web-admin/organizations/handler.ts`
-- [ ] `web-admin/organizations/service.ts`
-- [ ] `web-admin/organizations/db.ts`
-
-**profile**
-
-- [ ] `web-admin/profile/handler.ts`
-- [ ] `web-admin/profile/service.ts`
-- [ ] `web-admin/profile/db.ts`
-- [ ] `web-admin/profile/model.ts`
-
-**shared (web-admin only)**
-
-- [ ] `web-admin/shared/db.ts`
-
-### shared (cross-role)
-
-**models — the actual duplicated type definitions (highest priority)**
-
-- [ ] `shared/models/employee/availability.model.ts`
-- [ ] `shared/models/employee/swap-shift.model.ts`
-- [ ] `shared/models/manager/location.model.ts`
-- [ ] `shared/models/manager/shift-needed.model.ts`
-- [ ] `shared/models/manager/shift.model.ts`
-- [ ] `shared/models/notifications/notification.model.ts`
-- [ ] `shared/models/org-admin/employee.model.ts`
-- [ ] `shared/models/org-admin/manager.model.ts`
-- [ ] `shared/models/org-admin/user-location.model.ts`
-- [ ] `shared/models/web-admin/employee.model.ts`
-- [ ] `shared/models/web-admin/org-admin-user.model.ts`
-- [ ] `shared/models/web-admin/organization.model.ts`
-- [ ] `shared/models/web-admin/web-admin.model.ts`
-
-**health**
-
-- [ ] `shared/health/handler.ts`
-
-**notifications**
-
-- [ ] `shared/notifications/handler.ts`
-- [ ] `shared/notifications/service.ts`
-- [ ] `shared/notifications/db.ts`
-
-**shared infrastructure — not per-operation; review once the pattern is established, check off once each is updated to integrate with the generated contract (e.g. validation) or confirmed not to need changes**
-
-- [ ] `shared/auth.ts`
-- [ ] `shared/cognito.ts`
-- [ ] `shared/dynamo.ts`
-- [ ] `shared/errors.ts`
-- [ ] `shared/handler-factories.ts` — likely where generated Zod validation gets wired into every handler; expect this to change early, not last
-- [ ] `shared/profile-service.ts`
-- [ ] `shared/response.ts`
-- [ ] `shared/route-match.ts`
-- [ ] `shared/validation.ts` — likely superseded by Zod schema validation; decide whether it's deleted or kept for non-contract validation
+**Proxy routes are not operations.** `/manager/schedule/{proxy+}` and `/employee/swap-shifts/{proxy+}` exist only to give API Gateway a CORS preflight target for parameterized sub-paths; the handlers dispatch internally on `rawPath`. Register the _real_ sub-paths (`/manager/schedule/generate`, `/employee/swap-shifts/{swapId}/claim`, …), never the `{proxy+}` form.
 
 ---
 
-## Frontend — `frontend/src/app/`
+## Wave plan
 
-**core/models — the actual duplicated type definitions (highest priority)**
+Waves exist to keep agents off each other's files. **Do not start a wave until the previous one is merged and the gate is green on the merged result.** Within a wave, slices are disjoint and safe to run in parallel.
 
-- [ ] `core/models/employee-availability.model.ts`
-- [ ] `core/models/employee-profile.model.ts`
-- [ ] `core/models/employee.model.ts`
-- [ ] `core/models/manager-location.model.ts`
-- [x] `core/models/manager-profile.model.ts`
-- [ ] `core/models/manager-shift-needed.model.ts`
-- [ ] `core/models/manager.model.ts`
-- [ ] `core/models/notification.model.ts`
-- [ ] `core/models/org-admin-profile.model.ts`
-- [ ] `core/models/org-admin-user.model.ts`
-- [ ] `core/models/organization.model.ts`
-- [ ] `core/models/shift.model.ts`
-- [ ] `core/models/swap-shift.model.ts`
-- [ ] `core/models/user-location.model.ts`
-- [ ] `core/models/web-admin-employee.model.ts`
-- [ ] `core/models/web-admin-profile.model.ts`
+### Wave 1 — consume contracts that already exist
 
-**services — every HTTP-calling service, by feature**
+These slices are already registered in `openapi.json`. No new schemas are needed: the work is steps 6–7 only (point the backend at the contract, point the frontend at `ApiClient`, delete the hand-written model). Lowest risk, and it validates the pattern at scale before anyone writes new schemas.
 
-- [ ] `core/services/impersonation.service.ts`
-- [ ] `features/employee/availability/availability.service.ts`
-- [ ] `features/employee/profile/profile.service.ts`
-- [ ] `features/employee/schedule/shifts.service.ts`
-- [ ] `features/employee/swap-shifts/swap-shifts.service.ts`
-- [ ] `features/manager/employees/employees.service.ts`
-- [x] `features/manager/profile/profile.service.ts`
-- [ ] `features/manager/schedule/employee-availability.service.ts`
-- [ ] `features/manager/schedule/schedule.service.ts`
-- [ ] `features/manager/schedule/shifts.service.ts`
-- [ ] `features/manager/shifts-needed/locations.service.ts`
-- [ ] `features/manager/shifts-needed/shifts-needed.service.ts`
-- [ ] `features/org-admin/employees/employee-locations.service.ts`
-- [ ] `features/org-admin/employees/employees.service.ts`
-- [ ] `features/org-admin/locations/locations.service.ts`
-- [ ] `features/org-admin/managers/manager-locations.service.ts`
-- [ ] `features/org-admin/managers/managers.service.ts`
-- [ ] `features/org-admin/organization/organization.service.ts`
-- [ ] `features/org-admin/profile/profile.service.ts`
-- [ ] `features/org-admin/schedule/shifts.service.ts`
-- [ ] `features/web-admin/generate-dummy-data/generate-dummy-data.service.ts`
-- [ ] `features/web-admin/impersonate/impersonate.service.ts`
-- [ ] `features/web-admin/profile/profile.service.ts`
-- [ ] `services/org-admins.service.ts`
-- [ ] `services/organization.service.ts`
-- [ ] `services/web-admin-employees.service.ts`
-- [ ] `shared/notifications/notifications.service.ts`
+- [ ] **employee/profile** — registered: `GET|PUT /employee/profile`
+- [ ] **employee/availability** — registered: `GET|PUT /employee/availability`
+- [ ] **employee/availability-overrides** — registered: `GET|PUT /employee/availability/overrides`
+- [ ] **employee/shifts** — registered: `GET /employee/shifts`
+- [ ] **employee/available-shifts** — registered: `GET /employee/available-shifts`
+- [ ] **employee/swap-shifts** — registered: `GET|POST /employee/swap-shifts`, `DELETE /employee/swap-shifts/{swapId}`, `POST /employee/swap-shifts/{swapId}/claim`
+- [ ] **org-admin/employees** — registered: `GET|POST /org-admin/employees`, `PUT|PATCH|DELETE /org-admin/employees/{employeeId}`
+- [ ] **org-admin/managers** — registered: `GET|POST /org-admin/managers`, `PUT|PATCH|DELETE /org-admin/managers/{managerId}`
+- [ ] **shared/notifications — frontend only** — backend already consumes the contract; `frontend/src/app/shared/notifications/notifications.service.ts` and `core/models/notification.model.ts` are the remaining half
+
+### Wave 2 — manager and org-admin remainder (new schemas)
+
+- [ ] **manager/employees** — `GET|POST /manager/employees`, `PUT|PATCH|DELETE /manager/employees/{employeeId}`, `GET /manager/employees/{employeeId}/availability`, `GET /manager/employees/{employeeId}/availability/overrides`
+- [ ] **manager/locations** — `GET /manager/locations`
+- [ ] **manager/shifts** — `GET|POST /manager/shifts`, `PUT|DELETE|POST /manager/shifts/{shiftId}`
+- [ ] **manager/shifts-needed** — `GET|POST /manager/shifts-needed`, `PUT|DELETE /manager/shifts-needed/{shiftId}`
+- [ ] **manager/schedule** — `GET /manager/schedule/drafts`, `GET /manager/schedule/meta`, `POST /manager/schedule/generate`, `POST /manager/schedule/publish`
+- [ ] **org-admin/locations** — `GET|POST /org-admin/locations`, `PUT|DELETE /org-admin/locations/{locationId}`
+- [ ] **org-admin/organization** — `GET|PUT /org-admin/organization`
+- [ ] **org-admin/profile** — `GET|PUT /org-admin/profile`
+- [ ] **org-admin/shifts** — `GET /org-admin/shifts`
+- [ ] **org-admin/employee-locations** — `GET|POST /org-admin/employees/{employeeId}/locations`, `DELETE /org-admin/employees/{employeeId}/locations/{locationId}`
+- [ ] **org-admin/manager-locations** — `GET|POST /org-admin/managers/{managerId}/locations`, `DELETE /org-admin/managers/{managerId}/locations/{locationId}`
+
+### Wave 3 — web-admin
+
+- [ ] **web-admin/profile** — `GET|PUT /web-admin/profile` (also has a local `model.ts` to replace)
+- [ ] **web-admin/employees** — `GET /web-admin/employees`
+- [ ] **web-admin/organizations** — `GET|POST /organizations`, `GET|PUT|DELETE /organizations/{orgId}` (note the unprefixed path)
+- [ ] **web-admin/org-admins** — `GET|POST /web-admin/organizations/{orgId}/org-admins`, `DELETE|PATCH /web-admin/organizations/{orgId}/org-admins/{userId}`
+- [ ] **web-admin/generate-dummy-data** — `POST /web-admin/generate-dummy-data` (also has a local `model.ts`)
+- [ ] **web-admin/impersonate** — `GET /web-admin/impersonate`, `GET /web-admin/impersonate/users`, `GET /web-admin/impersonate/{userId}/context`. **Special case:** the five `{userId}/{proxy+}` routes are a dispatch mechanism, not operations. Register only the three real ones, then verify `route-registry.ts` and `synthesize-event.ts` still agree with the contract — an impersonated call must pass the same validation as a direct one.
+
+### Wave 4 — closeout (do not start until waves 1–3 are fully `[x]`)
+
+These are deliberately last: a `shared/models/**` file can only be deleted once _every_ consuming slice is migrated.
+
+- [ ] Delete `backend/src/functions/shared/models/` (13 files)
+- [ ] Delete `frontend/src/app/core/models/` (15 remaining files)
+- [ ] Review shared infrastructure against the finished contract: `shared/validation.ts` (likely superseded by Zod — decide delete vs. keep for non-contract checks), `shared/handler-factories.ts` (make schema parameters required now that every slice supplies one), `shared/profile-service.ts`, `shared/errors.ts`, `shared/response.ts`, `shared/route-match.ts`, `shared/auth.ts`, `shared/cognito.ts`, `shared/dynamo.ts`
+- [ ] Run the DynamoDB access-pattern audit against the completed `openapi.json` and update `docs/dynamodb-entity-map.md`
+- [ ] Confirm every operation in `infra/template.yaml` has a contract entry (expected: ~87)
 
 ---
 
-## Totals (for tracking progress at a glance)
+## Reference — slice to file map
 
-Verified against the checklist itself (`grep -c '^- \[ \]' ai/context/openapi-contract-checklist.md` → 152) — re-run that after any edit to this file to keep this section honest.
+Each backend slice is `handler.ts` + `service.ts` + `db.ts` under `backend/src/functions/<slice>/`. The frontend service and hand-written model each slice must replace:
 
-- Backend vertical-slice files (handler/service/db/model, incl. impersonate's extra files and web-admin/shared/db.ts): 83
-- Backend shared models (`shared/models/**`): 13
-- Backend shared health + notifications: 4
-- Backend shared infrastructure (auth/cognito/dynamo/errors/handler-factories/profile-service/response/route-match/validation): 9
-- Frontend models (`core/models/**`): 16
-- Frontend services (`*.service.ts`): 27
+| Slice                           | Frontend service                                                                                                | Models to delete                                 |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| employee/profile                | `features/employee/profile/profile.service.ts`                                                                  | `core/models/employee-profile.model.ts`          |
+| employee/availability           | `features/employee/availability/availability.service.ts`                                                        | `core/models/employee-availability.model.ts`     |
+| employee/availability-overrides | (same service as availability)                                                                                  | (same)                                           |
+| employee/shifts                 | `features/employee/schedule/shifts.service.ts`                                                                  | `core/models/shift.model.ts` (shared — see note) |
+| employee/available-shifts       | (same service as employee/shifts)                                                                               | (same)                                           |
+| employee/swap-shifts            | `features/employee/swap-shifts/swap-shifts.service.ts`                                                          | `core/models/swap-shift.model.ts`                |
+| manager/employees               | `features/manager/employees/employees.service.ts`, `features/manager/schedule/employee-availability.service.ts` | `core/models/employee.model.ts`                  |
+| manager/locations               | `features/manager/shifts-needed/locations.service.ts`                                                           | `core/models/manager-location.model.ts`          |
+| manager/shifts                  | `features/manager/schedule/shifts.service.ts`                                                                   | `core/models/shift.model.ts` (shared)            |
+| manager/shifts-needed           | `features/manager/shifts-needed/shifts-needed.service.ts`                                                       | `core/models/manager-shift-needed.model.ts`      |
+| manager/schedule                | `features/manager/schedule/schedule.service.ts`                                                                 | —                                                |
+| org-admin/employees             | `features/org-admin/employees/employees.service.ts`                                                             | `core/models/employee.model.ts` (shared)         |
+| org-admin/managers              | `features/org-admin/managers/managers.service.ts`                                                               | `core/models/manager.model.ts`                   |
+| org-admin/locations             | `features/org-admin/locations/locations.service.ts`                                                             | `core/models/manager-location.model.ts` (shared) |
+| org-admin/employee-locations    | `features/org-admin/employees/employee-locations.service.ts`                                                    | `core/models/user-location.model.ts`             |
+| org-admin/manager-locations     | `features/org-admin/managers/manager-locations.service.ts`                                                      | `core/models/user-location.model.ts` (shared)    |
+| org-admin/organization          | `features/org-admin/organization/organization.service.ts`                                                       | `core/models/organization.model.ts`              |
+| org-admin/profile               | `features/org-admin/profile/profile.service.ts`                                                                 | `core/models/org-admin-profile.model.ts`         |
+| org-admin/shifts                | `features/org-admin/schedule/shifts.service.ts`                                                                 | `core/models/shift.model.ts` (shared)            |
+| web-admin/profile               | `features/web-admin/profile/profile.service.ts`                                                                 | `core/models/web-admin-profile.model.ts`         |
+| web-admin/employees             | `services/web-admin-employees.service.ts`                                                                       | `core/models/web-admin-employee.model.ts`        |
+| web-admin/organizations         | `services/organization.service.ts`                                                                              | `core/models/organization.model.ts` (shared)     |
+| web-admin/org-admins            | `services/org-admins.service.ts`                                                                                | `core/models/org-admin-user.model.ts`            |
+| web-admin/generate-dummy-data   | `features/web-admin/generate-dummy-data/generate-dummy-data.service.ts`                                         | —                                                |
+| web-admin/impersonate           | `features/web-admin/impersonate/impersonate.service.ts`, `core/services/impersonation.service.ts`               | —                                                |
+| shared/notifications            | `shared/notifications/notifications.service.ts`                                                                 | `core/models/notification.model.ts`              |
 
-**152 files total.**
+**A model marked "(shared)" is used by more than one slice.** Do not delete it when you migrate the first of those slices — switch your slice's imports to the contract and leave the file. It gets deleted in Wave 4, once nothing imports it.
+
+---
+
+## Completed
+
+- [x] **Foundation** — `contracts/` package, `openapi.json` generation with `x-implementation-path` / `x-dynamodb-access`, CI drift gate, `ApiClient` typed over `HttpClient`, vendoring into the SAM CodeUri (commit `235c292`)
+- [x] **manager/profile** — the pilot; the reference implementation for every other slice
+- [x] **shared/health** — `GET /health`; no frontend service, no DynamoDB access
+- [x] **shared/notifications — backend** — `service.ts` and `db.ts` consume `NotificationRecord` / `NotificationResponse`. Frontend half remains, in Wave 1.
