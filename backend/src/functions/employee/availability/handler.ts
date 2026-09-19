@@ -1,7 +1,8 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { UpsertAvailabilityBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
-import type { UpsertAvailabilityBody } from '../../shared/models/employee/availability.model.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { getAvailability, upsertAvailability } from './service.js';
 
@@ -26,9 +27,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<UpsertAvailabilityBody>(event.body);
+      const parsed = parseBody<unknown>(event.body);
       if (!parsed.ok) return parsed.response;
-      return ok(await upsertAvailability(callerSub, parsed.data));
+      // UpsertAvailabilityBody is the same schema that generates this route's
+      // entry in contracts/openapi.json, so a body the published contract calls
+      // invalid is rejected with a 400 before the service runs.
+      const body = parseWithContract(UpsertAvailabilityBody, parsed.data);
+      return ok(await upsertAvailability(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

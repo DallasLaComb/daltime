@@ -1,6 +1,6 @@
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
-import type { EmployeeAvailability } from '../../shared/models/employee/availability.model.js';
+import type { EmployeeAvailabilityRecord } from '@daltime/contracts';
 
 export async function getCallerLookup(
   employeeId: string,
@@ -8,17 +8,19 @@ export async function getCallerLookup(
   return getMetadataRecord(employeeId);
 }
 
-export async function getAvailability(employeeId: string): Promise<EmployeeAvailability | null> {
+export async function getAvailability(
+  employeeId: string,
+): Promise<EmployeeAvailabilityRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: { PK: `USER#${employeeId}`, SK: 'AVAILABILITY' },
     }),
   );
-  return (result.Item as EmployeeAvailability) ?? null;
+  return (result.Item as EmployeeAvailabilityRecord) ?? null;
 }
 
-export async function upsertAvailability(record: EmployeeAvailability): Promise<void> {
+export async function upsertAvailability(record: EmployeeAvailabilityRecord): Promise<void> {
   await docClient.send(
     new PutCommand({
       TableName: TABLE_NAME,
