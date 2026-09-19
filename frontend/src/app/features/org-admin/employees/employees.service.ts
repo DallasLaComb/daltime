@@ -1,35 +1,39 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  EmployeeResponse,
-  CreateEmployeeBody,
-  UpdateEmployeeBody,
-} from '../../../core/models/employee.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type OrgAdminEmployeeResponse = ApiSchema<'OrgAdminEmployeeResponse'>;
+export type CreateEmployeeBody = ApiSchema<'CreateEmployeeBody'>;
+export type UpdateEmployeeBody = ApiSchema<'UpdateEmployeeBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class EmployeesService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/org-admin/employees`;
+  private readonly api = inject(ApiClient);
 
-  getAll(): Observable<EmployeeResponse[]> {
-    return this.http.get<EmployeeResponse[]>(this.baseUrl);
+  getAll(): Observable<OrgAdminEmployeeResponse[]> {
+    return this.api.get('/org-admin/employees');
   }
 
-  create(body: CreateEmployeeBody): Observable<EmployeeResponse> {
-    return this.http.post<EmployeeResponse>(this.baseUrl, body);
+  create(body: CreateEmployeeBody): Observable<OrgAdminEmployeeResponse> {
+    return this.api.post('/org-admin/employees', body);
   }
 
-  update(employeeId: string, body: UpdateEmployeeBody): Observable<EmployeeResponse> {
-    return this.http.put<EmployeeResponse>(`${this.baseUrl}/${employeeId}`, body);
+  update(employeeId: string, body: UpdateEmployeeBody): Observable<OrgAdminEmployeeResponse> {
+    return this.api.put('/org-admin/employees/{employeeId}', body, { params: { employeeId } });
   }
 
   disable(employeeId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${employeeId}`);
+    return this.api.delete('/org-admin/employees/{employeeId}', { params: { employeeId } });
   }
 
+  /** PATCH re-enables a disabled employee. The contract defines no body for it. */
   enable(employeeId: string): Observable<void> {
-    return this.http.patch<void>(`${this.baseUrl}/${employeeId}`, {});
+    return this.api.patch('/org-admin/employees/{employeeId}', {}, { params: { employeeId } });
   }
 }

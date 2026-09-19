@@ -47,10 +47,17 @@ type ResponseOf<O> = O extends { responses: infer R }
       : void
   : void;
 
-/** The `application/json` request body for an operation. */
+/**
+ * The `application/json` request body for an operation.
+ *
+ * Operations the contract gives no request body — the PATCH re-enable routes,
+ * for instance — resolve to `Record<string, never>`, so the only body they
+ * accept is `{}`. Resolving to `never` instead would make those routes
+ * uncallable, since no value satisfies `never`.
+ */
 type BodyOf<O> = O extends { requestBody: { content: { 'application/json': infer T } } }
   ? T
-  : never;
+  : Record<string, never>;
 
 /** Path parameters for an operation, or `never` when it takes none. */
 type PathParamsOf<O> = O extends { parameters: { path: infer T } } ? T : never;

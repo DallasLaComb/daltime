@@ -1,9 +1,6 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import type {
-  CreateEmployeeBody,
-  UpdateEmployeeBody,
-} from '../../shared/models/org-admin/employee.model.js';
+import { CreateEmployeeBody, UpdateEmployeeBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import {
   ok,
@@ -14,6 +11,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   listEmployees,
   createEmployee,
@@ -24,10 +22,16 @@ import {
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
+// CreateEmployeeBody / UpdateEmployeeBody are the same schemas that generate
+// this route's entry in contracts/openapi.json, so the validation here and the
+// published contract cannot disagree. They supersede the validateCreateUserBody
+// checks the service used to run — a body the spec calls invalid is now
+// rejected with a 400 before Cognito or DynamoDB is touched.
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<CreateEmployeeBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createEmployee(callerSub, parsed.data, cognitoClient));
+  const body = parseWithContract(CreateEmployeeBody, parsed.data);
+  return created(await createEmployee(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -36,9 +40,10 @@ async function handlePut(
   rawBody: string | undefined,
 ) {
   if (!employeeId) return badRequest('employeeId path parameter is required');
-  const parsed = parseBody<UpdateEmployeeBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateEmployee(callerSub, employeeId, parsed.data, cognitoClient));
+  const body = parseWithContract(UpdateEmployeeBody, parsed.data);
+  return ok(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

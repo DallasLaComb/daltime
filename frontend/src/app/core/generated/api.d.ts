@@ -251,7 +251,7 @@ export interface paths {
         head?: never;
         /**
          * Re-enable a disabled employee
-         * @description Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record.
+         * @description Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Takes no request body.
          */
         patch: operations["enableOrgAdminEmployee"];
         trace?: never;
@@ -303,7 +303,7 @@ export interface paths {
         head?: never;
         /**
          * Re-enable a disabled manager
-         * @description Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Does not change manager_count.
+         * @description Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Does not change manager_count. Takes no request body.
          */
         patch: operations["enableOrgAdminManager"];
         trace?: never;
@@ -565,13 +565,17 @@ export interface components {
         };
         /** @description Fields accepted to register a new employee via Cognito. */
         CreateEmployeeBody: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Cognito username. Trimmed before validation.
+             */
             email: string;
             first_name: string;
             last_name: string;
             phone?: string;
+            /** @description Temporary Cognito password. Sent verbatim — never trimmed. */
             temp_password: string;
-            /** @description Manager this employee reports to. Empty string if omitted. */
+            /** @description Manager this employee reports to. Stored as an empty string if omitted. */
             manager_id?: string;
         };
         /** @description Partial update of an employee’s name, phone, or manager assignment. */
@@ -579,15 +583,20 @@ export interface components {
             first_name?: string;
             last_name?: string;
             phone?: string;
+            /** @description Empty string clears the employee’s manager assignment. */
             manager_id?: string;
         };
         /** @description Fields accepted to register a new manager via Cognito. */
         CreateManagerBody: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Cognito username. Trimmed before validation.
+             */
             email: string;
             first_name: string;
             last_name: string;
             phone?: string;
+            /** @description Temporary Cognito password. Sent verbatim — never trimmed. */
             temp_password: string;
         };
         /** @description Partial update of a manager’s name or phone. */
@@ -1925,7 +1934,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1985,7 +1997,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2039,7 +2054,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2191,7 +2209,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -2251,7 +2272,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2305,7 +2329,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

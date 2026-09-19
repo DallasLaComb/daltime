@@ -1,9 +1,6 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import type {
-  CreateManagerBody,
-  UpdateManagerBody,
-} from '../../shared/models/org-admin/manager.model.js';
+import { CreateManagerBody, UpdateManagerBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import {
   ok,
@@ -14,6 +11,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   listManagers,
   createManager,
@@ -24,10 +22,15 @@ import {
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
+// CreateManagerBody / UpdateManagerBody are the same schemas that generate this
+// route's entry in contracts/openapi.json, so the validation here and the
+// published contract cannot disagree. They supersede the validateCreateUserBody
+// checks the service used to run.
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<CreateManagerBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createManager(callerSub, parsed.data, cognitoClient));
+  const body = parseWithContract(CreateManagerBody, parsed.data);
+  return created(await createManager(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -36,9 +39,10 @@ async function handlePut(
   rawBody: string | undefined,
 ) {
   if (!managerId) return badRequest('managerId path parameter is required');
-  const parsed = parseBody<UpdateManagerBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateManager(callerSub, managerId, parsed.data, cognitoClient));
+  const body = parseWithContract(UpdateManagerBody, parsed.data);
+  return ok(await updateManager(callerSub, managerId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

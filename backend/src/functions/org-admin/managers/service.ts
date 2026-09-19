@@ -5,11 +5,7 @@ import {
   UsernameExistsException,
   InvalidPasswordException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import type {
-  Manager,
-  CreateManagerBody,
-  UpdateManagerBody,
-} from '../../shared/models/org-admin/manager.model.js';
+import type { ManagerRecord, CreateManagerBody, UpdateManagerBody } from '@daltime/contracts';
 import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
@@ -19,7 +15,6 @@ import {
   NotFoundError,
   ForbiddenError,
 } from '../../shared/errors.js';
-import { validateCreateUserBody } from '../../shared/validation.js';
 import {
   enrichWithCognitoStatus,
   adminDisableUser,
@@ -51,8 +46,6 @@ export async function createManager(
   body: CreateManagerBody,
   cognitoClient: CognitoIdentityProviderClient,
 ) {
-  validateCreateUserBody(body);
-
   const { org_id, user_id: orgAdminId } = await resolveCallerOrg(callerSub);
 
   let managerSub: string;
@@ -91,7 +84,7 @@ export async function createManager(
   );
 
   const now = new Date().toISOString();
-  const manager: Manager = {
+  const manager: ManagerRecord = {
     PK: `ORG#${org_id}`,
     SK: `MANAGER#${managerSub}`,
     GSI1PK: 'MANAGER',

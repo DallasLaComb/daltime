@@ -9,7 +9,7 @@ const IMPLEMENTATION = [
   'backend/src/functions/org-admin/managers/db.ts',
   'backend/src/functions/shared/dynamo.ts',
   'backend/src/functions/shared/cognito.ts',
-  'backend/src/functions/shared/validation.ts',
+  'backend/src/functions/shared/contract-validation.ts',
 ];
 
 /** A manager as an OrgAdmin manages them, enriched with live Cognito status. */
@@ -26,17 +26,33 @@ export const OrgAdminManagerListResponse = z.array(OrgAdminManagerResponse).meta
 /**
  * Body accepted by `POST /org-admin/managers`.
  *
- * Mirrors the required-field checks in `shared/validation.ts`'s
- * `validateCreateUserBody`, lifted here so a malformed request never reaches
- * Cognito.
+ * Supersedes the required-field checks `shared/validation.ts`'s
+ * `validateCreateUserBody` used to run inside the service, so a malformed
+ * request is rejected in the handler before it ever reaches Cognito.
+ *
+ * `email` trims *before* validating, matching both the checks this replaces
+ * and what the service sends to Cognito (`body.email.trim()`).
  */
 export const CreateManagerBody = z
   .object({
-    email: z.email(),
+    email: z
+      .string()
+      .trim()
+      .pipe(z.email())
+      // The pipe's input schema is what a request is documented against, so the
+      // email format would otherwise vanish from the spec. Runtime still checks
+      // it — after the trim — so declaring it here stays truthful.
+      .meta({ description: 'Cognito username. Trimmed before validation.', format: 'email' }),
     first_name: z.string().trim().min(1),
     last_name: z.string().trim().min(1),
     phone: z.string().trim().optional(),
-    temp_password: z.string().min(1),
+    // Not trimmed: temp_password reaches Cognito verbatim. The refine reproduces
+    // `!body.temp_password?.trim()`, which min(1) alone does not.
+    temp_password: z
+      .string()
+      .min(1)
+      .refine((value) => value.trim().length > 0, 'temp_password must not be blank')
+      .meta({ description: 'Temporary Cognito password. Sent verbatim — never trimmed.' }),
   })
   .meta({
     id: 'CreateManagerBody',
@@ -65,6 +81,17 @@ export const UpdateManagerBody = z
     description: 'Partial update of a manager’s name or phone.',
   });
 
+/**
+ * Path parameters for the by-id routes.
+ *
+ * Declared so the generated spec documents `{managerId}` as a real parameter.
+ * Without this the operation carries no `parameters`, and the frontend's typed
+ * client cannot supply the value it needs to interpolate the path.
+ */
+const ManagerIdPathParams = z.object({
+  managerId: z.string().meta({ description: 'Cognito sub of the manager.' }),
+});
+
 registerOperation('get', '/org-admin/managers', {
   operationId: 'listOrgAdminManagers',
   summary: 'List managers in the caller’s organization',
@@ -82,6 +109,7 @@ registerOperation('get', '/org-admin/managers', {
     {
       command: 'Query',
       keyCondition: 'PK = ORG#<orgId> AND begins_with(SK, MANAGER#)',
+      note: 'Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup.',
     },
   ],
   responses: {
@@ -106,22 +134,22 @@ registerOperation('post', '/org-admin/managers', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and the caller’s own user_id (as org_admin_id).',
+      note: 'Resolves the caller’s org_id and their user_id, which becomes the new manager’s org_admin_id.',
     },
     {
       command: 'Put',
       keyCondition: 'PK = ORG#<orgId> AND SK = MANAGER#<managerSub>',
-      note: 'Primary record. Written in parallel with the reverse-lookup record below via Promise.all.',
+      note: 'Primary record, carrying GSI1PK = MANAGER and GSI1SK = <created_at>. Written in parallel with the reverse-lookup record below via Promise.all.',
     },
     {
       command: 'Put',
       keyCondition: 'PK = USER#<managerSub> AND SK = METADATA',
-      note: 'Reverse-lookup record, so the manager can be resolved by ID alone.',
+      note: 'Reverse-lookup record, so the manager can be resolved by ID alone. Carries no phone, org_admin_id, or employee_count.',
     },
     {
       command: 'Update',
-      keyCondition: 'PK = ORG#<orgId> AND SK = USER#<callerSub>',
-      note: 'Atomically increments manager_count (ADD) on the caller OrgAdmin’s own record.',
+      keyCondition: 'PK = ORG#<orgId> AND SK = USER#<orgAdminId>',
+      note: 'ADD manager_count :inc on the caller OrgAdmin’s own record. orgAdminId is the user_id read from the caller’s METADATA record, which is not necessarily the JWT sub (impersonation). Runs after both Puts.',
     },
   ],
   requestBody: { required: true, content: { 'application/json': { schema: CreateManagerBody } } },
@@ -141,6 +169,7 @@ registerOperation('post', '/org-admin/managers', {
 });
 
 registerOperation('put', '/org-admin/managers/{managerId}', {
+  requestParams: { path: ManagerIdPathParams },
   operationId: 'updateOrgAdminManager',
   summary: 'Update a manager',
   tags: ['org-admin'],
@@ -160,12 +189,12 @@ registerOperation('put', '/org-admin/managers/{managerId}', {
     {
       command: 'Update',
       keyCondition: 'PK = ORG#<orgId> AND SK = MANAGER#<managerId>',
-      note: 'Primary record; returns ALL_NEW, which becomes the response body.',
+      note: 'Primary record; SET of updated_at plus each supplied field. Returns ALL_NEW, which becomes the response body.',
     },
     {
       command: 'Update',
       keyCondition: 'PK = USER#<managerId> AND SK = METADATA',
-      note: 'Keeps first_name/last_name on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel.',
+      note: 'Keeps first_name/last_name/updated_at on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel.',
     },
   ],
   requestBody: { required: true, content: { 'application/json': { schema: UpdateManagerBody } } },
@@ -182,6 +211,7 @@ registerOperation('put', '/org-admin/managers/{managerId}', {
 });
 
 registerOperation('delete', '/org-admin/managers/{managerId}', {
+  requestParams: { path: ManagerIdPathParams },
   operationId: 'disableOrgAdminManager',
   summary: 'Disable a manager',
   tags: ['org-admin'],
@@ -203,18 +233,17 @@ registerOperation('delete', '/org-admin/managers/{managerId}', {
     {
       command: 'Update',
       keyCondition: 'PK = ORG#<orgId> AND SK = MANAGER#<managerId>',
-      note: 'Sets status = DISABLED. Runs in parallel with the reverse-lookup update below via Promise.all.',
+      note: 'Sets status = DISABLED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all.',
     },
     {
       command: 'Update',
       keyCondition: 'PK = USER#<managerId> AND SK = METADATA',
-      note: 'Sets status = DISABLED to match the primary record.',
+      note: 'Sets status = DISABLED to match the primary record. Does not set updated_at.',
     },
     {
       command: 'Update',
-      keyCondition: 'PK = ORG#<orgId> AND SK = USER#<callerSub>',
-      filter: 'manager_count > :zero',
-      note: 'Atomically decrements manager_count on the caller OrgAdmin’s own record, floored at 0. A failed condition (already 0) is swallowed.',
+      keyCondition: 'PK = ORG#<orgId> AND SK = USER#<orgAdminId>',
+      note: 'SET manager_count = if_not_exists(manager_count, :zero) - :dec, guarded by ConditionExpression `manager_count > :zero` so it floors at 0; a failed condition (already 0) is caught and swallowed. orgAdminId is the user_id from the caller’s METADATA record.',
     },
   ],
   responses: {
@@ -227,12 +256,13 @@ registerOperation('delete', '/org-admin/managers/{managerId}', {
 });
 
 registerOperation('patch', '/org-admin/managers/{managerId}', {
+  requestParams: { path: ManagerIdPathParams },
   operationId: 'enableOrgAdminManager',
   summary: 'Re-enable a disabled manager',
   tags: ['org-admin'],
   purpose:
     'Reverses a disable action from the roster screen — re-activates the Cognito account and the ' +
-    'stored record. Does not change manager_count.',
+    'stored record. Does not change manager_count. Takes no request body.',
   implementation: IMPLEMENTATION,
   dynamodb: [
     {
@@ -248,12 +278,12 @@ registerOperation('patch', '/org-admin/managers/{managerId}', {
     {
       command: 'Update',
       keyCondition: 'PK = ORG#<orgId> AND SK = MANAGER#<managerId>',
-      note: 'Sets status = CONFIRMED. Runs in parallel with the reverse-lookup update below via Promise.all.',
+      note: 'Sets status = CONFIRMED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all.',
     },
     {
       command: 'Update',
       keyCondition: 'PK = USER#<managerId> AND SK = METADATA',
-      note: 'Sets status = CONFIRMED to match the primary record.',
+      note: 'Sets status = CONFIRMED to match the primary record. Does not set updated_at.',
     },
   ],
   responses: {
