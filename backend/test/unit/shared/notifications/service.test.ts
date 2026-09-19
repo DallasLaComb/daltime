@@ -1,6 +1,6 @@
+import type { NotificationRecord } from '@daltime/contracts';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ValidationError, NotFoundError } from '../../../../src/functions/shared/errors.js';
-import type { Notification } from '../../../../src/functions/shared/models/notifications/notification.model.js';
 
 vi.mock('../../../../src/functions/shared/notifications/db.js', () => ({
   queryNotificationsByUser: vi.fn(),
@@ -23,7 +23,7 @@ beforeEach(() => vi.clearAllMocks());
 const callerSub = 'caller-sub-123';
 const otherSub = 'other-sub-456';
 
-function buildRecord(overrides: Partial<Notification> = {}): Notification {
+function buildRecord(overrides: Partial<NotificationRecord> = {}): NotificationRecord {
   return {
     PK: `USER#${callerSub}`,
     SK: 'NOTIFICATION#2025-01-01T00:00:00.000Z#raw-id-1',

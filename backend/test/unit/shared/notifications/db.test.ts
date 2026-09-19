@@ -1,3 +1,4 @@
+import type { NotificationRecord } from '@daltime/contracts';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-vitest/extend';
@@ -16,7 +17,6 @@ import {
   putNotification,
   updateNotificationRead,
 } from '../../../../src/functions/shared/notifications/db.js';
-import type { Notification } from '../../../../src/functions/shared/models/notifications/notification.model.js';
 
 const ddbMock = mockClient(docClient as unknown as DynamoDBDocumentClient);
 
@@ -26,7 +26,7 @@ beforeEach(() => {
 
 const sub = 'user-sub-123';
 
-const sampleRecord: Notification = {
+const sampleRecord: NotificationRecord = {
   PK: `USER#${sub}`,
   SK: 'NOTIFICATION#2025-01-01T00:00:00.000Z#raw-id-1',
   notification_id: '2025-01-01T00:00:00.000Z#raw-id-1',
