@@ -26,18 +26,20 @@ The single most important step is **step 1**: read `db.ts` and record what it _a
 
 ### 3. Pass the full gate before ticking a box
 
-All four must pass, from the repo root. A box ticked without these having passed is a defect, not progress.
+All of these must pass, from the repo root. A box ticked without these having passed is a defect, not progress.
 
 ```bash
 cd contracts  && npm run generate
 cd ../frontend && npm run contracts:types
-cd ../backend  && npm test        # baseline: 34 files, 796 tests
-cd ../frontend && npm test        # baseline: 37 files, 522 tests
+cd ../backend  && npm test        # must not regress — see note below
+cd ../frontend && npm test        # must not regress — see note below
 cd ../frontend && npx tsc -p tsconfig.app.json --noEmit
 cd ..          && git diff --exit-code -- contracts/openapi.json frontend/src/app/core/generated/
 ```
 
 The last command must produce **no output**. If it does, you regenerated but did not commit the result — commit it.
+
+Run both test suites **before you change anything** and write the counts down; that is your baseline, and neither may go down by the time you finish. Deliberately adding tests raises it, which is expected and good. Do not trust a hardcoded number here — every merged slice moves it.
 
 Then stage your work and run the repo's pre-commit gate, which is mandatory and lints every staged file in full:
 
