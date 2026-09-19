@@ -5,14 +5,14 @@ import { provideRouter } from '@angular/router';
 import { Router } from '@angular/router';
 import { NotificationBellComponent } from './notification-bell';
 import { environment } from '../../../environments/environment';
-import type { PublicNotification } from '../../core/models/notification.model';
+import type { NotificationResponse } from './notifications.service';
 
 /**
- * Factory for a minimal valid PublicNotification. Overrides allow individual
+ * Factory for a minimal valid NotificationResponse. Overrides allow individual
  * test cases to customise only the fields they care about without repeating
  * the full shape every time.
  */
-function makeNotification(overrides: Partial<PublicNotification> = {}): PublicNotification {
+function makeNotification(overrides: Partial<NotificationResponse> = {}): NotificationResponse {
   return {
     notification_id: '2026-06-18T12:00:00.000Z#a1b2c3d4-0000-0000-0000-000000000000',
     recipient_sub: 'sub-123',
@@ -51,7 +51,7 @@ describe('NotificationBellComponent', () => {
    */
   function createAndFlush(
     role: 'OrgAdmin' | 'Manager' | 'Employee' | 'WebAdmin' = 'OrgAdmin',
-    listResponse: PublicNotification[] = [],
+    listResponse: NotificationResponse[] = [],
   ) {
     const fixture = TestBed.createComponent(NotificationBellComponent);
     fixture.componentRef.setInput('role', role);
