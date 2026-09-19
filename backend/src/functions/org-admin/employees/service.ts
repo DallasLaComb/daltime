@@ -1,13 +1,9 @@
 import type { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import type {
-  CreateEmployeeBody,
-  UpdateEmployeeBody,
-} from '../../shared/models/org-admin/employee.model.js';
+import type { CreateEmployeeBody, UpdateEmployeeBody } from '@daltime/contracts';
 import { stripKeys, buildEmployeeRecord } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError, NotFoundError, ForbiddenError } from '../../shared/errors.js';
-import { validateCreateUserBody } from '../../shared/validation.js';
 import {
   enrichWithCognitoStatus,
   createCognitoEmployee,
@@ -37,8 +33,6 @@ export async function createEmployee(
   body: CreateEmployeeBody,
   cognitoClient: CognitoIdentityProviderClient,
 ) {
-  validateCreateUserBody(body);
-
   const { org_id } = await resolveCallerOrg(callerSub);
 
   const employeeSub = await createCognitoEmployee(

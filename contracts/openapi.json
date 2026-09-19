@@ -1276,7 +1276,7 @@
           "backend/src/functions/org-admin/employees/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1286,7 +1286,8 @@
           },
           {
             "command": "Query",
-            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)"
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)",
+            "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
         "responses": {
@@ -1335,23 +1336,23 @@
           "backend/src/functions/org-admin/employees/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id."
+            "note": "Resolves the caller’s org_id. Runs after the Cognito user is created."
           },
           {
             "command": "Put",
             "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeSub>",
-            "note": "Primary record. Written in parallel with the reverse-lookup record below via Promise.all."
+            "note": "Primary record, carrying GSI1PK = EMPLOYEE and GSI1SK = <created_at>. Written in parallel with the reverse-lookup record below via Promise.all."
           },
           {
             "command": "Put",
             "keyCondition": "PK = USER#<employeeSub> AND SK = METADATA",
-            "note": "Reverse-lookup record, so the employee can be resolved by ID alone."
+            "note": "Reverse-lookup record, so the employee can be resolved by ID alone. Carries no manager_id or phone."
           }
         ],
         "requestBody": {
@@ -1432,7 +1433,7 @@
           "backend/src/functions/org-admin/employees/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1448,12 +1449,24 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
-            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+            "note": "Primary record; SET of updated_at plus each supplied field. Returns ALL_NEW, which becomes the response body."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+            "note": "Keeps first_name/last_name/updated_at on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
           }
         ],
         "requestBody": {
@@ -1532,7 +1545,7 @@
           "backend/src/functions/org-admin/employees/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1548,12 +1561,24 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
-            "note": "Sets status = DISABLED. Runs in parallel with the reverse-lookup update below via Promise.all."
+            "note": "Sets status = DISABLED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all, after the Cognito account is disabled."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Sets status = DISABLED to match the primary record."
+            "note": "Sets status = DISABLED to match the primary record. Does not set updated_at."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
           }
         ],
         "responses": {
@@ -1608,14 +1633,14 @@
         "tags": [
           "org-admin"
         ],
-        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record.",
+        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Takes no request body.",
         "x-implementation-path": [
           "backend/src/functions/org-admin/employees/handler.ts",
           "backend/src/functions/org-admin/employees/service.ts",
           "backend/src/functions/org-admin/employees/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1631,12 +1656,24 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
-            "note": "Sets status = CONFIRMED. Runs in parallel with the reverse-lookup update below via Promise.all."
+            "note": "Sets status = CONFIRMED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all, after the Cognito account is enabled."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Sets status = CONFIRMED to match the primary record."
+            "note": "Sets status = CONFIRMED to match the primary record. Does not set updated_at."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
           }
         ],
         "responses": {
@@ -1700,7 +1737,7 @@
           "backend/src/functions/org-admin/managers/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1710,7 +1747,8 @@
           },
           {
             "command": "Query",
-            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, MANAGER#)"
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, MANAGER#)",
+            "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
         "responses": {
@@ -1759,28 +1797,28 @@
           "backend/src/functions/org-admin/managers/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and the caller’s own user_id (as org_admin_id)."
+            "note": "Resolves the caller’s org_id and their user_id, which becomes the new manager’s org_admin_id."
           },
           {
             "command": "Put",
             "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerSub>",
-            "note": "Primary record. Written in parallel with the reverse-lookup record below via Promise.all."
+            "note": "Primary record, carrying GSI1PK = MANAGER and GSI1SK = <created_at>. Written in parallel with the reverse-lookup record below via Promise.all."
           },
           {
             "command": "Put",
             "keyCondition": "PK = USER#<managerSub> AND SK = METADATA",
-            "note": "Reverse-lookup record, so the manager can be resolved by ID alone."
+            "note": "Reverse-lookup record, so the manager can be resolved by ID alone. Carries no phone, org_admin_id, or employee_count."
           },
           {
             "command": "Update",
-            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<callerSub>",
-            "note": "Atomically increments manager_count (ADD) on the caller OrgAdmin’s own record."
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<orgAdminId>",
+            "note": "ADD manager_count :inc on the caller OrgAdmin’s own record. orgAdminId is the user_id read from the caller’s METADATA record, which is not necessarily the JWT sub (impersonation). Runs after both Puts."
           }
         ],
         "requestBody": {
@@ -1861,7 +1899,7 @@
           "backend/src/functions/org-admin/managers/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1877,12 +1915,24 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
-            "note": "Primary record; returns ALL_NEW, which becomes the response body."
+            "note": "Primary record; SET of updated_at plus each supplied field. Returns ALL_NEW, which becomes the response body."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
-            "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+            "note": "Keeps first_name/last_name/updated_at on the reverse-lookup record in sync with the primary. Runs after the primary update, not in parallel."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
           }
         ],
         "requestBody": {
@@ -1961,7 +2011,7 @@
           "backend/src/functions/org-admin/managers/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -1977,18 +2027,29 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
-            "note": "Sets status = DISABLED. Runs in parallel with the reverse-lookup update below via Promise.all."
+            "note": "Sets status = DISABLED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
-            "note": "Sets status = DISABLED to match the primary record."
+            "note": "Sets status = DISABLED to match the primary record. Does not set updated_at."
           },
           {
             "command": "Update",
-            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<callerSub>",
-            "filter": "manager_count > :zero",
-            "note": "Atomically decrements manager_count on the caller OrgAdmin’s own record, floored at 0. A failed condition (already 0) is swallowed."
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<orgAdminId>",
+            "note": "SET manager_count = if_not_exists(manager_count, :zero) - :dec, guarded by ConditionExpression `manager_count > :zero` so it floors at 0; a failed condition (already 0) is caught and swallowed. orgAdminId is the user_id from the caller’s METADATA record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
           }
         ],
         "responses": {
@@ -2043,14 +2104,14 @@
         "tags": [
           "org-admin"
         ],
-        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Does not change manager_count.",
+        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Does not change manager_count. Takes no request body.",
         "x-implementation-path": [
           "backend/src/functions/org-admin/managers/handler.ts",
           "backend/src/functions/org-admin/managers/service.ts",
           "backend/src/functions/org-admin/managers/db.ts",
           "backend/src/functions/shared/dynamo.ts",
           "backend/src/functions/shared/cognito.ts",
-          "backend/src/functions/shared/validation.ts"
+          "backend/src/functions/shared/contract-validation.ts"
         ],
         "x-dynamodb-access": [
           {
@@ -2066,12 +2127,24 @@
           {
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
-            "note": "Sets status = CONFIRMED. Runs in parallel with the reverse-lookup update below via Promise.all."
+            "note": "Sets status = CONFIRMED and updated_at. Runs in parallel with the reverse-lookup update below via Promise.all."
           },
           {
             "command": "Update",
             "keyCondition": "PK = USER#<managerId> AND SK = METADATA",
-            "note": "Sets status = CONFIRMED to match the primary record."
+            "note": "Sets status = CONFIRMED to match the primary record. Does not set updated_at."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
           }
         ],
         "responses": {
@@ -3006,9 +3079,9 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string",
+            "description": "Cognito username. Trimmed before validation.",
             "format": "email",
-            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            "type": "string"
           },
           "first_name": {
             "type": "string",
@@ -3023,10 +3096,11 @@
           },
           "temp_password": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Temporary Cognito password. Sent verbatim — never trimmed."
           },
           "manager_id": {
-            "description": "Manager this employee reports to. Empty string if omitted.",
+            "description": "Manager this employee reports to. Stored as an empty string if omitted.",
             "type": "string"
           }
         },
@@ -3053,8 +3127,8 @@
             "type": "string"
           },
           "manager_id": {
-            "type": "string",
-            "minLength": 1
+            "description": "Empty string clears the employee’s manager assignment.",
+            "type": "string"
           }
         },
         "description": "Partial update of an employee’s name, phone, or manager assignment."
@@ -3063,9 +3137,9 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string",
+            "description": "Cognito username. Trimmed before validation.",
             "format": "email",
-            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            "type": "string"
           },
           "first_name": {
             "type": "string",
@@ -3080,7 +3154,8 @@
           },
           "temp_password": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Temporary Cognito password. Sent verbatim — never trimmed."
           }
         },
         "required": [

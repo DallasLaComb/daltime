@@ -7,7 +7,7 @@ import {
   setEntityStatus,
 } from '../../shared/dynamo.js';
 export { createEmployeeRecord as createEmployee } from '../../shared/dynamo.js';
-import type { Employee } from '../../shared/models/org-admin/employee.model.js';
+import type { EmployeeRecord } from '@daltime/contracts';
 
 export async function getCallerLookup(
   userId: string,
@@ -15,7 +15,7 @@ export async function getCallerLookup(
   return getMetadataRecord(userId);
 }
 
-export async function listEmployeesByOrg(orgId: string): Promise<Employee[]> {
+export async function listEmployeesByOrg(orgId: string): Promise<EmployeeRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -26,7 +26,7 @@ export async function listEmployeesByOrg(orgId: string): Promise<Employee[]> {
       },
     }),
   );
-  return (result.Items ?? []) as Employee[];
+  return (result.Items ?? []) as EmployeeRecord[];
 }
 
 export async function getEmployeeReverseLookup(
@@ -40,8 +40,8 @@ export async function updateEmployee(
   employeeId: string,
   fields: { first_name?: string; last_name?: string; phone?: string; manager_id?: string },
   updatedAt: string,
-): Promise<Employee | null> {
-  return updateOrgAndMetadataRecord<Employee>(
+): Promise<EmployeeRecord | null> {
+  return updateOrgAndMetadataRecord<EmployeeRecord>(
     { PK: `ORG#${orgId}`, SK: `EMPLOYEE#${employeeId}` },
     employeeId,
     fields,

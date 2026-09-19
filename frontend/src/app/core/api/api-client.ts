@@ -50,10 +50,13 @@ type ResponseOf<O> = O extends { responses: infer R }
 /**
  * The `application/json` request body for an operation.
  *
- * Operations that declare no body resolve to `undefined`, not `never`: a POST
- * can legitimately carry nothing (see `POST /employee/swap-shifts/{swapId}/claim`,
- * where the swapId in the path is the whole request), and `never` would make
- * such a route impossible to call at all.
+ * Operations that declare no body resolve to `undefined`, not `never`. Several
+ * real routes carry nothing: `POST /employee/swap-shifts/{swapId}/claim`, where
+ * the swapId in the path is the whole request, and the org-admin PATCH
+ * re-enable routes. Resolving to `never` made every one of them uncallable,
+ * because no value whatsoever satisfies `never`.
+ *
+ * See `RequestBodyOf` below for what callers may actually pass.
  */
 type BodyOf<O> = O extends { requestBody: { content: { 'application/json': infer T } } }
   ? T
