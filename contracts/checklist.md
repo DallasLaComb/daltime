@@ -4,10 +4,11 @@
 Start every wave by pasting it (or the relevant section) into your agent's context so it
 doesn't rediscover the architecture from scratch.
 
-**Current state:** 37 of 97 real operations have contracts. 7 frontend services are already on
-`ApiClient`; 17 remain on raw `HttpClient`. The hard part is done — the pattern works and has
-survived contact with real code. What remains is repetition, and this doc exists to make each
-repetition cheap.
+**Current state (2026-09-20):** migration complete. All 17 tracked domains have landed; 87 of
+92 real routes have contracts. The only 5 undocumented operations are the deliberately-excluded
+impersonate `{proxy+}` methods (§9). Every listed frontend service now goes through `ApiClient`.
+What remains is Wave 5 guardrail work (§8): CI drift check, an HttpClient lint ban, and README
+refresh. The per-step history is in §10.1.
 
 ---
 
@@ -62,17 +63,21 @@ That is the entire value of this system.
 
 | Metric | Value |
 |---|---|
-| Real (non-OPTIONS) routes in `infra/template.yaml` | 97 |
-| Operations in `openapi.json` | 37 |
-| Missing | **60** |
-| Paths with zero contract coverage (whole domains) | 31 |
+| Real (non-OPTIONS) routes in `infra/template.yaml` | 92 |
+| Operations in `openapi.json` | 87 |
+| Missing | **5** (all impersonate `{proxy+}` methods — intentionally excluded, §9) |
+| Paths with zero contract coverage (whole domains) | 0 |
+
+> The old "97 routes / 60 missing" numbers were inflated by a discovery-probe bug that paired
+> `Path:` with stray `Method:` lines (see §7.2 gotcha) and by counting the impersonate proxy
+> per-method. Recomputed 2026-09-20 by pairing each `Path:` with the `Method:` that follows it.
 
 ### Frontend client adoption
 
 | Status | Count | List |
 |---|---|---|
-| ✅ On `ApiClient` | 7 + shared | employee (swap-shifts, availability, profile, schedule/shifts), manager/profile, org-admin (employees, managers), **shared/notifications** |
-| ⬜ Raw `HttpClient` | 17 | §4 inventory below |
+| ✅ On `ApiClient` | all tracked | every service listed in §4 has been migrated across steps 1–17 (§10.1) |
+| ⬜ Raw `HttpClient` | 0 (excl. infra/spec) | infra exclusions only: `app.config.ts`, `*.spec.ts`, `core/api/**`, `getHealth` caller |
 
 > **Correction to the old snapshot:** `notifications.service.ts` **already uses `ApiClient`**
 > (it injects `ApiClient`, not `HttpClient` — the old §3 regex matched its doc comments).
@@ -275,10 +280,15 @@ Delete only when this returns zero (or alias every importer in the same PR).
 - `ApiSchema` names can exist as generated components with no contracts export
   (e.g. `SwapShift` via composition) — that's fine, not an error.
 - Ref counts from substring search are upper bounds: bare `/x` matches `/x/{id}` children.
-- **Decision pending — `{proxy+}` wildcard routes** (impersonate, swap-shifts proxy,
-  schedule proxy): `zod-openapi` needs concrete paths. Decide per-route: enumerate the real
-  subpaths explicitly (preferred, self-documenting) or keep the proxy undocumented and let the
-  impersonation interceptor handle rewriting. Enumerate where the subpaths are knowable.
+- **Decision resolved — `{proxy+}` wildcard routes** (impersonate, swap-shifts proxy,
+  schedule proxy): `zod-openapi` needs concrete paths. Where the wildcard is a *real* call
+  target with knowable sub-paths, enumerate them. Where it is only reached by URL rewriting
+  (web-admin impersonate: `impersonation.interceptor.ts` rewrites role paths into
+  `/web-admin/impersonate/{userId}/{proxy+}`, and `route-registry.ts` re-dispatches to already-
+  documented role ops), leave it undocumented with an explanatory comment — enumerating
+  duplicates every downstream op at drift risk with no compile-time benefit. Step 17 applied
+  the latter. Long-term: generate `infra/template.yaml` events *and* `route-registry.ts` from
+  one route table so impersonation cannot drift from the real routes.
 - **Decision pending — standardize `ErrorResponse`/`errorResponses` on every op** during Wave 3
   (infra exists in `contracts/src/schemas/common.ts`; adopt as you create each domain).
 
@@ -308,7 +318,7 @@ this tracker, run the verification chain, and commit the work.
 | 14 | organizations root | 6 | legacy `app/services/org-admins.service.ts` + org-list screens | `contracts/organizations-root` | ✅ done | `33bb731` | 5 real ops (list/get/create/update/deleteWebAdminOrganization on `/organizations`). **Correction:** step-14's actual service is `organization.service.ts` (hits `/organizations`); the checklist's `org-admins.service.ts` note is WRONG — that service hits `/web-admin/organizations/{orgId}/org-admins`, i.e. step 15, so it stays. Migrated `organization.service.ts` to ApiClient; shared organization.model.ts kept (org-admin screens + impersonate still import it). Bruno already present |
 | 15 | web-admin org-admins | 4 | folded from #14's screens | `contracts/web-admin-org-admins` | ✅ done | `0f69ca0` | added list/create/disable/enableWebAdminOrgAdmin on `/web-admin/organizations/{orgId}/org-admins[/{userId}]`; POST validated via CreateOrgAdminBody; migrated OrgAdminsService to ApiClient, consumer org-admins.ts to service; deleted org-admin-user.model.ts (zero importers); Bruno enable added (list/create/disable existed) |
 | 16 | web-admin generate-dummy-data | 1 | `web-admin/generate-dummy-data/generate-dummy-data.service.ts` | `contracts/web-admin-generate-dummy-data` | ✅ done | `80ab7eb` | added generateWebAdminDummyData; handler validates via GenerateDummyDataBody; migrated service to ApiClient; dropped duplicate `GenerateDummyDataBody` from backend `model.ts` (now imported from `@daltime/contracts`); handler tests updated for Zod validation (400 before service, unknown keys stripped); Bruno already present |
-| 17 | web-admin impersonate | 6+ | `web-admin/impersonate/impersonate.service.ts` | `contracts/web-admin-impersonate` | ⬜ pending | — | `{proxy+}` decision required |
+| 17 | web-admin impersonate | 2 | `web-admin/impersonate/impersonate.service.ts` | `contracts/web-admin-impersonate` | ✅ done | `f0ea862` | **Decision:** documented only the 2 concrete ops (`listWebAdminImpersonatableUsers`, `getWebAdminImpersonateContext`); `{proxy+}` deliberately left undocumented (see comment in `contracts/src/schemas/web-admin/impersonate.ts` and §9) — it is not a call target, the interceptor rewrites into it and `route-registry.ts` re-dispatches already-documented role ops, so enumerating it would duplicate ~60 ops at drift risk. Handler now validates query/path params via contracts; dropped duplicate `ImpersonateUserSummary`/`ImpersonateContext` interfaces from `service.ts`; migrated service to ApiClient; Bruno get-context/list-users already present. **Refactor follow-up (not this PR):** single route-table source of truth generating both `infra/template.yaml` events and `route-registry.ts` to eliminate impersonate routing drift |
 
 ### 10.2 Per-step agent protocol
 
