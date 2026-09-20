@@ -21,26 +21,27 @@ import {
   getEmployeeAvailabilityForManager,
   getEmployeeAvailabilityOverridesForManager,
 } from './service.js';
+import type { ManagerEmployeeAvailabilityOverridesResponse, ManagerEmployeeAvailabilityResponse, ManagerEmployeeListResponse, ManagerEmployeeResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
 async function handleGet(callerSub: string, path: string, employeeId: string | undefined) {
   if (path.endsWith('/availability/overrides')) {
     if (!employeeId) return badRequest('employeeId path parameter is required');
-    return ok(await getEmployeeAvailabilityOverridesForManager(callerSub, employeeId));
+    return ok<ManagerEmployeeAvailabilityOverridesResponse>(await getEmployeeAvailabilityOverridesForManager(callerSub, employeeId));
   }
   if (path.endsWith('/availability')) {
     if (!employeeId) return badRequest('employeeId path parameter is required');
-    return ok(await getEmployeeAvailabilityForManager(callerSub, employeeId));
+    return ok<ManagerEmployeeAvailabilityResponse>(await getEmployeeAvailabilityForManager(callerSub, employeeId));
   }
-  return ok(await listEmployees(callerSub, cognitoClient));
+  return ok<ManagerEmployeeListResponse>(await listEmployees(callerSub, cognitoClient));
 }
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateManagerEmployeeBody, parsed.data);
-  return created(await createEmployee(callerSub, body, cognitoClient));
+  return created<ManagerEmployeeResponse>(await createEmployee(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -52,7 +53,7 @@ async function handlePut(
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(UpdateManagerEmployeeBody, parsed.data);
-  return ok(await updateEmployee(callerSub, employeeId, body, cognitoClient));
+  return ok<ManagerEmployeeResponse>(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

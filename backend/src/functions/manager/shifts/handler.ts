@@ -1,4 +1,5 @@
 import {
+  type ManagerShiftResponse,
   CreateManagerShiftBody,
   ManagerShiftsQuery,
   UpdateManagerShiftBody,
@@ -6,7 +7,7 @@ import {
 import { createShiftCrudHandler } from '../../shared/handler-factories.js';
 import * as service from './service.js';
 
-export const handler = createShiftCrudHandler(
+export const handler = createShiftCrudHandler<ManagerShiftResponse>(
   service,
   'manager shifts handler',
   { query: ManagerShiftsQuery, create: CreateManagerShiftBody, update: UpdateManagerShiftBody },

@@ -12,6 +12,7 @@ import { listImpersonatableUsers, getUserContext } from './service.js';
 import { resolveProxyRoute } from './route-registry.js';
 import { synthesizeImpersonatedEvent, type ImpersonationActor } from './synthesize-event.js';
 import { getUserReverseLookup } from './db.js';
+import type { ImpersonateContextResponse, ImpersonateUserListResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -21,12 +22,12 @@ async function handleListUsers(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
     ImpersonateUsersQueryParams,
     event.queryStringParameters ?? {},
   );
-  return ok(await listImpersonatableUsers(orgId, role));
+  return ok<ImpersonateUserListResponse>(await listImpersonatableUsers(orgId, role));
 }
 
 /** Handles GET /web-admin/impersonate/{userId}/context — fetches a user's profile + role. */
 async function handleGetContext(userId: string) {
-  return ok(await getUserContext(userId, cognitoClient));
+  return ok<ImpersonateContextResponse>(await getUserContext(userId, cognitoClient));
 }
 
 /**

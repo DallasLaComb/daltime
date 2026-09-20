@@ -19,11 +19,11 @@ function corsHeaders(): Record<string, string> {
   };
 }
 
-export function ok(data: unknown): APIGatewayProxyResultV2 {
+export function ok<T = unknown>(data: T): APIGatewayProxyResultV2 {
   return { statusCode: 200, headers: corsHeaders(), body: JSON.stringify(data) };
 }
 
-export function created(data: unknown): APIGatewayProxyResultV2 {
+export function created<T = unknown>(data: T): APIGatewayProxyResultV2 {
   return { statusCode: 201, headers: corsHeaders(), body: JSON.stringify(data) };
 }
 

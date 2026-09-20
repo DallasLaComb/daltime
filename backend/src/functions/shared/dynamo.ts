@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import type { Employee } from './models/org-admin/employee.model.js';
 import type { Location } from './models/manager/location.model.js';
+import type { Organization } from './models/web-admin/organization.model.js';
 
 /** Shared DynamoDB Document Client — initialised once per Lambda cold start. */
 const client = new DynamoDBClient({});
@@ -206,7 +207,7 @@ export async function setEntityStatus(
 export async function updateOrganizationRecord(
   orgId: string,
   fields: { name: string; address: string; updated_at: string },
-): Promise<Record<string, unknown>> {
+): Promise<Organization> {
   const result = await docClient.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
@@ -221,7 +222,7 @@ export async function updateOrganizationRecord(
       ReturnValues: 'ALL_NEW',
     }),
   );
-  return result.Attributes as Record<string, unknown>;
+  return result.Attributes as Organization;
 }
 
 /**

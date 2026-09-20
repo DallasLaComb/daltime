@@ -5,19 +5,20 @@ import { ok, created, badRequest, setRequestOrigin, parseBody } from '../../shar
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getLocations, createLocation, updateLocation, removeLocation } from './service.js';
+import type { OrgAdminLocationListResponse, OrgAdminLocationResponse } from '@daltime/contracts';
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateOrgAdminLocationBody, parsed.data);
-  return created(await createLocation(callerSub, body));
+  return created<OrgAdminLocationResponse>(await createLocation(callerSub, body));
 }
 
 async function handlePut(callerSub: string, locationId: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(UpdateOrgAdminLocationBody, parsed.data);
-  return ok(await updateLocation(callerSub, locationId, body));
+  return ok<OrgAdminLocationResponse>(await updateLocation(callerSub, locationId, body));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -34,7 +35,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await getLocations(callerSub));
+    if (method === 'GET') return ok<OrgAdminLocationListResponse>(await getLocations(callerSub));
     if (method === 'POST') return await handlePost(callerSub, event.body);
     if (method === 'PUT' && locationId) return await handlePut(callerSub, locationId, event.body);
     if (method === 'DELETE' && locationId) {

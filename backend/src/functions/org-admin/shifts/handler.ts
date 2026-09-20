@@ -5,6 +5,7 @@ import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { listShifts } from './service.js';
+import type { OrgAdminShiftListResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -21,7 +22,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   try {
     if (method === 'GET') {
       const { month } = parseWithContract(OrgAdminShiftsQuery, event.queryStringParameters ?? {});
-      return ok(await listShifts(callerSub, month));
+      return ok<OrgAdminShiftListResponse>(await listShifts(callerSub, month));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

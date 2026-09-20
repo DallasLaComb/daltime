@@ -6,10 +6,11 @@ import { ok, created, noContent, badRequest, setRequestOrigin, parseBody } from 
 import { mapHandlerError, ForbiddenError } from './errors.js';
 import { parseWithContract } from './contract-validation.js';
 
-interface ShiftCrudService {
-  listShifts(callerSub: string, month: string | undefined): Promise<unknown>;
-  createShift(callerSub: string, data: Record<string, unknown>): Promise<unknown>;
-  updateShift(callerSub: string, shiftId: string, data: Record<string, unknown>): Promise<unknown>;
+/** `TItem` is the contract response type for one item (e.g. `ManagerShiftResponse`). */
+interface ShiftCrudService<TItem> {
+  listShifts(callerSub: string, month: string | undefined): Promise<TItem[]>;
+  createShift(callerSub: string, data: Record<string, unknown>): Promise<TItem>;
+  updateShift(callerSub: string, shiftId: string, data: Record<string, unknown>): Promise<TItem>;
   removeShift(callerSub: string, shiftId: string): Promise<unknown>;
 }
 
@@ -26,8 +27,13 @@ export interface ShiftCrudSchemas {
   update?: z.ZodType<Record<string, unknown>>;
 }
 
-export function createShiftCrudHandler(
-  service: ShiftCrudService,
+/**
+ * Name the contract response type explicitly at the call site —
+ * `createShiftCrudHandler<ManagerShiftResponse>(…)` — so the compiler checks that the
+ * role's service returns exactly what `contracts/openapi.json` promises.
+ */
+export function createShiftCrudHandler<TItem>(
+  service: ShiftCrudService<TItem>,
   handlerName: string,
   schemas: ShiftCrudSchemas = {},
 ) {
@@ -35,14 +41,14 @@ export function createShiftCrudHandler(
     const parsed = parseBody<Record<string, unknown>>(rawBody);
     if (!parsed.ok) return parsed.response;
     const body = schemas.create ? parseWithContract(schemas.create, parsed.data) : parsed.data;
-    return ok(await service.createShift(callerSub, body));
+    return ok<TItem>(await service.createShift(callerSub, body));
   }
 
   async function handlePut(callerSub: string, shiftId: string, rawBody: string | undefined) {
     const parsed = parseBody<Record<string, unknown>>(rawBody);
     if (!parsed.ok) return parsed.response;
     const body = schemas.update ? parseWithContract(schemas.update, parsed.data) : parsed.data;
-    return ok(await service.updateShift(callerSub, shiftId, body));
+    return ok<TItem>(await service.updateShift(callerSub, shiftId, body));
   }
 
   return async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -63,7 +69,7 @@ export function createShiftCrudHandler(
         const { month } = schemas.query
           ? parseWithContract(schemas.query, event.queryStringParameters ?? {})
           : { month: event.queryStringParameters?.['month'] };
-        return ok(await service.listShifts(callerSub, month));
+        return ok<TItem[]>(await service.listShifts(callerSub, month));
       }
       if (method === 'POST') return await handlePost(callerSub, event.body);
       if (method === 'PUT' && shiftId) return await handlePut(callerSub, shiftId, event.body);
@@ -80,13 +86,14 @@ export function createShiftCrudHandler(
 
 // ─── Sub-entity locations (e.g. employee-locations, manager-locations) ───────
 
-interface SubEntityLocationsService {
-  listLocations(callerSub: string, entityId: string): Promise<unknown>;
+/** `TAssignment` is the contract response type for one assignment (`UserLocationResponse`). */
+interface SubEntityLocationsService<TAssignment> {
+  listLocations(callerSub: string, entityId: string): Promise<TAssignment[]>;
   assignLocation(
     callerSub: string,
     entityId: string,
     body: { location_id?: string },
-  ): Promise<unknown>;
+  ): Promise<TAssignment>;
   removeLocation(callerSub: string, entityId: string, locationId: string): Promise<unknown>;
 }
 
@@ -105,8 +112,8 @@ interface SubEntityLocationsService {
  *                       `@daltime/contracts`. Optional while slices are migrated
  *                       one at a time; without it the body is not validated.
  */
-export function createSubEntityLocationsHandler(
-  service: SubEntityLocationsService,
+export function createSubEntityLocationsHandler<TAssignment>(
+  service: SubEntityLocationsService<TAssignment>,
   entityIdParam: string,
   handlerName: string,
   assignSchema?: z.ZodType<{ location_id?: string }>,
@@ -128,14 +135,14 @@ export function createSubEntityLocationsHandler(
     try {
       if (method === 'GET') {
         if (!entityId) return badRequest(`${entityIdParam} path parameter is required`);
-        return ok(await service.listLocations(callerSub, entityId));
+        return ok<TAssignment[]>(await service.listLocations(callerSub, entityId));
       }
       if (method === 'POST') {
         if (!entityId) return badRequest(`${entityIdParam} path parameter is required`);
         const parsed = parseBody<{ location_id?: string }>(event.body);
         if (!parsed.ok) return parsed.response;
         const body = assignSchema ? parseWithContract(assignSchema, parsed.data) : parsed.data;
-        return created(await service.assignLocation(callerSub, entityId, body));
+        return created<TAssignment>(await service.assignLocation(callerSub, entityId, body));
       }
       if (method === 'DELETE') {
         if (!entityId) return badRequest(`${entityIdParam} path parameter is required`);
@@ -150,12 +157,13 @@ export function createSubEntityLocationsHandler(
   };
 }
 
-interface ProfileService {
-  getProfile(callerSub: string, cognitoClient: CognitoIdentityProviderClient): Promise<unknown>;
+/** `TProfile` is the contract response type for the profile (e.g. `ManagerProfileResponse`). */
+interface ProfileService<TProfile> {
+  getProfile(callerSub: string, cognitoClient: CognitoIdentityProviderClient): Promise<TProfile>;
   updateProfile(
     callerSub: string,
     body: { first_name?: string; last_name?: string; phone?: string },
-  ): Promise<unknown>;
+  ): Promise<TProfile>;
 }
 
 /**
@@ -176,8 +184,8 @@ interface ProfileService {
  *                      Left optional while slices are migrated one at a time;
  *                      once every profile slice supplies one this becomes required.
  */
-export function createProfileHandler(
-  service: ProfileService,
+export function createProfileHandler<TProfile>(
+  service: ProfileService<TProfile>,
   handlerName: string,
   requiredGroup?: string,
   bodySchema?: z.ZodType<{ first_name?: string; last_name?: string; phone?: string }>,
@@ -204,7 +212,7 @@ export function createProfileHandler(
       }
 
       if (method === 'GET') {
-        return ok(await service.getProfile(callerSub, cognitoClient));
+        return ok<TProfile>(await service.getProfile(callerSub, cognitoClient));
       }
 
       if (method === 'PUT') {
@@ -213,7 +221,7 @@ export function createProfileHandler(
         );
         if (!parsed.ok) return parsed.response;
         const body = bodySchema ? parseWithContract(bodySchema, parsed.data) : parsed.data;
-        return ok(await service.updateProfile(callerSub, body));
+        return ok<TProfile>(await service.updateProfile(callerSub, body));
       }
 
       return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

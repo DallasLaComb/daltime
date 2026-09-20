@@ -5,6 +5,7 @@ import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/respon
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { getAvailabilityOverrides, upsertAvailabilityOverrides } from './service.js';
+import type { EmployeeAvailabilityOverridesResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -21,7 +22,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   try {
     if (method === 'GET') {
       const overrides = await getAvailabilityOverrides(callerSub);
-      return ok(overrides ?? {});
+      return ok<EmployeeAvailabilityOverridesResponse>(overrides ?? {});
     }
 
     if (method === 'PUT') {
@@ -31,7 +32,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       // in contracts/openapi.json — including the YYYY-MM-DD key pattern, which
       // is now rejected here rather than only inside the service.
       const body = parseWithContract(UpsertOverridesBody, parsed.data);
-      return ok(await upsertAvailabilityOverrides(callerSub, body));
+      return ok<EmployeeAvailabilityOverridesResponse>(await upsertAvailabilityOverrides(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

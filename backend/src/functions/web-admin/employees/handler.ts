@@ -3,6 +3,7 @@ import { internalError, ok, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listEmployees } from './service.js';
+import type { WebAdminEmployeeListResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -22,7 +23,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     await requireWebAdminWithLookup(event);
 
     if (method === 'GET') {
-      return ok(await listEmployees());
+      return ok<WebAdminEmployeeListResponse>(await listEmployees());
     }
 
     return internalError(`Unhandled route: ${method} ${event.rawPath}`);

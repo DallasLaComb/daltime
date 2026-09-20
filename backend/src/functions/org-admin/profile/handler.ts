@@ -6,6 +6,7 @@ import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/respon
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
+import type { OrgAdminProfileResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -23,14 +24,14 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   try {
     if (method === 'GET') {
-      return ok(await getProfile(callerSub, cognitoClient));
+      return ok<OrgAdminProfileResponse>(await getProfile(callerSub, cognitoClient));
     }
 
     if (method === 'PUT') {
       const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
       const body = parseWithContract(UpdateOrgAdminProfileBody, parsed.data);
-      return ok(await updateProfile(callerSub, body, cognitoClient));
+      return ok<OrgAdminProfileResponse>(await updateProfile(callerSub, body, cognitoClient));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

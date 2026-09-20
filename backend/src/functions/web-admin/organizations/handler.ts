@@ -19,13 +19,14 @@ import {
   updateOrganization,
   deleteOrganization,
 } from './service.js';
+import type { WebAdminOrganizationListResponse, WebAdminOrganizationResponse } from '@daltime/contracts';
 
 /** Handle POST /organizations — create a new organization. */
 async function handlePost(rawBody: string | undefined, webAdminId: string) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateOrganizationBody, parsed.data);
-  return created(await createOrganization(body, webAdminId));
+  return created<WebAdminOrganizationResponse>(await createOrganization(body, webAdminId));
 }
 
 /** Handle PUT /organizations/{orgId} — update an existing organization. */
@@ -34,7 +35,7 @@ async function handlePut(orgId: string, rawBody: string | undefined, webAdminId:
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(UpdateOrganizationBody, parsed.data);
   const org = await updateOrganization(orgId, body, webAdminId);
-  return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+  return org ? ok<WebAdminOrganizationResponse>(org) : notFound(`Organization '${orgId}' not found`);
 }
 
 /** Handle collection-level routes (no orgId in path). */
@@ -44,7 +45,7 @@ async function handleCollectionRoute(
   rawPath: string,
   webAdminId: string,
 ) {
-  if (method === 'GET') return ok(await listOrganizations());
+  if (method === 'GET') return ok<WebAdminOrganizationListResponse>(await listOrganizations());
   if (method === 'POST') return await handlePost(rawBody, webAdminId);
   return badRequest(`Unhandled route: ${method} ${rawPath}`);
 }
@@ -59,7 +60,7 @@ async function handleResourceRoute(
 ) {
   if (method === 'GET') {
     const org = await getOrganization(orgId);
-    return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
+    return org ? ok<WebAdminOrganizationResponse>(org) : notFound(`Organization '${orgId}' not found`);
   }
   if (method === 'PUT') return await handlePut(orgId, rawBody, webAdminId);
   if (method === 'DELETE') {

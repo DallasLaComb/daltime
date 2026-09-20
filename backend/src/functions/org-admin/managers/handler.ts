@@ -19,6 +19,7 @@ import {
   disableManager,
   enableManager,
 } from './service.js';
+import type { OrgAdminManagerListResponse, OrgAdminManagerResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -30,7 +31,7 @@ async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateManagerBody, parsed.data);
-  return created(await createManager(callerSub, body, cognitoClient));
+  return created<OrgAdminManagerResponse>(await createManager(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -42,7 +43,7 @@ async function handlePut(
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(UpdateManagerBody, parsed.data);
-  return ok(await updateManager(callerSub, managerId, body, cognitoClient));
+  return ok<OrgAdminManagerResponse>(await updateManager(callerSub, managerId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -59,7 +60,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await listManagers(callerSub, cognitoClient));
+    if (method === 'GET') return ok<OrgAdminManagerListResponse>(await listManagers(callerSub, cognitoClient));
     if (method === 'POST') return await handlePost(callerSub, event.body);
     if (method === 'PUT') return await handlePut(callerSub, managerId, event.body);
     if (method === 'DELETE') {

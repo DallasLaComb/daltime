@@ -3,6 +3,12 @@ import { stripKeys } from './dynamo.js';
 import { ValidationError, ForbiddenError, NotFoundError } from './errors.js';
 import { enrichSingleWithCognitoStatus } from './cognito.js';
 
+/** A profile record with the single-table keys removed, guaranteed to carry what enrichment needs. */
+type StrippedProfile<R extends { email: string; status: string }> = Omit<
+  R,
+  'PK' | 'SK' | 'GSI1PK' | 'GSI1SK'
+> & { email: string; status: string };
+
 interface ProfileDb<R extends { email: string; status: string }> {
   getCallerLookup(userId: string): Promise<{ org_id: string } | null>;
   getRecord(orgId: string, userId: string): Promise<R | null>;
@@ -28,10 +34,9 @@ export function createProfileService<R extends { email: string; status: string }
       const { org_id } = await resolveCallerOrg(callerSub);
       const record = await db.getRecord(org_id, callerSub);
       if (!record) throw new NotFoundError('Profile not found');
-      return enrichSingleWithCognitoStatus(
-        stripKeys(record) as { email: string; status: string },
-        cognitoClient,
-      );
+      // Keep the record's full stripped type through enrichment (rather than narrowing it to
+      // `{ email; status }`) so the result stays checkable against the contract response type.
+      return enrichSingleWithCognitoStatus(stripKeys(record) as StrippedProfile<R>, cognitoClient);
     },
 
     async updateProfile(

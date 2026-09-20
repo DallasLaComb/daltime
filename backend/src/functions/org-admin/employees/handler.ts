@@ -19,6 +19,7 @@ import {
   disableEmployee,
   enableEmployee,
 } from './service.js';
+import type { OrgAdminEmployeeListResponse, OrgAdminEmployeeResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -31,7 +32,7 @@ async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateEmployeeBody, parsed.data);
-  return created(await createEmployee(callerSub, body, cognitoClient));
+  return created<OrgAdminEmployeeResponse>(await createEmployee(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -43,7 +44,7 @@ async function handlePut(
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(UpdateEmployeeBody, parsed.data);
-  return ok(await updateEmployee(callerSub, employeeId, body, cognitoClient));
+  return ok<OrgAdminEmployeeResponse>(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -60,7 +61,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await listEmployees(callerSub, cognitoClient));
+    if (method === 'GET') return ok<OrgAdminEmployeeListResponse>(await listEmployees(callerSub, cognitoClient));
     if (method === 'POST') return await handlePost(callerSub, event.body);
     if (method === 'PUT') return await handlePut(callerSub, employeeId, event.body);
     if (method === 'DELETE') {

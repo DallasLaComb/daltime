@@ -10,6 +10,7 @@ import {
   getDraftSummary,
   getScheduleMetaForCaller,
 } from './service.js';
+import type { GenerateDraftScheduleResponse, ManagerScheduleDraftsResponse, PublishScheduleResponse, ScheduleMetaResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -30,22 +31,22 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
     // POST /manager/schedule/generate
     if (method === 'POST' && rawPath.endsWith('/generate')) {
-      return ok(await generateDraftSchedule(callerSub, month));
+      return ok<GenerateDraftScheduleResponse>(await generateDraftSchedule(callerSub, month));
     }
 
     // POST /manager/schedule/publish
     if (method === 'POST' && rawPath.endsWith('/publish')) {
-      return ok(await publishSchedule(callerSub, month));
+      return ok<PublishScheduleResponse>(await publishSchedule(callerSub, month));
     }
 
     // GET /manager/schedule/drafts
     if (method === 'GET' && rawPath.endsWith('/drafts')) {
-      return ok(await getDraftSummary(callerSub, month));
+      return ok<ManagerScheduleDraftsResponse>(await getDraftSummary(callerSub, month));
     }
 
     // GET /manager/schedule/meta
     if (method === 'GET' && rawPath.endsWith('/meta')) {
-      return ok(await getScheduleMetaForCaller(callerSub, month));
+      return ok<ScheduleMetaResponse>(await getScheduleMetaForCaller(callerSub, month));
     }
 
     return badRequest(`Unhandled route: ${method} ${rawPath}`);

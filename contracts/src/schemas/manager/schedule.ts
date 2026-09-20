@@ -49,11 +49,9 @@ export const ScheduleMetaResponse = z
   })
   .meta({ id: 'ScheduleMetaResponse' });
 
-// NOTE: the backend `getDraftSummary` currently returns `{ drafts: unknown[] }` —
-// the shape is not yet concretely typed in the service (the drafts themselves are
-// stripped `Shift` records). Registering `GET /manager/schedule/drafts` with a
-// concrete response schema would over-claim the wire shape, so it is declared as
-// an array of the manager shift response until the backend types it.
+// `getDraftSummary` in the backend is typed as this response, and the handler returns it via
+// `ok<ManagerScheduleDraftsResponse>(…)`, so the compiler enforces that the drafts are stripped
+// `Shift` records exactly as declared here.
 export const ManagerScheduleDraftsResponse = z
   .object({
     drafts: z.array(ManagerShiftResponse),

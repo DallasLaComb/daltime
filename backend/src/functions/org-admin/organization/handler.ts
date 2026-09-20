@@ -5,6 +5,7 @@ import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/respon
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getOrganization, updateOrganization } from './service.js';
+import type { OrgAdminOrganizationResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -20,14 +21,14 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   try {
     if (method === 'GET') {
-      return ok(await getOrganization(callerSub));
+      return ok<OrgAdminOrganizationResponse>(await getOrganization(callerSub));
     }
 
     if (method === 'PUT') {
       const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
       const body = parseWithContract(UpdateOrgAdminOrganizationBody, parsed.data);
-      return ok(await updateOrganization(callerSub, body));
+      return ok<OrgAdminOrganizationResponse>(await updateOrganization(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

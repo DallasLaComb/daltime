@@ -336,6 +336,29 @@ Delete only when this returns zero (or alias every importer in the same PR).
     (`tsconfig` includes `src` only); ~98 pre-existing typing errors in test fixtures — consider a
     `tsconfig.test.json` + CI step. Service-level `month`/`date` regex checks remain (see above).
 
+- **Response conformance — done 2026-09-20.** Requests were contract-enforced; responses were not
+  (`ok(data: unknown)` accepted anything). Now:
+  - `ok<T>` / `created<T>` are generic and **every** non-empty response call names its contract
+    type — `ok<ManagerShiftResponse>(await service.x())` — so `tsc` checks the service's return
+    value against `contracts/openapi.json`. 55 call sites across 23 handlers. The three shared
+    factories (`createShiftCrudHandler`, `createSubEntityLocationsHandler`, `createProfileHandler`)
+    are generic over the response type and each role names it at the call site.
+  - **Lint keeps it that way:** `backend/eslint.config.js` errors on a bare `ok(data)` /
+    `created(data)` in handlers (`ok('')` for preflight/empty bodies is exempt).
+  - Verified there is no `any` laundering: a type-aware `no-unsafe-argument` pass over all handlers is
+    clean (and was proven to fire on a probe). Status codes were also cross-checked by hand against
+    the declared 2xx codes (201 creates, 204 disable/enable, 200 empty-body deletes) — all agree.
+  - **Real drift the compiler found and fixed:** `getDraftSummary` returned `{ drafts: unknown[] }`
+    (now `ManagerScheduleDraftsResponse`); organization db functions returned `Record<string, any>`
+    (now `Organization`, cast once at the DynamoDB boundary); `createProfileService` erased the
+    record type through a `{ email; status }` cast (now preserved).
+  - **Limits — read before relying on this:** it is *structural, compile-time* checking. It does
+    not check runtime constraints (email/ISO-datetime formats, `.min(1)`, enum values at runtime),
+    and casts like `stripKeys(x) as { schedule?; updated_at? }` in
+    `employee/availability/service.ts` still narrow types and can mask drift. A runtime
+    conformance test (parse real handler output with the response schema) remains a possible
+    follow-up. `SwapShift` is exposed as `SwapShiftListing` (its schema id is `SwapShift`).
+
 ## 10. Agent execution protocol — stepped mode
 
 This migration is too large for one agent shot. Work is broken into discrete steps below.

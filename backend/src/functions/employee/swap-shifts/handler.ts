@@ -12,6 +12,7 @@ import {
 } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
 import { listSwapShifts, postSwapShift, claimSwapShift, cancelSwapShift } from './service.js';
+import type { SwapShiftListing, SwapShiftsListResponse } from '@daltime/contracts';
 
 /**
  * Lambda handler for all /employee/swap-shifts routes:
@@ -50,7 +51,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (method === 'GET') {
       // GET /employee/swap-shifts — list available swaps + own posted swaps.
       const result = await listSwapShifts(callerSub);
-      return ok(result);
+      return ok<SwapShiftsListResponse>(result);
     }
 
     if (method === 'POST') {
@@ -65,7 +66,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         // before it can reach a DynamoDB key expression.
         const { swapId } = parseWithContract(SwapShiftPathParams, { swapId: claimMatch[1] });
         const result = await claimSwapShift(callerSub, swapId);
-        return ok(result);
+        return ok<SwapShiftListing>(result);
       }
 
       // POST /employee/swap-shifts — post a shift for swap.
@@ -77,7 +78,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       if (!parsed.ok) return parsed.response;
       const body = parseWithContract(PostSwapShiftBody, parsed.data);
       const result = await postSwapShift(callerSub, body);
-      return created(result);
+      return created<SwapShiftListing>(result);
     }
 
     if (method === 'DELETE') {

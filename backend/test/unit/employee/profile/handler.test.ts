@@ -28,6 +28,7 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
   CognitoIdentityProviderClient: class MockCognitoClient {},
 }));
 
+import type { EmployeeProfileResponse } from '@daltime/contracts';
 import { handler } from '../../../../src/functions/employee/profile/handler.js';
 import {
   getProfile,
@@ -119,15 +120,17 @@ describe('OPTIONS — CORS preflight', () => {
 // ─── GET /employee/profile — happy path ───────────────────────────────────────
 
 describe('GET /employee/profile — Employee caller', () => {
-  const mockProfile = {
+  const mockProfile: EmployeeProfileResponse = {
     employee_id: 'emp-sub-aaa',
     first_name: 'Sam',
     last_name: 'Smith',
     email: 'sam@sunsetcafe.dev',
     phone: '555-0001',
     org_id: 'org-sunset',
+    manager_id: 'mgr-sub-aaa',
     status: 'CONFIRMED',
-    tier: 4,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
   };
 
   it('returns 200 with the profile when the caller is an Employee', async () => {

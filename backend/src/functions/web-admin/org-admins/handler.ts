@@ -13,6 +13,7 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listOrgAdmins, createOrgAdmin, disableOrgAdmin, enableOrgAdmin } from './service.js';
+import type { WebAdminOrgAdminListResponse, WebAdminOrgAdminResponse } from '@daltime/contracts';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -21,7 +22,7 @@ async function handlePost(orgId: string, rawBody: string | undefined, webAdminId
   const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(CreateOrgAdminBody, parsed.data);
-  return created(await createOrgAdmin(orgId, body, cognitoClient, webAdminId));
+  return created<WebAdminOrgAdminResponse>(await createOrgAdmin(orgId, body, cognitoClient, webAdminId));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -45,7 +46,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     // stamping on every mutating operation.
     const caller = await requireWebAdminWithLookup(event);
 
-    if (method === 'GET') return ok(await listOrgAdmins(orgId, cognitoClient));
+    if (method === 'GET') return ok<WebAdminOrgAdminListResponse>(await listOrgAdmins(orgId, cognitoClient));
     if (method === 'POST') return await handlePost(orgId, event.body, caller.web_admin_id);
     if (method === 'DELETE') {
       if (!userId) return badRequest('userId path parameter is required');

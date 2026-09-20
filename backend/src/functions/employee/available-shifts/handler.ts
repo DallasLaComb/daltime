@@ -5,6 +5,7 @@ import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { listAvailableShifts } from './service.js';
+import type { AvailableShiftsResponse } from '@daltime/contracts';
 
 /**
  * Lambda handler for GET /employee/available-shifts.
@@ -41,7 +42,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         AvailableShiftsQueryParams,
         event.queryStringParameters ?? {},
       );
-      return ok(await listAvailableShifts(callerSub, date));
+      return ok<AvailableShiftsResponse>(await listAvailableShifts(callerSub, date));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

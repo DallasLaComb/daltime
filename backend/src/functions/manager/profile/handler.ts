@@ -1,4 +1,4 @@
-import { UpdateManagerProfileBody } from '@daltime/contracts';
+import { UpdateManagerProfileBody, type ManagerProfileResponse } from '@daltime/contracts';
 import { createProfileHandler } from '../../shared/handler-factories.js';
 import * as service from './service.js';
 
@@ -8,7 +8,7 @@ import * as service from './service.js';
 // UpdateManagerProfileBody is the same schema that generates this route's entry
 // in contracts/openapi.json, so the request validation here and the published
 // contract cannot disagree.
-export const handler = createProfileHandler(
+export const handler = createProfileHandler<ManagerProfileResponse>(
   service,
   'manager profile handler',
   'Manager',

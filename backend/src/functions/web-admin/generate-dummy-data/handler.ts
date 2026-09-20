@@ -19,6 +19,7 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { generateDummyData } from './service.js';
+import type { GenerateDummyDataResponse } from '@daltime/contracts';
 
 /**
  * Handle POST /web-admin/generate-dummy-data.
@@ -29,7 +30,7 @@ async function handlePost(rawBody: string | undefined): Promise<ReturnType<typeo
   if (!parsed.ok) return parsed.response;
   const body = parseWithContract(GenerateDummyDataBody, parsed.data);
   const message = await generateDummyData(body);
-  return ok({ message });
+  return ok<GenerateDummyDataResponse>({ message });
 }
 
 /**

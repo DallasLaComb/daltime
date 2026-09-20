@@ -5,6 +5,7 @@ import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/respon
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { getAvailability, upsertAvailability } from './service.js';
+import type { EmployeeAvailabilityResponse } from '@daltime/contracts';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -23,7 +24,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       const availability = await getAvailability(callerSub);
       // Return null-safe: if no record exists yet, return an empty object so
       // the frontend knows to show an all-unavailable default state.
-      return ok(availability ?? {});
+      return ok<EmployeeAvailabilityResponse>(availability ?? {});
     }
 
     if (method === 'PUT') {
@@ -33,7 +34,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       // entry in contracts/openapi.json, so a body the published contract calls
       // invalid is rejected with a 400 before the service runs.
       const body = parseWithContract(UpsertAvailabilityBody, parsed.data);
-      return ok(await upsertAvailability(callerSub, body));
+      return ok<EmployeeAvailabilityResponse>(await upsertAvailability(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
