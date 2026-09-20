@@ -10,5 +10,6 @@ export * from './employee-availability.js';
 export * from './employees.js';
 export * from './locations.js';
 export * from './profile.js';
+export * from './schedule.js';
 export * from './shifts.js';
 export * from './shifts-needed.js';

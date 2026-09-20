@@ -1,42 +1,30 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
 
-export interface GenerateResult {
-  created: number;
-  unfilled: number;
-  draftCount: number;
-  maxDrafts: number;
-}
-
-export interface PublishResult {
-  published: number;
-}
-
-export interface ScheduleMeta {
-  draftCount: number;
-  maxDrafts: number;
-}
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type GenerateResult = ApiSchema<'GenerateDraftScheduleResponse'>;
+export type PublishResult = ApiSchema<'PublishScheduleResponse'>;
+export type ScheduleMeta = ApiSchema<'ScheduleMetaResponse'>;
 
 @Injectable({ providedIn: 'root' })
 export class ManagerScheduleService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/schedule`;
+  private readonly api = inject(ApiClient);
 
   getMeta(month: string): Observable<ScheduleMeta> {
-    return this.http.get<ScheduleMeta>(`${this.baseUrl}/meta`, { params: { month } });
+    return this.api.get('/manager/schedule/meta', { query: { month } });
   }
 
   generateDraft(month: string): Observable<GenerateResult> {
-    return this.http.post<GenerateResult>(`${this.baseUrl}/generate`, null, {
-      params: { month },
-    });
+    return this.api.post('/manager/schedule/generate', undefined, { query: { month } });
   }
 
   publish(month: string): Observable<PublishResult> {
-    return this.http.post<PublishResult>(`${this.baseUrl}/publish`, null, {
-      params: { month },
-    });
+    return this.api.post('/manager/schedule/publish', undefined, { query: { month } });
   }
 }

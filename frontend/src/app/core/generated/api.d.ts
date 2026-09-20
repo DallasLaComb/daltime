@@ -364,6 +364,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manager/schedule/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a draft schedule for a month
+         * @description Runs the auto-scheduler for the caller’s team: assigns employees to the month’s unfilled needs from their availability, writing draft shifts (and draft_failed sentinels for unfillable slots).
+         */
+        post: operations["generateManagerDraftSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/schedule/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a month’s draft shifts
+         * @description Promotes every `draft` shift in the month to `published`, making them visible to the assigned employees.
+         */
+        post: operations["publishManagerSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/schedule/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a month’s draft shifts
+         * @description Returns the month’s draft shifts so the manager can review before publishing.
+         */
+        get: operations["getManagerScheduleDrafts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/schedule/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get draft-generation budget for a month
+         * @description Returns how many draft generations remain for the caller in the given month.
+         */
+        get: operations["getManagerScheduleMeta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manager/shifts-needed": {
         parameters: {
             query?: never;
@@ -1329,6 +1409,30 @@ export interface components {
             updated_at: string;
             /** @description True when the assigned employee has offered this shift for pickup by peers. */
             available_for_pickup?: boolean;
+        };
+        GenerateDraftScheduleResponse: {
+            /** @description Draft shifts created this run. */
+            created: number;
+            /** @description Employee-slots still unfilled after this run. */
+            unfilled: number;
+            /** @description Sentinel slots with no eligible employee (draft_failed records created). */
+            draftFailed: number;
+            /** @description Running draft count for the manager+month. */
+            draftCount: number;
+            /** @description Hard cap on draft generations per manager per month. */
+            maxDrafts: number;
+        };
+        PublishScheduleResponse: {
+            /** @description How many draft shifts were published. */
+            published: number;
+        };
+        /** @description The month’s draft shifts. The backend returns `unknown[]` today; declared as ManagerShiftResponse[] once typed. */
+        ManagerScheduleDraftsResponse: {
+            drafts: components["schemas"]["ManagerShiftResponse"][];
+        };
+        ScheduleMetaResponse: {
+            draftCount: number;
+            maxDrafts: number;
         };
         /** @description Every shift-need the calling manager owns within the requested month. */
         ManagerShiftNeededListResponse: components["schemas"]["ManagerShiftNeededResponse"][];
@@ -2910,6 +3014,206 @@ export interface operations {
             };
             /** @description The requested record does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generateManagerDraftSchedule: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — the schedule month to operate on. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A summary of the generation run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateDraftScheduleResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishManagerSchedule: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — the schedule month to operate on. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How many draft shifts were published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishScheduleResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getManagerScheduleDrafts: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — the schedule month to operate on. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The month’s draft shifts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerScheduleDraftsResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getManagerScheduleMeta: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — the schedule month to operate on. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft-generation budget. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleMetaResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

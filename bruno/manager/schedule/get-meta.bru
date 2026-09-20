@@ -1,0 +1,15 @@
+meta {
+  name: Get Schedule Meta
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/manager/schedule/meta?month=2026-07
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{manager_token}}
+}
