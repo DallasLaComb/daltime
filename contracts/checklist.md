@@ -296,6 +296,20 @@ Delete only when this returns zero (or alias every importer in the same PR).
   production writeup): keep both identities (actor + subject), enforce read-only, time-bound
   the session, and centralize in middleware.
 
+- **Contract-enforcement sweep — done 2026-09-20.** Cross-checked every request schema in the
+  contract against backend usage. All request **bodies** were already validated via
+  `parseWithContract`. **Query strings were not**: `ManagerShiftsQuery`, `ManagerShiftNeededQuery`,
+  `OrgAdminShiftsQuery`, `ScheduleMonthQuery`, `ShiftsQueryParams`, `AvailableShiftsQueryParams`
+  were declared but unused (services re-implemented the regexes by hand). Now wired at the handler
+  boundary (shift-CRUD factory takes a `query` schema); the last two are newly exported. Tests:
+  `test/unit/shared/query-contract.test.ts` plus updated employee shifts/available-shifts tests.
+  **Deliberately not wired:** path-param schemas (`*IdPathParams`, `OrgAndUserPathParams`, …) —
+  they are bare `z.string()` (API Gateway guarantees the segment exists and handlers already reject
+  a missing id), so validating adds nothing; they stay documentation-only. **Follow-up:** the
+  now-redundant `month`/`date` regex checks inside `manager/{schedule,shifts,shifts-needed}`,
+  `org-admin/shifts` and `employee/{shifts,available-shifts}` services can be deleted (their unit
+  tests assert those messages, so it is a separate change).
+
 ## 10. Agent execution protocol — stepped mode
 
 This migration is too large for one agent shot. Work is broken into discrete steps below.

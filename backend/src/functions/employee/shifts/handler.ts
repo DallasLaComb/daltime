@@ -1,7 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { ShiftsQueryParams } from '@daltime/contracts';
 import { getCallerSub, getCallerGroups } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { listMyShifts } from './service.js';
 
 /**
@@ -36,10 +38,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const callerSub = getCallerSub(event);
 
     if (method === 'GET') {
-      const month = event.queryStringParameters?.['month'];
-      const date = event.queryStringParameters?.['date'];
-      const week = event.queryStringParameters?.['week'];
-      return ok(await listMyShifts(callerSub, { month, date, week }));
+      const query = parseWithContract(ShiftsQueryParams, event.queryStringParameters ?? {});
+      return ok(await listMyShifts(callerSub, query));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

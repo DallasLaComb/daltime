@@ -1,7 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { ScheduleMonthQuery } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, forbidden, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   generateDraftSchedule,
   publishSchedule,
@@ -23,9 +25,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
   if (!callerSub) return forbidden('Missing caller identity');
 
-  const month = event.queryStringParameters?.['month'];
-
   try {
+    const { month } = parseWithContract(ScheduleMonthQuery, event.queryStringParameters ?? {});
+
     // POST /manager/schedule/generate
     if (method === 'POST' && rawPath.endsWith('/generate')) {
       return ok(await generateDraftSchedule(callerSub, month));

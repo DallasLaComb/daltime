@@ -20,6 +20,8 @@ interface ShiftCrudService {
  * schema keeps the previous unvalidated behaviour.
  */
 export interface ShiftCrudSchemas {
+  /** Query string of `GET` (the `month` filter). */
+  query?: z.ZodType<{ month?: string }>;
   create?: z.ZodType<Record<string, unknown>>;
   update?: z.ZodType<Record<string, unknown>>;
 }
@@ -58,7 +60,9 @@ export function createShiftCrudHandler(
 
     try {
       if (method === 'GET') {
-        const month = event.queryStringParameters?.['month'];
+        const { month } = schemas.query
+          ? parseWithContract(schemas.query, event.queryStringParameters ?? {})
+          : { month: event.queryStringParameters?.['month'] };
         return ok(await service.listShifts(callerSub, month));
       }
       if (method === 'POST') return await handlePost(callerSub, event.body);

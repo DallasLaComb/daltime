@@ -1,7 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { OrgAdminShiftsQuery } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { listShifts } from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -18,7 +20,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   try {
     if (method === 'GET') {
-      const month = event.queryStringParameters?.['month'];
+      const { month } = parseWithContract(OrgAdminShiftsQuery, event.queryStringParameters ?? {});
       return ok(await listShifts(callerSub, month));
     }
 

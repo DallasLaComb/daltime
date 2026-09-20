@@ -1,7 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { AvailableShiftsQueryParams } from '@daltime/contracts';
 import { getCallerSub, getCallerGroups } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { listAvailableShifts } from './service.js';
 
 /**
@@ -35,7 +37,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const callerSub = getCallerSub(event);
 
     if (method === 'GET') {
-      const date = event.queryStringParameters?.['date'];
+      const { date } = parseWithContract(
+        AvailableShiftsQueryParams,
+        event.queryStringParameters ?? {},
+      );
       return ok(await listAvailableShifts(callerSub, date));
     }
 

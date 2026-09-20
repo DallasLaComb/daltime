@@ -10,7 +10,7 @@ const IMPLEMENTATION = [
 ];
 
 /** Query parameters accepted by `GET /employee/available-shifts`. */
-const AvailableShiftsQueryParams = z.object({
+export const AvailableShiftsQueryParams = z.object({
   date: DateOnly.meta({ description: 'The calendar day to look for available shifts.' }),
 });
 

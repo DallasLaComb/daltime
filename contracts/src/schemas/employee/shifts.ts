@@ -15,7 +15,7 @@ const IMPLEMENTATION = [
  * Exactly one of `month`, `date`, or `week` must be supplied — the handler
  * rejects zero or multiple with a 400 before querying DynamoDB.
  */
-const ShiftsQueryParams = z
+export const ShiftsQueryParams = z
   .object({
     month: z
       .string()
