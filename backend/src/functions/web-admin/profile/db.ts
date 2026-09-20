@@ -27,7 +27,10 @@ import type { WebAdminMetadata } from '../../shared/models/web-admin/web-admin.m
  * `requireWebAdminWithLookup` succeeds, but callers should handle it anyway).
  */
 export async function getWebAdminProfile(sub: string): Promise<WebAdminMetadata | null> {
-  return getMetadataRecord<WebAdminMetadata>(sub);
+  // `getMetadataRecord` constrains T to an index-signature shape that interfaces like
+  // `WebAdminMetadata` don't satisfy; the Item is cast to T inside the helper anyway,
+  // so bridge through `unknown` here (same pattern as `web-admin/shared/db.ts`).
+  return getMetadataRecord<Record<string, unknown>>(sub) as Promise<WebAdminMetadata | null>;
 }
 
 /**

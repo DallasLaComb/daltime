@@ -18,7 +18,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "generate": "npm run build && node dist/generate.js",
-    "check": "npm run generate && git diff --exit-code -- openapi.json"
+    "check": "npm run generate && git diff --exit-code -- openapi.json",
+    "sync": "node scripts/contracts-sync.mjs"
   },
   "prettier": {
     "printWidth": 100,

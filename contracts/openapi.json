@@ -2343,6 +2343,7 @@
             "name": "notificationId",
             "schema": {
               "type": "string",
+              "minLength": 1,
               "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
             },
             "required": true,
@@ -2516,6 +2517,7 @@
             "name": "notificationId",
             "schema": {
               "type": "string",
+              "minLength": 1,
               "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
             },
             "required": true,
@@ -2689,6 +2691,7 @@
             "name": "notificationId",
             "schema": {
               "type": "string",
+              "minLength": 1,
               "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
             },
             "required": true,
@@ -2862,6 +2865,7 @@
             "name": "notificationId",
             "schema": {
               "type": "string",
+              "minLength": 1,
               "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
             },
             "required": true,

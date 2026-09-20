@@ -68,13 +68,22 @@ export const MarkAllNotificationsReadResponse = z
     description: 'Confirms how many of the caller’s unread notifications were marked read.',
   });
 
-/** Path parameters for `PATCH /{role}/notifications/{notificationId}`. */
-const NotificationIdParam = z.object({
-  notificationId: z.string().meta({
-    description:
-      'Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. ' +
-      'Must be `encodeURIComponent`-encoded by the caller.',
-  }),
+/**
+ * Path parameters for `PATCH /{role}/notifications/{notificationId}`.
+ *
+ * Exported so the notifications handler can validate the raw path segment via
+ * `parseWithContract` (same pattern as `SwapShiftPathParams`), keeping the
+ * documented route shape and the runtime check in one place.
+ */
+export const MarkOneNotificationPathParams = z.object({
+  notificationId: z
+    .string()
+    .min(1, 'notificationId path parameter is required')
+    .meta({
+      description:
+        'Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. ' +
+        'Must be `encodeURIComponent`-encoded by the caller.',
+    }),
 });
 
 /** Every DynamoDB access issued by `GET /{role}/notifications` (`listNotifications` in service.ts). */
@@ -189,7 +198,7 @@ function registerNotificationOperations(role: RolePrefix): void {
       'with 400 before the service is called, rather than silently falling through to mark-all semantics.',
     implementation: IMPLEMENTATION,
     dynamodb: MARK_ONE_DYNAMODB,
-    requestParams: { path: NotificationIdParam },
+    requestParams: { path: MarkOneNotificationPathParams },
     responses: {
       200: {
         description: 'The notification, now marked read.',
@@ -207,3 +216,4 @@ for (const role of ROLE_PREFIXES) registerNotificationOperations(role);
 export type NotificationResponse = z.infer<typeof NotificationResponse>;
 export type NotificationListResponse = z.infer<typeof NotificationListResponse>;
 export type MarkAllNotificationsReadResponse = z.infer<typeof MarkAllNotificationsReadResponse>;
+export type MarkOneNotificationPathParams = z.infer<typeof MarkOneNotificationPathParams>;
