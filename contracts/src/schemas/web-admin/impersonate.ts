@@ -98,7 +98,7 @@ registerOperation('get', '/web-admin/impersonate/{userId}/context', {
   tags: ['web-admin'],
   purpose:
     'Final step of the impersonation picker: resolves the selected user’s identity and Cognito role, ' +
-    'which the frontend stores to rewrite subsequent role-prefixed calls through the impersonation proxy.',
+    'which the frontend stores and then sends as the `X-Impersonate-User` header on ordinary role requests.',
   implementation: IMPLEMENTATION,
   requestParams: { path: ImpersonateContextPathParams },
   dynamodb: [
@@ -121,18 +121,15 @@ registerOperation('get', '/web-admin/impersonate/{userId}/context', {
 });
 
 /**
- * Deliberately NOT registered: `GET/POST/PUT/PATCH/DELETE
- * /web-admin/impersonate/{userId}/{proxy+}`.
+ * There is deliberately no operation for "acting as" a user. That is done with the
+ * `X-Impersonate-User` header (`ImpersonationHeader` in `../common.ts`) on the ordinary
+ * employee / manager / org-admin operations, each resolved by `withImpersonation`
+ * (backend/src/functions/shared/impersonation.ts). An impersonated call therefore lands on
+ * its real, documented route with the real, documented response — there is no separate
+ * impersonate-prefixed surface to describe. This file covers only the picker.
  *
- * That catch-all is not a call target of its own — `impersonation.interceptor.ts`
- * rewrites role-prefixed requests into it at runtime, and `route-registry.ts`
- * re-dispatches each sub-path to the real role handler already documented under
- * its own route. Enumerating every reachable sub-path here would duplicate ~60
- * existing operations under an impersonate prefix, none of which any call site
- * references by name, at substantial drift risk and zero compile-time benefit.
- * The wire shapes of a proxied call are identical to the real route it forwards
- * to; see the blueprint at
- * backend/src/functions/web-admin/impersonate/0-impersonate.blueprint.md.
+ * (Until phase 3 of the redesign, requests were instead rewritten into an undocumentable
+ * `/web-admin/impersonate/{userId}/{proxy+}` catch-all. It no longer exists.)
  */
 
 export type ImpersonatableRole = z.infer<typeof ImpersonatableRole>;

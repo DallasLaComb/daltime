@@ -19,8 +19,8 @@ import { formatNotificationTimestamp, getNotificationDisplay } from './notificat
  * Role resolution mirrors the navbar's effectiveRole() pattern: when a
  * Web-Admin is impersonating another user, ImpersonationService.viewingAs()
  * is set and its role is used, so the page automatically calls the impersonated
- * role's /notifications endpoint. The impersonation interceptor then rewrites
- * that request transparently — no notifications-specific impersonation code
+ * role's /notifications endpoint. The impersonation interceptor then adds the
+ * `X-Impersonate-User` header transparently — no notifications-specific impersonation code
  * is needed here.
  */
 @Component({

@@ -7,10 +7,8 @@ import { ImpersonationService } from '../services/impersonation.service';
 import { environment } from '../../../environments/environment';
 
 /**
- * Phase 2 runs two transports in parallel: the legacy URL rewrite through the
- * web-admin proxy AND the `X-Impersonate-User` header the contract declares.
- * These tests pin both so the phase 3 cutover (drop the rewrite) is a visible,
- * deliberate test change.
+ * Impersonation is header-only: role requests keep their real URL and carry
+ * `X-Impersonate-User`. The URL must never be rewritten (the old proxy no longer exists).
  */
 
 const BASE = environment.api.baseUrl;
@@ -37,12 +35,34 @@ describe('impersonationInterceptor', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('rewrites the URL and sets the header while impersonating', () => {
+  it('sets the header and leaves the URL untouched while impersonating', () => {
     viewingAs.set(TARGET);
     http.get(`${BASE}/manager/shifts`).subscribe();
 
-    const req = httpMock.expectOne(`${BASE}/web-admin/impersonate/user-42/manager/shifts`);
+    const req = httpMock.expectOne(`${BASE}/manager/shifts`);
     expect(req.request.headers.get('X-Impersonate-User')).toBe('user-42');
+    req.flush({});
+  });
+
+  it.each(['/org-admin/locations', '/manager/shifts-needed', '/employee/profile'])(
+    'sets the header on the role route %s without rewriting it',
+    (path) => {
+      viewingAs.set(TARGET);
+      http.get(`${BASE}${path}`).subscribe();
+
+      const req = httpMock.expectOne(`${BASE}${path}`);
+      expect(req.request.headers.get('X-Impersonate-User')).toBe('user-42');
+      req.flush({});
+    },
+  );
+
+  it('never routes a request through /web-admin/impersonate/{userId}/… (the proxy is gone)', () => {
+    viewingAs.set(TARGET);
+    http.post(`${BASE}/manager/shifts`, {}).subscribe();
+
+    // A rewrite would fail expectOne here, because no request to the original URL would exist.
+    const req = httpMock.expectOne(`${BASE}/manager/shifts`);
+    expect(req.request.url).not.toContain('/impersonate/');
     req.flush({});
   });
 

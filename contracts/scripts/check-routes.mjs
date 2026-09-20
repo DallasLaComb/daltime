@@ -23,18 +23,14 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /**
- * Template routes that intentionally have no operation in the contract.
- * Matched exactly against `METHOD /path` as written in the template.
+ * Template routes that intentionally have no operation in the contract, matched exactly against
+ * `METHOD /path` as written in the template, each with the reason it is allowed.
+ *
+ * Empty since the impersonation `{proxy+}` catch-all was removed (contracts/checklist.md §11,
+ * phase 3): every route in the template is now a documented operation. Keep it that way — an
+ * entry here means a route the frontend types and the access-pattern audit cannot see.
  */
-const ALLOWED_UNDOCUMENTED = new Map([
-  // Impersonation catch-all: not a call target. The frontend interceptor rewrites role
-  // paths into it and route-registry.ts re-dispatches to already-documented role ops,
-  // so enumerating it would duplicate every downstream operation. Removed by phase 3 of
-  // the impersonation redesign (contracts/checklist.md §11).
-  ...['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(
-    (m) => [`${m} /web-admin/impersonate/{userId}/{proxy+}`, 'impersonation proxy (§9, §11)'],
-  ),
-]);
+const ALLOWED_UNDOCUMENTED = new Map();
 
 /** `METHOD /path` for every non-OPTIONS HttpApi event in the SAM template. */
 export function templateRoutes(yaml) {

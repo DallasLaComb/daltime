@@ -36,13 +36,19 @@ export const ErrorResponse = z
  * by `registerRoleOperation` (see `registry.ts`), so the ~60 role ops do not each
  * copy it. Header names are lower-case because that is how API Gateway HTTP APIs
  * deliver them to the Lambda.
+ *
+ * Resolved by `withImpersonation` in every role Lambda. Outcomes, in order: 403 unless the
+ * caller is a provisioned ACTIVE WebAdmin; 403 for any method but GET; 400 for a malformed id;
+ * 404 unless the id is a real member of the role the route serves.
  */
 export const ImpersonationHeader = z
   .object({
     'x-impersonate-user': z.string().optional().meta({
       description:
-        'WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, ' +
-        'read-only (non-GET rejected). The actor is recorded server-side.',
+        'WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any ' +
+        'non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, ' +
+        '400 if the id is malformed, and 404 if the user is not a member of the role this route ' +
+        'serves. The acting WebAdmin is recorded server-side.',
     }),
   })
   .meta({ id: 'ImpersonationHeader' });

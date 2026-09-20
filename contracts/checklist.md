@@ -260,8 +260,8 @@ Delete only when this returns zero (or alias every importer in the same PR).
 - [x] **Route drift check** — `contracts/scripts/check-routes.mjs` (`npm run check:routes`, also a
   step in `contracts:sync` and the CI `contracts` job) diffs every `infra/template.yaml` route
   against `openapi.json` in both directions. Intentional gaps go in `ALLOWED_UNDOCUMENTED` with a
-  reason; a stale allowance also fails. Currently only the 5 impersonation `{proxy+}` routes
-  (remove with impersonation phase 3).
+  reason; a stale allowance also fails. **Now empty** — the 5 impersonation `{proxy+}` routes it
+  once excused were removed in impersonation phase 3, so every template route is a documented op.
 - [x] **Backend test type-check** — `backend/tsconfig.test.json` + `npm run typecheck:tests`
   (plain strict `tsc`), in CI. vitest strips types without checking them, so this is the only
   thing that catches a test fixture drifting from the contract. It started at 98 errors, which
@@ -294,8 +294,9 @@ Delete only when this returns zero (or alias every importer in the same PR).
   `/web-admin/impersonate/{userId}/{proxy+}`, and `route-registry.ts` re-dispatches to already-
   documented role ops), leave it undocumented with an explanatory comment — enumerating
   duplicates every downstream op at drift risk with no compile-time benefit. Step 17 applied
-  the latter. Long-term: generate `infra/template.yaml` events *and* `route-registry.ts` from
-  one route table so impersonation cannot drift from the real routes.
+  the latter. **Superseded (phase 3):** the impersonation catch-all, `route-registry.ts` and the
+  event synthesizer no longer exist — impersonation is an `X-Impersonate-User` header on the real
+  routes (§11), so there is nothing left to enumerate or keep in sync.
 - **Decision pending — standardize `ErrorResponse`/`errorResponses` on every op** during Wave 3
   (infra exists in `contracts/src/schemas/common.ts`; adopt as you create each domain).
 - **Impersonation redesign — researched 2026-09-20, phase 1 shipped.** Full phased plan and
@@ -461,7 +462,7 @@ phases 1–2 are proven. Do **not** combine phases.
 |---|---|---|---|---|---|
 | 1 | **Actor + read-only on the existing proxy** | ✅ done | `impersonation/phase1-actor-readonly` | `717e693` | `synthesize-event.ts` carries actor as flattened RFC 8693 `act_sub` / `act_web_admin_id` claims (flattened because API Gateway coerces every JWT claim to a primitive); `handler.ts` rejects any non-GET with `403 "Impersonation sessions are read-only"` before resolving the target. Tests added; blueprint updated. No transport change — this is the safety floor. |
 | 2 | **Contract the impersonation header (no behaviour change)** | ✅ done | `contracts/impersonation-header` | `79e3c70` | `ImpersonationHeader` added to `contracts/src/schemas/common.ts`; new `registerRoleOperation()` in `registry.ts` merges it into `requestParams.header` (keeps any existing path/query). Employee/manager/org-admin schemas and the notifications role loop (all but `web-admin`) switched to it → **68 ops** carry `x-impersonate-user` in `openapi.json` / `api.d.ts`; web-admin + health untouched (verified by script: header present ⇔ path is `/employee\|manager\|org-admin/*`). Interceptor now sets `X-Impersonate-User` *and* still rewrites the URL (parallel run); spec added. **Not in the original plan but required:** added `X-Impersonate-User` to API Gateway `CorsConfiguration.AllowHeaders` (`infra/template.yaml`) and `response.ts` — without it browsers fail preflight on every impersonated call, so **deploy infra before the frontend**. Backend ignores the header until phase 3. Sync green; frontend 534 tests pass. 7 backend handler tests that were already failing (stale hand-written validation messages in org-admin locations, notifications, web-admin organizations/profile) were fixed in a follow-up: they now derive the expected 400 message from the contract schema via `backend/test/unit/helpers/contract-error.ts` and assert the service is never reached. Backend 868/868 green. |
-| 3 | **Cut over to header dispatch; delete the proxy** | ⬜ pending | `impersonation/header-dispatch` | — | Frontend interceptor stops rewriting paths and only sets the header. `shared/auth.ts` gains an async `resolveCaller(event)` that all role handlers/factories use in place of `getCallerSub`: it authenticates the WebAdmin, resolves the target's role, enforces read-only, and returns `{ effectiveSub, effectiveGroups, actor }`. Delete `route-registry.ts`, `synthesize-event.ts`, and the `{proxy+}` template events; keep `GET /web-admin/impersonate/users` + `/context` as the picker. **Security-sensitive:** requires a full auth-path test pass and a staged rollback plan. |
+| 3 | **Cut over to header dispatch; delete the proxy** | ✅ done (2 commits — see §11.3 for the required 2-release rollout) | `contracts/impersonation-header` | `0e9c9d4` (3a) + `PHASE3B_SHA` (3b) | **3a** `0e9c9d4`: `shared/impersonation.ts` `withImpersonation()` wraps all 21 employee/manager/org-admin/notifications handlers; backend-only, proxy untouched, safe to ship alone. **3b**: interceptor is header-only; deleted the `{proxy+}` template events, `route-registry.ts`, `synthesize-event.ts`, `shared/route-match.ts` + their tests; impersonate Lambda is now only the picker; `check-routes` allowlist is empty. **Deviation from the plan:** no async `resolveCaller()` replacing `getCallerSub` at ~30 call sites — a wrapper at each Lambda entrypoint substitutes the claims once, so `getCallerSub`/`getCallerGroups` and every service stay untouched (far smaller blast radius, same single chokepoint). **Improvements:** the target's role is now *verified* (must be a real member of the route's role via DynamoDB) instead of trusted from the URL; a non-WebAdmin sending the header gets 403 rather than a silent ignore; header id is charset-validated before it touches a DynamoDB key; structured audit log line per impersonated call; 4 role Lambdas that were never in the registry (`availability-overrides`, `available-shifts`, `swap-shifts`, `employee-locations`) are now impersonatable. 46 adversarial `withImpersonation` tests, mutation-checked. |
 | 4 | **Time-bound sessions + audit log (north star)** | ⬜ pending | `impersonation/session-token` | — | App-issued, short-lived impersonation token (Pigment / RFC 8693). Cognito cannot mint a JWT with another user's `sub`, so this needs a custom Lambda authorizer or an app-signed token. Adds expiry + session audit records. Largest phase; only after 1–3 are stable. |
 
 ### 11.2 Phase 2 detail (smallest next step)
@@ -485,16 +486,37 @@ phases 1–2 are proven. Do **not** combine phases.
 5. Run `node contracts/scripts/contracts-sync.mjs`; it must be green. Verify generated
    `api.d.ts` includes the header parameter.
 
-### 11.3 Phase 3 detail (cutover — do only when ready)
+### 11.3 Phase 3 detail — as built
 
-- Introduce `resolveCaller(event)` in `backend/src/functions/shared/auth.ts`; migrate
-  `getCallerSub` call sites in handlers and `handler-factories.ts` to it.
-- The read-only and actor logic currently in `web-admin/impersonate/*` moves into that helper;
-  `handler.ts` shrinks to the picker routes (`/users`, `/context`).
-- Remove from `infra/template.yaml`: `ProxyAllGet/Post/Put/Patch/Delete` and `OptionsProxyAll`.
-- Delete `route-registry.ts`, `synthesize-event.ts`, and their tests; add tests for
-  `resolveCaller` (actor resolution, read-only rejection, role derivation without URL prefix).
-- **Rollback:** keep the deletion in the same commit so reverting restores the proxy atomically.
+**Mechanism.** `withImpersonation(handler)` (`backend/src/functions/shared/impersonation.ts`) wraps
+every employee / manager / org-admin / notifications handler. No header → pass-through. Header →
+checks in order (ACTIVE provisioned WebAdmin → GET only → valid id → role route → target is a real
+member of that role), then calls the real handler with the target's `sub`/`cognito:groups` and the
+actor as flattened RFC 8693 `act_*` claims. Full contract: the blueprint at
+`backend/src/functions/web-admin/impersonate/0-impersonate.blueprint.md`.
+
+**Why a wrapper and not `resolveCaller()`.** The original plan migrated every `getCallerSub` call
+site to an async `resolveCaller(event)`. Substituting the claims once at the Lambda entrypoint gives
+the same single chokepoint without touching ~30 call sites, the shared factories, or any service —
+and an unwrapped handler fails safe (header ignored → the WebAdmin's own role check answers 403).
+
+**Rollout — two releases, in this order (CD deploys the SAM stack *before* syncing the frontend):**
+1. **Release A = commit `0e9c9d4` (3a).** Backend accepts the header; the proxy still exists, so
+   the old (rewriting) frontend and the header both work. Nothing user-visible changes. Deploy and
+   verify in dev: impersonate each role, confirm a `"audit":"impersonation"` line in the role
+   Lambda's CloudWatch logs and that a Manager token sending the header gets 403.
+2. **Release B = commit 3b.** Header-only frontend + proxy removed. Shipping B *before* A is
+   what breaks impersonation (old frontend → deleted proxy → 404), so do not squash A and B into a
+   single deploy, and let A's frontend cache age out before B if browsers may hold the old bundle.
+
+**Rollback.** B: `git revert` restores the proxy events, registry, synthesizer and the rewriting
+interceptor in one commit (A's wrappers stay and are harmless — no header, no effect); redeploy.
+A: `git revert` removes the wrappers; the proxy path is unaffected because it never depended on
+them. Neither needs a data migration.
+
+**Not done here (phase 4):** app-issued time-bound impersonation tokens and a persisted audit
+trail. Today's audit is one structured `console.info` line per impersonated call (actor, target,
+role, method, path).
 
 ### 11.4 Definition of done per phase
 
@@ -504,4 +526,4 @@ phases 1–2 are proven. Do **not** combine phases.
 - [ ] No raw `HttpClient` reintroduced; `ApiClient` still drives all role calls
 - [ ] `contracts/checklist.md` §11.1 updated with status + short SHA
 - [ ] Work committed to the named branch; no push/PR unless asked
-- [ ] For phase 3: rollback path exercised or clearly documented
+- [ ] For phase 3: rollback path exercised or clearly documented (documented in §11.3; the revert itself has not been exercised)

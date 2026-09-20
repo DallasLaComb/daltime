@@ -47,9 +47,9 @@ const NOTIFICATION_BY_ID_PATH = {
  * four roles — the caller's `effectiveRole()` (same signal the navbar already
  * uses for Web-Admin emulation parity) determines which `{role}`-prefixed
  * route is hit. When Web-Admin is impersonating, `impersonationInterceptor`
- * (registered in app.config.ts) transparently rewrites the resulting
- * `/org-admin|manager|employee/...` URL into the web-admin impersonation
- * proxy — this service does not need to know about impersonation itself,
+ * (registered in app.config.ts) transparently adds the `X-Impersonate-User`
+ * header to the resulting `/org-admin|manager|employee/...` request — this
+ * service does not need to know about impersonation itself,
  * it always builds the URL for the real effective role, exactly like every
  * other role-scoped service in this app. `ApiClient` wraps Angular's
  * `HttpClient`, so that interceptor still sees every request made here.

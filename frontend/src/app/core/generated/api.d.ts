@@ -869,7 +869,7 @@ export interface paths {
         };
         /**
          * Fetch a user’s context for starting impersonation
-         * @description Final step of the impersonation picker: resolves the selected user’s identity and Cognito role, which the frontend stores to rewrite subsequent role-prefixed calls through the impersonation proxy.
+         * @description Final step of the impersonation picker: resolves the selected user’s identity and Cognito role, which the frontend stores and then sends as the `X-Impersonate-User` header on ordinary role requests.
          */
         get: operations["getWebAdminImpersonateContext"];
         put?: never;
@@ -2274,7 +2274,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2315,7 +2315,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2369,7 +2369,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2410,7 +2410,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2467,7 +2467,7 @@ export interface operations {
                 date: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2517,7 +2517,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2567,7 +2567,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2637,7 +2637,7 @@ export interface operations {
                 week?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2687,7 +2687,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2728,7 +2728,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -2800,7 +2800,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -2871,7 +2871,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -2940,7 +2940,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3002,7 +3002,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3064,7 +3064,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3105,7 +3105,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3168,7 +3168,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3234,7 +3234,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3294,7 +3294,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3354,7 +3354,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3395,7 +3395,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3445,7 +3445,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3511,7 +3511,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3561,7 +3561,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3615,7 +3615,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3681,7 +3681,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -3744,7 +3744,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3797,7 +3797,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3850,7 +3850,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3903,7 +3903,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -3956,7 +3956,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4006,7 +4006,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4060,7 +4060,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4126,7 +4126,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4186,7 +4186,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4227,7 +4227,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4290,7 +4290,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4356,7 +4356,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4416,7 +4416,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4476,7 +4476,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4517,7 +4517,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4571,7 +4571,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4637,7 +4637,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4697,7 +4697,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4738,7 +4738,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -4801,7 +4801,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4867,7 +4867,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4927,7 +4927,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -4987,7 +4987,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -5037,7 +5037,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -5100,7 +5100,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -5150,7 +5150,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -5216,7 +5216,7 @@ export interface operations {
                 month?: string;
             };
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -5257,7 +5257,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -5310,7 +5310,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -5385,7 +5385,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -5438,7 +5438,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -5491,7 +5491,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -5566,7 +5566,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -6535,7 +6535,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6567,7 +6567,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6599,7 +6599,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -6652,7 +6652,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6684,7 +6684,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6716,7 +6716,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
@@ -6769,7 +6769,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6801,7 +6801,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path?: never;
@@ -6833,7 +6833,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
                 "x-impersonate-user"?: string;
             };
             path: {
