@@ -64,7 +64,7 @@ function toMins(time: string): number {
 
 function effectiveDayAvail(
   date: string,
-  schedule: WeeklySchedule | null | undefined,
+  schedule: Record<string, DayAvailability> | null | undefined,
   overrides: Record<string, DayAvailability> | null | undefined,
 ): DayAvailability | null {
   if (overrides?.[date]) return overrides[date];

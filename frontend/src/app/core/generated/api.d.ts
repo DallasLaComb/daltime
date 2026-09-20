@@ -180,6 +180,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manager/employees/{employeeId}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a managed employee's recurring weekly availability
+         * @description Backs the manager schedule screen (frontend/src/app/features/manager/schedule), which shows the availability of each employee reporting to the caller. Read-only — the employee edits their own schedule elsewhere.
+         */
+        get: operations["getManagerEmployeeAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/employees/{employeeId}/availability/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a managed employee's date-specific availability overrides
+         * @description Backs the manager schedule screen, showing the per-date overrides of each employee reporting to the caller. Read-only — the employee edits their own overrides elsewhere.
+         */
+        get: operations["getManagerEmployeeAvailabilityOverrides"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manager/employees": {
         parameters: {
             query?: never;
@@ -951,6 +991,30 @@ export interface components {
          * @enum {string}
          */
         SwapStatus: "open" | "claimed" | "cancelled";
+        /** @description A managed employee's recurring weekly availability. `schedule`/`updated_at` are null when none has been saved. */
+        ManagerEmployeeAvailabilityResponse: {
+            employee_id?: string;
+            org_id?: string;
+            schedule?: components["schemas"]["WeeklyScheduleOutput"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at?: string;
+        };
+        /** @description A managed employee's date-specific availability overrides. `overrides` defaults to {} and `updated_at` is null when none have been saved. */
+        ManagerEmployeeAvailabilityOverridesResponse: {
+            employee_id?: string;
+            org_id?: string;
+            overrides?: components["schemas"]["DateOverridesOutput"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at?: string;
+        };
         /** @description Every employee reporting to the calling Manager. */
         ManagerEmployeeListResponse: components["schemas"]["ManagerEmployeeResponse"][];
         /** @description An employee record as returned to a Manager, enriched with live Cognito status. */
@@ -1789,6 +1853,124 @@ export interface operations {
             };
             /** @description The swap listing is no longer open — already claimed, cancelled, or a duplicate. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getManagerEmployeeAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the managed employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The employee's weekly availability. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerEmployeeAvailabilityResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getManagerEmployeeAvailabilityOverrides: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the managed employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The employee's availability overrides. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerEmployeeAvailabilityOverridesResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

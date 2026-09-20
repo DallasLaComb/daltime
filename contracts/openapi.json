@@ -1097,6 +1097,198 @@
         }
       }
     },
+    "/manager/employees/{employeeId}/availability": {
+      "get": {
+        "operationId": "getManagerEmployeeAvailability",
+        "summary": "Get a managed employee's recurring weekly availability",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager schedule screen (frontend/src/app/features/manager/schedule), which shows the availability of each employee reporting to the caller. Read-only — the employee edits their own schedule elsewhere.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Fetches the employee to confirm they report to the caller."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<employeeId> AND SK = AVAILABILITY",
+            "note": "Point read of the employee's weekly availability. Returns a null-schedule fallback when none exists yet."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the managed employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the managed employee."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The employee's weekly availability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerEmployeeAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/employees/{employeeId}/availability/overrides": {
+      "get": {
+        "operationId": "getManagerEmployeeAvailabilityOverrides",
+        "summary": "Get a managed employee's date-specific availability overrides",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager schedule screen, showing the per-date overrides of each employee reporting to the caller. Read-only — the employee edits their own overrides elsewhere.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Fetches the employee to confirm they report to the caller."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<employeeId> AND SK = AVAILABILITY_OVERRIDES",
+            "note": "Point read of the employee's overrides. Returns an empty-overrides fallback when none exist yet."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the managed employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the managed employee."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The employee's availability overrides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerEmployeeAvailabilityOverridesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/employees": {
       "get": {
         "operationId": "listManagerEmployees",
@@ -4516,6 +4708,52 @@
           "cancelled"
         ],
         "description": "Lifecycle status of a shift swap listing."
+      },
+      "ManagerEmployeeAvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/WeeklyScheduleOutput"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A managed employee's recurring weekly availability. `schedule`/`updated_at` are null when none has been saved."
+      },
+      "ManagerEmployeeAvailabilityOverridesResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/DateOverridesOutput"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A managed employee's date-specific availability overrides. `overrides` defaults to {} and `updated_at` is null when none have been saved."
       },
       "ManagerEmployeeListResponse": {
         "type": "array",
