@@ -1,0 +1,11 @@
+meta {
+  name: List Employee Locations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/org-admin/employees/{{employee_id}}/locations
+  body: none
+  auth: none
+}

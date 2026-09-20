@@ -544,6 +544,54 @@ export interface paths {
         patch: operations["enableOrgAdminEmployee"];
         trace?: never;
     };
+    "/org-admin/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling org-admin's locations
+         * @description Backs the org-admin locations screen (frontend/src/app/features/org-admin/locations).
+         */
+        get: operations["listOrgAdminLocations"];
+        put?: never;
+        /**
+         * Create a location
+         * @description Creates a location for the org-admin’s organization.
+         */
+        post: operations["createOrgAdminLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org-admin/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a location
+         * @description Saves edits to a location in the org-admin’s organization.
+         */
+        put: operations["updateOrgAdminLocation"];
+        post?: never;
+        /**
+         * Delete a location
+         * @description Removes a location from the org-admin’s organization.
+         */
+        delete: operations["deleteOrgAdminLocation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org-admin/managers": {
         parameters: {
             query?: never;
@@ -639,6 +687,94 @@ export interface paths {
         put: operations["updateOrgAdminProfile"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org-admin/managers/{managerId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a manager's assigned locations
+         * @description Lists the locations assigned to a given manager under the org-admin's organization.
+         */
+        get: operations["listManagerAssignedLocations"];
+        put?: never;
+        /**
+         * Assign a location to a manager
+         * @description Assigns a location to a manager in the org-admin's organization.
+         */
+        post: operations["assignManagerLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org-admin/managers/{managerId}/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a location from a manager
+         * @description Removes a location assignment from a manager in the org-admin's organization.
+         */
+        delete: operations["removeManagerLocation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org-admin/employees/{employeeId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a employee's assigned locations
+         * @description Lists the locations assigned to a given employee under the org-admin's organization.
+         */
+        get: operations["listEmployeeAssignedLocations"];
+        put?: never;
+        /**
+         * Assign a location to a employee
+         * @description Assigns a location to a employee in the org-admin's organization.
+         */
+        post: operations["assignEmployeeLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org-admin/employees/{employeeId}/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a location from a employee
+         * @description Removes a location assignment from a employee in the org-admin's organization.
+         */
+        delete: operations["removeEmployeeLocation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1018,6 +1154,16 @@ export interface components {
             /** @description Empty string clears the employee’s manager assignment. */
             manager_id?: string;
         };
+        /** @description Fields accepted to create a new location. */
+        CreateOrgAdminLocationBody: {
+            name: string;
+            address?: string;
+        };
+        /** @description Partial update of a location’s name or address. Empty address clears it. */
+        UpdateOrgAdminLocationBody: {
+            name?: string;
+            address?: string;
+        };
         /** @description Fields accepted to register a new manager via Cognito. */
         CreateManagerBody: {
             /**
@@ -1046,6 +1192,10 @@ export interface components {
         UpdateOrgAdminProfileBody: {
             /** @description The OrgAdmin's display name. */
             name: string;
+        };
+        /** @description The location to assign to the manager/employee. */
+        AssignUserLocationBody: {
+            location_id: string;
         };
         /** @description The calling employee's date-specific availability overrides. Empty object when none exist yet. */
         EmployeeAvailabilityOverridesResponse: {
@@ -1504,6 +1654,29 @@ export interface components {
              */
             updated_at: string;
         };
+        /** @description Every location in the calling OrgAdmin’s organization. */
+        OrgAdminLocationListResponse: components["schemas"]["OrgAdminLocationResponse"][];
+        /** @description A location in the calling OrgAdmin’s organization. */
+        OrgAdminLocationResponse: {
+            location_id: string;
+            org_id: string;
+            name: string;
+            address?: string;
+            /** @description user_id of the creator. */
+            created_by: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at?: string;
+        };
         /** @description Every manager in the caller OrgAdmin’s organization. */
         OrgAdminManagerListResponse: components["schemas"]["OrgAdminManagerResponse"][];
         /** @description A manager record as returned to an OrgAdmin, enriched with live Cognito status. */
@@ -1571,6 +1744,29 @@ export interface components {
              */
             created_at: string;
         };
+        /** @description The locations assigned to a manager or employee. */
+        UserLocationListResponse: components["schemas"]["UserLocationResponse"][];
+        UserLocationResponse: {
+            user_id: string;
+            user_type: components["schemas"]["UserLocationType"];
+            location_id: string;
+            /** @description Denormalized for cheap reads. */
+            location_name: string;
+            org_id: string;
+            /** @description OrgAdmin user_id who made the assignment. */
+            assigned_by: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            assigned_at: string;
+        };
+        /**
+         * @description Kind of user a location is assigned to.
+         * @enum {string}
+         */
+        UserLocationType: "MANAGER" | "EMPLOYEE";
         /** @description Confirms the API Gateway route and Lambda runtime are reachable. */
         HealthResponse: {
             /** @constant */
@@ -3728,6 +3924,215 @@ export interface operations {
             };
         };
     };
+    listOrgAdminLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every location in the org-admin’s organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminLocationListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createOrgAdminLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrgAdminLocationBody"];
+            };
+        };
+        responses: {
+            /** @description The created location. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminLocationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateOrgAdminLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The location’s location_id. */
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrgAdminLocationBody"];
+            };
+        };
+        responses: {
+            /** @description The updated location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminLocationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteOrgAdminLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The location’s location_id. */
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Location deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listOrgAdminManagers: {
         parameters: {
             query?: never;
@@ -4187,6 +4592,350 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listManagerAssignedLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The manager's assigned locations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLocationListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assignManagerLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignUserLocationBody"];
+            };
+        };
+        responses: {
+            /** @description The created assignment. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLocationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Manager/employee already assigned to this location. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeManagerLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the manager. */
+                managerId: string;
+                /** @description The location’s location_id. */
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assignment removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEmployeeAssignedLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The employee's assigned locations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLocationListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assignEmployeeLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignUserLocationBody"];
+            };
+        };
+        responses: {
+            /** @description The created assignment. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLocationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Manager/employee already assigned to this location. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeEmployeeLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+                /** @description The location’s location_id. */
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assignment removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {

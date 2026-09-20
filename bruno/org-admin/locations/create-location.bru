@@ -1,0 +1,18 @@
+meta {
+  name: Create Location
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/org-admin/locations
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Downtown",
+    "address": "100 Main St"
+  }
+}

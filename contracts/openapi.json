@@ -3497,6 +3497,335 @@
         }
       }
     },
+    "/org-admin/locations": {
+      "get": {
+        "operationId": "listOrgAdminLocations",
+        "summary": "List the calling org-admin's locations",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin locations screen (frontend/src/app/features/org-admin/locations).",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/locations/handler.ts",
+          "backend/src/functions/org-admin/locations/service.ts",
+          "backend/src/functions/org-admin/locations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, LOCATION#)",
+            "note": "Lists the org’s locations; key attributes are stripped from each row."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every location in the org-admin’s organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminLocationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgAdminLocation",
+        "summary": "Create a location",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Creates a location for the org-admin’s organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/locations/handler.ts",
+          "backend/src/functions/org-admin/locations/service.ts",
+          "backend/src/functions/org-admin/locations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and user_id (creator)."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Primary record with created_by/created_at/updated_at."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrgAdminLocationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminLocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/locations/{locationId}": {
+      "put": {
+        "operationId": "updateOrgAdminLocation",
+        "summary": "Update a location",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Saves edits to a location in the org-admin’s organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/locations/handler.ts",
+          "backend/src/functions/org-admin/locations/service.ts",
+          "backend/src/functions/org-admin/locations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Fetches the location to confirm it exists."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "SETs name/address (or REMOVEs address when empty) plus updated_at."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locationId",
+            "schema": {
+              "type": "string",
+              "description": "The location’s location_id."
+            },
+            "required": true,
+            "description": "The location’s location_id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrgAdminLocationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminLocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteOrgAdminLocation",
+        "summary": "Delete a location",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Removes a location from the org-admin’s organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/locations/handler.ts",
+          "backend/src/functions/org-admin/locations/service.ts",
+          "backend/src/functions/org-admin/locations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Confirms the location exists."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Deletes the location record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locationId",
+            "schema": {
+              "type": "string",
+              "description": "The location’s location_id."
+            },
+            "required": true,
+            "description": "The location’s location_id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Location deleted."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org-admin/managers": {
       "get": {
         "operationId": "listOrgAdminManagers",
@@ -4265,6 +4594,608 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/managers/{managerId}/locations": {
+      "get": {
+        "operationId": "listManagerAssignedLocations",
+        "summary": "List a manager's assigned locations",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Lists the locations assigned to a given manager under the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<managerId> AND begins_with(SK, LOCATION#)",
+            "note": "Lists the entity’s assigned locations with key attributes stripped."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The manager's assigned locations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLocationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "assignManagerLocation",
+        "summary": "Assign a location to a manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Assigns a location to a manager in the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and user_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
+            "note": "Verifies the entity belongs to the caller’s org."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Verifies the location belongs to the caller’s org."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<managerId> AND SK = LOCATION#<locationId>",
+            "note": "Writes the assignment record with denormalized location_name."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserLocationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created assignment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Manager/employee already assigned to this location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/managers/{managerId}/locations/{locationId}": {
+      "delete": {
+        "operationId": "removeManagerLocation",
+        "summary": "Remove a location from a manager",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Removes a location assignment from a manager in the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<managerId>",
+            "note": "Verifies the entity belongs to the caller’s org."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = USER#<managerId> AND SK = LOCATION#<locationId>",
+            "note": "Deletes the assignment record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "managerId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the manager."
+            },
+            "required": true,
+            "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "path",
+            "name": "locationId",
+            "schema": {
+              "type": "string",
+              "description": "The location’s location_id."
+            },
+            "required": true,
+            "description": "The location’s location_id."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Assignment removed."
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/employees/{employeeId}/locations": {
+      "get": {
+        "operationId": "listEmployeeAssignedLocations",
+        "summary": "List a employee's assigned locations",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Lists the locations assigned to a given employee under the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = USER#<employeeId> AND begins_with(SK, LOCATION#)",
+            "note": "Lists the entity’s assigned locations with key attributes stripped."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The employee's assigned locations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLocationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "assignEmployeeLocation",
+        "summary": "Assign a location to a employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Assigns a location to a employee in the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and user_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Verifies the entity belongs to the caller’s org."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Verifies the location belongs to the caller’s org."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<employeeId> AND SK = LOCATION#<locationId>",
+            "note": "Writes the assignment record with denormalized location_name."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserLocationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created assignment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Manager/employee already assigned to this location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-admin/employees/{employeeId}/locations/{locationId}": {
+      "delete": {
+        "operationId": "removeEmployeeLocation",
+        "summary": "Remove a location from a employee",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Removes a location assignment from a employee in the org-admin's organization.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/manager-locations/handler.ts",
+          "backend/src/functions/org-admin/manager-locations/service.ts",
+          "backend/src/functions/org-admin/manager-locations/db.ts",
+          "backend/src/functions/org-admin/employee-locations/handler.ts",
+          "backend/src/functions/org-admin/employee-locations/service.ts",
+          "backend/src/functions/org-admin/employee-locations/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Verifies the entity belongs to the caller’s org."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = USER#<employeeId> AND SK = LOCATION#<locationId>",
+            "note": "Deletes the assignment record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "path",
+            "name": "locationId",
+            "schema": {
+              "type": "string",
+              "description": "The location’s location_id."
+            },
+            "required": true,
+            "description": "The location’s location_id."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Assignment removed."
           },
           "403": {
             "description": "Caller lacks the required role, or their organization could not be resolved.",
@@ -5458,6 +6389,39 @@
         },
         "description": "Partial update of an employee’s name, phone, or manager assignment."
       },
+      "CreateOrgAdminLocationBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "description": "Fields accepted to create a new location."
+      },
+      "UpdateOrgAdminLocationBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "description": "Partial update of a location’s name or address. Empty address clears it."
+      },
       "CreateManagerBody": {
         "type": "object",
         "properties": {
@@ -5535,6 +6499,19 @@
           "name"
         ],
         "description": "Update the calling OrgAdmin's name."
+      },
+      "AssignUserLocationBody": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "location_id"
+        ],
+        "description": "The location to assign to the manager/employee."
       },
       "EmployeeAvailabilityOverridesResponse": {
         "type": "object",
@@ -6584,6 +7561,57 @@
         "additionalProperties": false,
         "description": "An employee record as returned to an OrgAdmin, enriched with live Cognito status."
       },
+      "OrgAdminLocationListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OrgAdminLocationResponse"
+        },
+        "description": "Every location in the calling OrgAdmin’s organization."
+      },
+      "OrgAdminLocationResponse": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "user_id of the creator."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "location_id",
+          "org_id",
+          "name",
+          "created_by",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "A location in the calling OrgAdmin’s organization."
+      },
       "OrgAdminManagerListResponse": {
         "type": "array",
         "items": {
@@ -6743,6 +7771,63 @@
         ],
         "additionalProperties": false,
         "description": "The calling OrgAdmin's own profile, enriched with their live Cognito status."
+      },
+      "UserLocationListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/UserLocationResponse"
+        },
+        "description": "The locations assigned to a manager or employee."
+      },
+      "UserLocationResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_type": {
+            "$ref": "#/components/schemas/UserLocationType"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string",
+            "description": "Denormalized for cheap reads."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "assigned_by": {
+            "type": "string",
+            "description": "OrgAdmin user_id who made the assignment."
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "user_id",
+          "user_type",
+          "location_id",
+          "location_name",
+          "org_id",
+          "assigned_by",
+          "assigned_at"
+        ],
+        "additionalProperties": false
+      },
+      "UserLocationType": {
+        "type": "string",
+        "enum": [
+          "MANAGER",
+          "EMPLOYEE"
+        ],
+        "description": "Kind of user a location is assigned to."
       },
       "HealthResponse": {
         "type": "object",

@@ -1,19 +1,23 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { CreateOrgAdminLocationBody, UpdateOrgAdminLocationBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, created, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { getLocations, createLocation, updateLocation, removeLocation } from './service.js';
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<{ name?: string; address?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createLocation(callerSub, parsed.data));
+  const body = parseWithContract(CreateOrgAdminLocationBody, parsed.data);
+  return created(await createLocation(callerSub, body));
 }
 
 async function handlePut(callerSub: string, locationId: string, rawBody: string | undefined) {
-  const parsed = parseBody<{ name?: string; address?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateLocation(callerSub, locationId, parsed.data));
+  const body = parseWithContract(UpdateOrgAdminLocationBody, parsed.data);
+  return ok(await updateLocation(callerSub, locationId, body));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

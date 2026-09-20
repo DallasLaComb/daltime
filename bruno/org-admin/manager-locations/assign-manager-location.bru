@@ -1,0 +1,17 @@
+meta {
+  name: Assign Manager Location
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/org-admin/managers/{{manager_id}}/locations
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "location_id": "<location_id>"
+  }
+}

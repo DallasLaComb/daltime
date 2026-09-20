@@ -1,0 +1,17 @@
+meta {
+  name: Update Location
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/org-admin/locations/{{location_id}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Downtown West"
+  }
+}
