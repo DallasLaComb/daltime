@@ -26,12 +26,23 @@ vi.mock('../../../../src/functions/shared/auth.js', () => ({
   requireWebAdminWithLookup: vi.fn(),
 }));
 
+vi.mock('../../../../src/functions/web-admin/impersonate/db.js', () => ({
+  isRoleMember: vi.fn(),
+  createSession: vi.fn(),
+  deleteSession: vi.fn(),
+}));
+
 import { handler } from '../../../../src/functions/web-admin/impersonate/handler.js';
 import {
   listImpersonatableUsers,
   getUserContext,
 } from '../../../../src/functions/web-admin/impersonate/service.js';
 import { requireWebAdminWithLookup } from '../../../../src/functions/shared/auth.js';
+import {
+  isRoleMember,
+  createSession,
+  deleteSession,
+} from '../../../../src/functions/web-admin/impersonate/db.js';
 
 // The web-admin caller returned by requireWebAdminWithLookup on the happy path.
 const mockCaller = {
@@ -90,9 +101,23 @@ function body(result: APIGatewayProxyStructuredResultV2) {
 const call = async (e: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   (await handler(e)) as APIGatewayProxyStructuredResultV2;
 
+const MOCK_SESSION = {
+  session_id: 'sess-xyz-456',
+  actor_sub: mockCaller.sub,
+  actor_web_admin_id: mockCaller.web_admin_id,
+  target_user_id: 'u1',
+  role: 'Manager' as const,
+  created_at: new Date().toISOString(),
+  expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+  ttl: Math.floor((Date.now() + 8 * 60 * 60 * 1000) / 1000),
+};
+
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(requireWebAdminWithLookup).mockResolvedValue(mockCaller);
+  vi.mocked(isRoleMember).mockResolvedValue(true);
+  vi.mocked(createSession).mockResolvedValue(MOCK_SESSION);
+  vi.mocked(deleteSession).mockResolvedValue(undefined);
 });
 
 // ─── GET /web-admin/impersonate/users ─────────────────────────────────────────
@@ -218,5 +243,104 @@ describe('authorization', () => {
     );
     expect(result.statusCode).toBe(200);
     expect(requireWebAdminWithLookup).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── POST /web-admin/impersonate/sessions ────────────────────────────────────
+
+describe('POST /web-admin/impersonate/sessions', () => {
+  const startEvent = (body: unknown) =>
+    buildApiGwEvent({
+      method: 'POST',
+      path: '/web-admin/impersonate/sessions',
+      body: JSON.stringify(body),
+    });
+
+  it('201 with session_id and expires_at when the target is a valid role member', async () => {
+    const result = await call(startEvent({ target_user_id: 'u1', role: 'Manager' }));
+
+    expect(result.statusCode).toBe(201);
+    expect(body(result)).toMatchObject({
+      session_id: MOCK_SESSION.session_id,
+      target_user_id: 'u1',
+      role: 'Manager',
+      expires_at: MOCK_SESSION.expires_at,
+    });
+    expect(isRoleMember).toHaveBeenCalledWith('u1', 'Manager');
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: mockCaller.sub }),
+      'u1',
+      'Manager',
+    );
+  });
+
+  it('400 from the contract for an unknown role', async () => {
+    const result = await call(startEvent({ target_user_id: 'u1', role: 'WebAdmin' }));
+    expect(result.statusCode).toBe(400);
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('400 from the contract when target_user_id is missing', async () => {
+    const result = await call(startEvent({ role: 'Manager' }));
+    expect(result.statusCode).toBe(400);
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('400 when the target is not a member of the requested role', async () => {
+    vi.mocked(isRoleMember).mockResolvedValue(false);
+    const result = await call(startEvent({ target_user_id: 'u1', role: 'Manager' }));
+    expect(result.statusCode).toBe(400);
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('400 when the request body is not valid JSON', async () => {
+    const result = await call(
+      buildApiGwEvent({ method: 'POST', path: '/web-admin/impersonate/sessions', body: 'not-json' }),
+    );
+    expect(result.statusCode).toBe(400);
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('403 when the caller is not an ACTIVE WebAdmin', async () => {
+    vi.mocked(requireWebAdminWithLookup).mockRejectedValue(new ForbiddenError('WebAdmin role required'));
+    const result = await call(startEvent({ target_user_id: 'u1', role: 'Manager' }));
+    expect(result.statusCode).toBe(403);
+    expect(createSession).not.toHaveBeenCalled();
+  });
+});
+
+// ─── DELETE /web-admin/impersonate/sessions/{sessionId} ──────────────────────
+
+describe('DELETE /web-admin/impersonate/sessions/{sessionId}', () => {
+  const endEvent = (sessionId?: string) =>
+    buildApiGwEvent({
+      method: 'DELETE',
+      path: `/web-admin/impersonate/sessions/${sessionId ?? 'sess-xyz-456'}`,
+      pathParameters: sessionId !== undefined ? { sessionId } : {},
+    });
+
+  it('204 on success — deletes the session keyed by actor_sub', async () => {
+    const result = await call(endEvent('sess-xyz-456'));
+    expect(result.statusCode).toBe(204);
+    expect(deleteSession).toHaveBeenCalledWith(mockCaller.sub);
+  });
+
+  it('204 even when the session no longer exists (idempotent)', async () => {
+    vi.mocked(deleteSession).mockResolvedValue(undefined);
+    const result = await call(endEvent('sess-xyz-456'));
+    expect(result.statusCode).toBe(204);
+  });
+
+  it('400 when the sessionId path param is missing', async () => {
+    const result = await call(endEvent(undefined));
+    expect(result.statusCode).toBe(400);
+    expect(deleteSession).not.toHaveBeenCalled();
+  });
+
+  it('403 when the caller is not an ACTIVE WebAdmin', async () => {
+    vi.mocked(requireWebAdminWithLookup).mockRejectedValue(new ForbiddenError('WebAdmin role required'));
+    const result = await call(endEvent('sess-xyz-456'));
+    expect(result.statusCode).toBe(403);
+    expect(deleteSession).not.toHaveBeenCalled();
   });
 });

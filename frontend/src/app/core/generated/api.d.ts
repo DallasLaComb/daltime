@@ -880,6 +880,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/impersonate/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a time-bound impersonation session
+         * @description Creates a DynamoDB session record (8-hour TTL) that gates all subsequent impersonated role requests. The session_id is returned to the client and stored in sessionStorage; every role Lambda verifies an active matching session in withImpersonation before substituting the target identity.
+         */
+        post: operations["startWebAdminImpersonationSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/web-admin/impersonate/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End an impersonation session
+         * @description Deletes the DynamoDB session record for the calling WebAdmin. Idempotent — returns 204 even when the session has already expired or been removed.
+         */
+        delete: operations["endWebAdminImpersonationSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/web-admin/organizations/{orgId}/org-admins": {
         parameters: {
             query?: never;
@@ -1433,6 +1473,12 @@ export interface components {
          * @enum {string}
          */
         ImpersonatableRole: "OrgAdmin" | "Manager" | "Employee";
+        StartImpersonationSessionBody: {
+            /** @description Cognito sub of the user to impersonate. */
+            target_user_id: string;
+            /** @description Role the target holds on this session. */
+            role: components["schemas"]["ImpersonatableRole"];
+        };
         /** @description Fields accepted to register a new OrgAdmin via Cognito. */
         CreateOrgAdminBody: {
             /**
@@ -2131,6 +2177,14 @@ export interface components {
             org_id: string;
             /** @description Stored account status (Cognito UserStatus). */
             status: string;
+        };
+        ImpersonateSessionResponse: {
+            /** @description Opaque session identifier. */
+            session_id: string;
+            target_user_id: string;
+            role: components["schemas"]["ImpersonatableRole"];
+            /** @description ISO-8601 timestamp after which the session is invalid. */
+            expires_at: string;
         };
         /** @description Every OrgAdmin in the given organization. */
         WebAdminOrgAdminListResponse: components["schemas"]["WebAdminOrgAdminResponse"][];
@@ -5797,6 +5851,114 @@ export interface operations {
             };
             /** @description The requested record does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startWebAdminImpersonationSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartImpersonationSessionBody"];
+            };
+        };
+        responses: {
+            /** @description Session started. Store session_id for the matching DELETE call. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonateSessionResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    endWebAdminImpersonationSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The session_id returned by POST /sessions. */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session ended. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

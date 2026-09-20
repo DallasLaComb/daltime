@@ -6200,6 +6200,160 @@
         }
       }
     },
+    "/web-admin/impersonate/sessions": {
+      "post": {
+        "operationId": "startWebAdminImpersonationSession",
+        "summary": "Start a time-bound impersonation session",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Creates a DynamoDB session record (8-hour TTL) that gates all subsequent impersonated role requests. The session_id is returned to the client and stored in sessionStorage; every role Lambda verifies an active matching session in withImpersonation before substituting the target identity.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/impersonate/handler.ts",
+          "backend/src/functions/web-admin/impersonate/service.ts",
+          "backend/src/functions/web-admin/impersonate/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Put",
+            "keyCondition": "PK = IMPERSONATION_SESSION#<actor_sub> AND SK = METADATA",
+            "note": "One session per actor — overwrites any prior session."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartImpersonationSessionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session started. Store session_id for the matching DELETE call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpersonateSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web-admin/impersonate/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "endWebAdminImpersonationSession",
+        "summary": "End an impersonation session",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Deletes the DynamoDB session record for the calling WebAdmin. Idempotent — returns 204 even when the session has already expired or been removed.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/impersonate/handler.ts",
+          "backend/src/functions/web-admin/impersonate/service.ts",
+          "backend/src/functions/web-admin/impersonate/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Delete",
+            "keyCondition": "PK = IMPERSONATION_SESSION#<actor_sub> AND SK = METADATA",
+            "note": "Keyed by actor_sub so an actor can only end their own session."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The session_id returned by POST /sessions."
+            },
+            "required": true,
+            "description": "The session_id returned by POST /sessions."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session ended."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/web-admin/organizations/{orgId}/org-admins": {
       "get": {
         "operationId": "listWebAdminOrgAdmins",
@@ -8512,6 +8666,24 @@
         ],
         "description": "A role that can be impersonated."
       },
+      "StartImpersonationSessionBody": {
+        "type": "object",
+        "properties": {
+          "target_user_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Cognito sub of the user to impersonate."
+          },
+          "role": {
+            "description": "Role the target holds on this session.",
+            "$ref": "#/components/schemas/ImpersonatableRole"
+          }
+        },
+        "required": [
+          "target_user_id",
+          "role"
+        ]
+      },
       "CreateOrgAdminBody": {
         "type": "object",
         "properties": {
@@ -10152,6 +10324,32 @@
         ],
         "additionalProperties": false,
         "description": "The impersonated user’s identity, resolved from DynamoDB + Cognito."
+      },
+      "ImpersonateSessionResponse": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Opaque session identifier."
+          },
+          "target_user_id": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ImpersonatableRole"
+          },
+          "expires_at": {
+            "type": "string",
+            "description": "ISO-8601 timestamp after which the session is invalid."
+          }
+        },
+        "required": [
+          "session_id",
+          "target_user_id",
+          "role",
+          "expires_at"
+        ],
+        "additionalProperties": false
       },
       "WebAdminOrgAdminListResponse": {
         "type": "array",

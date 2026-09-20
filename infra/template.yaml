@@ -1180,6 +1180,34 @@ Resources:
             ApiId: !Ref DalTimeHttpApi
             Auth:
               Authorizer: NONE
+        StartImpersonateSession:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/sessions
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        EndImpersonateSession:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/sessions/{sessionId}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
+        OptionsImpersonateSessions:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/sessions
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsImpersonateSessionById:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/sessions/{sessionId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
       Environment:
         Variables:
           USER_POOL_ID: !Ref CognitoUserPoolId

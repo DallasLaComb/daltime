@@ -92,6 +92,36 @@ registerOperation('get', '/web-admin/impersonate/users', {
   },
 });
 
+/** Body for POST /web-admin/impersonate/sessions — start a time-bound session. */
+export const StartImpersonationSessionBody = z
+  .object({
+    target_user_id: z
+      .string()
+      .min(1)
+      .meta({ description: 'Cognito sub of the user to impersonate.' }),
+    role: ImpersonatableRole.meta({ description: 'Role the target holds on this session.' }),
+  })
+  .meta({ id: 'StartImpersonationSessionBody' });
+
+/** Response from POST /web-admin/impersonate/sessions. */
+export const ImpersonateSessionResponse = z
+  .object({
+    session_id: z.string().meta({ description: 'Opaque session identifier.' }),
+    target_user_id: z.string(),
+    role: ImpersonatableRole,
+    expires_at: z
+      .string()
+      .meta({ description: 'ISO-8601 timestamp after which the session is invalid.' }),
+  })
+  .meta({ id: 'ImpersonateSessionResponse' });
+
+/** Path params for DELETE /web-admin/impersonate/sessions/{sessionId}. */
+export const ImpersonateSessionPathParams = z
+  .object({
+    sessionId: z.string().min(1).meta({ description: 'The session_id returned by POST /sessions.' }),
+  })
+  .meta({ id: 'ImpersonateSessionPathParams' });
+
 registerOperation('get', '/web-admin/impersonate/{userId}/context', {
   operationId: 'getWebAdminImpersonateContext',
   summary: 'Fetch a user’s context for starting impersonation',
@@ -120,6 +150,63 @@ registerOperation('get', '/web-admin/impersonate/{userId}/context', {
   },
 });
 
+registerOperation('post', '/web-admin/impersonate/sessions', {
+  operationId: 'startWebAdminImpersonationSession',
+  summary: 'Start a time-bound impersonation session',
+  tags: ['web-admin'],
+  purpose:
+    'Creates a DynamoDB session record (8-hour TTL) that gates all subsequent impersonated ' +
+    'role requests. The session_id is returned to the client and stored in sessionStorage; ' +
+    'every role Lambda verifies an active matching session in withImpersonation before ' +
+    'substituting the target identity.',
+  implementation: IMPLEMENTATION,
+  requestBody: {
+    required: true,
+    content: { 'application/json': { schema: StartImpersonationSessionBody } },
+  },
+  dynamodb: [
+    {
+      command: 'Put',
+      keyCondition: 'PK = IMPERSONATION_SESSION#<actor_sub> AND SK = METADATA',
+      note: 'One session per actor — overwrites any prior session.',
+    },
+  ],
+  responses: {
+    201: {
+      description: 'Session started. Store session_id for the matching DELETE call.',
+      content: { 'application/json': { schema: ImpersonateSessionResponse } },
+    },
+    400: errorResponses[400],
+    403: errorResponses[403],
+    404: errorResponses[404],
+    500: errorResponses[500],
+  },
+});
+
+registerOperation('delete', '/web-admin/impersonate/sessions/{sessionId}', {
+  operationId: 'endWebAdminImpersonationSession',
+  summary: 'End an impersonation session',
+  tags: ['web-admin'],
+  purpose:
+    'Deletes the DynamoDB session record for the calling WebAdmin. Idempotent — ' +
+    'returns 204 even when the session has already expired or been removed.',
+  implementation: IMPLEMENTATION,
+  requestParams: { path: ImpersonateSessionPathParams },
+  dynamodb: [
+    {
+      command: 'Delete',
+      keyCondition: 'PK = IMPERSONATION_SESSION#<actor_sub> AND SK = METADATA',
+      note: 'Keyed by actor_sub so an actor can only end their own session.',
+    },
+  ],
+  responses: {
+    204: { description: 'Session ended.' },
+    400: errorResponses[400],
+    403: errorResponses[403],
+    500: errorResponses[500],
+  },
+});
+
 /**
  * There is deliberately no operation for "acting as" a user. That is done with the
  * `X-Impersonate-User` header (`ImpersonationHeader` in `../common.ts`) on the ordinary
@@ -138,3 +225,6 @@ export type ImpersonateContextPathParams = z.infer<typeof ImpersonateContextPath
 export type ImpersonateUserSummary = z.infer<typeof ImpersonateUserSummary>;
 export type ImpersonateUserListResponse = z.infer<typeof ImpersonateUserListResponse>;
 export type ImpersonateContextResponse = z.infer<typeof ImpersonateContextResponse>;
+export type StartImpersonationSessionBody = z.infer<typeof StartImpersonationSessionBody>;
+export type ImpersonateSessionResponse = z.infer<typeof ImpersonateSessionResponse>;
+export type ImpersonateSessionPathParams = z.infer<typeof ImpersonateSessionPathParams>;

@@ -11,7 +11,11 @@ import type {
 } from 'aws-lambda';
 
 vi.mock('../../../src/functions/web-admin/shared/db.js', () => ({ getWebAdminLookup: vi.fn() }));
-vi.mock('../../../src/functions/web-admin/impersonate/db.js', () => ({ isRoleMember: vi.fn() }));
+vi.mock('../../../src/functions/web-admin/impersonate/db.js', () => ({
+  isRoleMember: vi.fn(),
+  getSession: vi.fn(),
+  putAuditRecord: vi.fn(),
+}));
 
 import {
   withImpersonation,
@@ -20,10 +24,21 @@ import {
 } from '../../../src/functions/shared/impersonation.js';
 import { getCallerSub, getCallerGroups } from '../../../src/functions/shared/auth.js';
 import { getWebAdminLookup } from '../../../src/functions/web-admin/shared/db.js';
-import { isRoleMember } from '../../../src/functions/web-admin/impersonate/db.js';
+import { isRoleMember, getSession, putAuditRecord } from '../../../src/functions/web-admin/impersonate/db.js';
 
 const ADMIN_SUB = 'admin-sub-1';
 const TARGET = 'target-user-42';
+
+const ACTIVE_SESSION = {
+  session_id: 'sess-abc-123',
+  actor_sub: ADMIN_SUB,
+  actor_web_admin_id: 'WADMIN#abc',
+  target_user_id: TARGET,
+  role: 'Manager' as const,
+  created_at: new Date(Date.now() - 60_000).toISOString(),
+  expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  ttl: Math.floor((Date.now() + 60 * 60 * 1000) / 1000),
+};
 
 const ACTIVE_ADMIN = {
   sub: ADMIN_SUB,
@@ -80,6 +95,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getWebAdminLookup).mockResolvedValue(ACTIVE_ADMIN);
   vi.mocked(isRoleMember).mockResolvedValue(true);
+  vi.mocked(getSession).mockResolvedValue(ACTIVE_SESSION);
+  vi.mocked(putAuditRecord).mockResolvedValue(undefined);
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -191,7 +208,8 @@ describe('route role', () => {
     ['/manager/notifications', 'Manager'],
     ['/employee/notifications', 'Employee'],
     ['/org-admin/notifications', 'OrgAdmin'],
-  ])('%s is served as %s', async (path, role) => {
+  ] as const)('%s is served as %s', async (path, role) => {
+    vi.mocked(getSession).mockResolvedValue({ ...ACTIVE_SESSION, role });
     await run(buildEvent({ path }));
     expect(isRoleMember).toHaveBeenCalledWith(TARGET, role);
     const seen = inner.mock.calls[0]![0];
@@ -294,14 +312,64 @@ describe('the effective event the real handler sees', () => {
   });
 });
 
+describe('session validation', () => {
+  it('403 when no session exists for this actor', async () => {
+    vi.mocked(getSession).mockResolvedValue(null);
+    const result = await run(buildEvent());
+    expect(result.statusCode).toBe(403);
+    expect(errorOf(result)).toMatch(/No active impersonation session/);
+    expect(isRoleMember).not.toHaveBeenCalled();
+    expect(inner).not.toHaveBeenCalled();
+  });
+
+  it('403 when the session has expired', async () => {
+    vi.mocked(getSession).mockResolvedValue({
+      ...ACTIVE_SESSION,
+      expires_at: new Date(Date.now() - 1).toISOString(),
+    });
+    const result = await run(buildEvent());
+    expect(result.statusCode).toBe(403);
+    expect(errorOf(result)).toMatch(/No active impersonation session/);
+    expect(inner).not.toHaveBeenCalled();
+  });
+
+  it('403 when the session targets a different user than the header', async () => {
+    vi.mocked(getSession).mockResolvedValue({
+      ...ACTIVE_SESSION,
+      target_user_id: 'some-other-user',
+    });
+    const result = await run(buildEvent());
+    expect(result.statusCode).toBe(403);
+    expect(errorOf(result)).toMatch(/No active impersonation session/);
+    expect(inner).not.toHaveBeenCalled();
+  });
+
+  it('403 when the session role does not match the route role', async () => {
+    vi.mocked(getSession).mockResolvedValue({
+      ...ACTIVE_SESSION,
+      role: 'Employee' as const, // session is for Employee but route is /manager/
+    });
+    const result = await run(buildEvent({ path: '/manager/shifts' }));
+    expect(result.statusCode).toBe(403);
+    expect(inner).not.toHaveBeenCalled();
+  });
+
+  it('200 when a valid matching session exists', async () => {
+    const result = await run(buildEvent());
+    expect(result.statusCode).toBe(200);
+    expect(getSession).toHaveBeenCalledWith(ADMIN_SUB);
+  });
+});
+
 describe('audit and error handling', () => {
-  it('logs a structured audit line naming actor and target — and never the token', async () => {
+  it('logs a structured audit line naming actor, target, and session_id — never the token', async () => {
     await run(buildEvent({ headers: { authorization: 'Bearer SECRET.TOKEN.VALUE' } }));
 
     const line = vi.mocked(console.info).mock.calls.map((c) => String(c[0])).find((l) => l.includes('impersonation'))!;
     expect(line).toBeDefined();
     expect(JSON.parse(line)).toMatchObject({
       audit: 'impersonation',
+      session_id: ACTIVE_SESSION.session_id,
       actor_web_admin_id: 'WADMIN#abc',
       actor_sub: ADMIN_SUB,
       target_user_id: TARGET,
@@ -310,6 +378,22 @@ describe('audit and error handling', () => {
       path: '/manager/shifts',
     });
     expect(line).not.toContain('SECRET');
+  });
+
+  it('writes a DynamoDB audit record for each impersonated call', async () => {
+    await run(buildEvent());
+    expect(putAuditRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ session_id: ACTIVE_SESSION.session_id }),
+      'GET',
+      '/manager/shifts',
+    );
+  });
+
+  it('does not block the response when the audit record write fails', async () => {
+    vi.mocked(putAuditRecord).mockRejectedValue(new Error('DynamoDB down'));
+    const result = await run(buildEvent());
+    expect(result.statusCode).toBe(200);
+    expect(inner).toHaveBeenCalled();
   });
 
   it('writes no audit line when the request is rejected', async () => {

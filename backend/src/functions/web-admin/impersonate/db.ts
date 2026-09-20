@@ -1,6 +1,108 @@
-import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import type { ImpersonatableRole } from '@daltime/contracts';
 import { docClient, TABLE_NAME } from '../../shared/dynamo.js';
+
+// ── Session constants ────────────────────────────────────────────────────────
+
+export const SESSION_TTL_HOURS = 8;
+const AUDIT_TTL_DAYS = 90;
+
+export interface SessionRecord {
+  session_id: string;
+  actor_sub: string;
+  actor_web_admin_id: string;
+  target_user_id: string;
+  role: ImpersonatableRole;
+  created_at: string;
+  expires_at: string;
+  ttl: number;
+}
+
+/**
+ * Creates or overwrites the active session for this actor.
+ * One session per actor — starting a new session replaces any prior one.
+ */
+export async function createSession(
+  actor: { sub: string; web_admin_id: string },
+  targetUserId: string,
+  role: ImpersonatableRole,
+): Promise<SessionRecord> {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_TTL_HOURS * 60 * 60 * 1000);
+  const record: SessionRecord = {
+    session_id: crypto.randomUUID(),
+    actor_sub: actor.sub,
+    actor_web_admin_id: actor.web_admin_id,
+    target_user_id: targetUserId,
+    role,
+    created_at: now.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    ttl: Math.floor(expiresAt.getTime() / 1000),
+  };
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: `IMPERSONATION_SESSION#${actor.sub}`, SK: 'METADATA', ...record },
+    }),
+  );
+  return record;
+}
+
+/** Returns the active session record for an actor, or null if none exists. */
+export async function getSession(actorSub: string): Promise<SessionRecord | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `IMPERSONATION_SESSION#${actorSub}`, SK: 'METADATA' },
+    }),
+  );
+  if (!result.Item) return null;
+  const { PK: _pk, SK: _sk, ...record } = result.Item as Record<string, unknown>;
+  return record as unknown as SessionRecord;
+}
+
+/**
+ * Deletes the active session for this actor. Idempotent — no error if absent.
+ * Keyed only by actor_sub so an actor can only end their own session.
+ */
+export async function deleteSession(actorSub: string): Promise<void> {
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `IMPERSONATION_SESSION#${actorSub}`, SK: 'METADATA' },
+    }),
+  );
+}
+
+/**
+ * Writes a persistent audit record for one impersonated call.
+ * Fire-and-forget: failures are logged but do not block the response.
+ */
+export async function putAuditRecord(
+  session: Pick<SessionRecord, 'session_id' | 'actor_sub' | 'actor_web_admin_id' | 'target_user_id' | 'role'>,
+  method: string,
+  path: string,
+): Promise<void> {
+  const now = new Date();
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `IMPERSONATION_AUDIT#${session.session_id}`,
+        SK: now.toISOString(),
+        session_id: session.session_id,
+        actor_sub: session.actor_sub,
+        actor_web_admin_id: session.actor_web_admin_id,
+        target_user_id: session.target_user_id,
+        role: session.role,
+        method,
+        path,
+        timestamp: now.toISOString(),
+        ttl: Math.floor(now.getTime() / 1000) + AUDIT_TTL_DAYS * 24 * 60 * 60,
+      },
+    }),
+  );
+}
 
 const ROLE_SK_PREFIX: Record<string, string> = {
   OrgAdmin: 'USER#',

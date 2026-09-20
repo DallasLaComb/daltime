@@ -3,13 +3,20 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import {
   ImpersonateUsersQueryParams,
   ImpersonateContextPathParams,
+  ImpersonateSessionPathParams,
+  StartImpersonationSessionBody,
 } from '@daltime/contracts';
-import type { ImpersonateContextResponse, ImpersonateUserListResponse } from '@daltime/contracts';
-import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
+import type {
+  ImpersonateContextResponse,
+  ImpersonateUserListResponse,
+  ImpersonateSessionResponse,
+} from '@daltime/contracts';
+import { ok, created, noContent, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listImpersonatableUsers, getUserContext } from './service.js';
+import { createSession, deleteSession, isRoleMember } from './db.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -26,6 +33,33 @@ async function handleListUsers(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
 async function handleGetContext(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
   const { userId } = parseWithContract(ImpersonateContextPathParams, event.pathParameters ?? {});
   return ok<ImpersonateContextResponse>(await getUserContext(userId, cognitoClient));
+}
+
+/** Handles POST /web-admin/impersonate/sessions — start a time-bound impersonation session. */
+async function handleStartSession(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  const actor = await requireWebAdminWithLookup(event);
+  const parsed = parseBody<Record<string, unknown>>(event.body ?? undefined);
+  if (!parsed.ok) return parsed.response;
+  const { target_user_id, role } = parseWithContract(StartImpersonationSessionBody, parsed.data);
+  if (!(await isRoleMember(target_user_id, role))) {
+    return badRequest('Target user not found for the requested role');
+  }
+  const session = await createSession(actor, target_user_id, role);
+  return created<ImpersonateSessionResponse>({
+    session_id: session.session_id,
+    target_user_id: session.target_user_id,
+    role: session.role,
+    expires_at: session.expires_at,
+  });
+}
+
+/** Handles DELETE /web-admin/impersonate/sessions/{sessionId} — end an impersonation session. */
+async function handleEndSession(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  const actor = await requireWebAdminWithLookup(event);
+  // Validate the path param format; we key only by actor_sub so the actor ends their own session.
+  parseWithContract(ImpersonateSessionPathParams, event.pathParameters ?? {});
+  await deleteSession(actor.sub);
+  return noContent();
 }
 
 /**
@@ -48,16 +82,19 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   setRequestOrigin(event.headers?.['origin']);
 
   try {
-    // Fail closed: only a provisioned, ACTIVE WebAdmin may list or describe users. This checks
-    // the caller's JWT group AND their DynamoDB record, so disabling a WebAdmin in the table
-    // takes effect immediately. Throws ForbiddenError (→ 403) otherwise.
-    await requireWebAdminWithLookup(event);
-
     if (method === 'GET' && rawPath.endsWith('/impersonate/users')) {
+      await requireWebAdminWithLookup(event);
       return await handleListUsers(event);
     }
     if (method === 'GET' && rawPath.endsWith('/context')) {
+      await requireWebAdminWithLookup(event);
       return await handleGetContext(event);
+    }
+    if (method === 'POST' && rawPath.endsWith('/impersonate/sessions')) {
+      return await handleStartSession(event);
+    }
+    if (method === 'DELETE' && rawPath.includes('/impersonate/sessions/')) {
+      return await handleEndSession(event);
     }
 
     return badRequest(`Unhandled route: ${method} ${rawPath}`);

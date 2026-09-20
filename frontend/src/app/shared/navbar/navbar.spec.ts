@@ -142,6 +142,8 @@ describe('Navbar — Web-Admin impersonating Employee (story #303)', () => {
     displayName: 'Test Employee',
     email: 'employee@test.com',
     orgId: 'org-001',
+    sessionId: 'test-session-id',
+    expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
   };
 
   it('shows "Schedule" link (not "Dashboard") when WebAdmin impersonates Employee', async () => {

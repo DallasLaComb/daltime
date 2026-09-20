@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { map, type Observable } from 'rxjs';
+import { map, switchMap, type Observable } from 'rxjs';
 import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
 import type { ImpersonateContext } from '../../../core/services/impersonation.service';
 
@@ -20,18 +20,32 @@ export class ImpersonateService {
     });
   }
 
-  /** Fetch user context and map the backend's snake_case fields to camelCase. */
-  getContext(userId: string): Observable<ImpersonateContext> {
+  /**
+   * Fetch user context and start a server-side session in a single observable chain.
+   * Emits a fully populated ImpersonateContext (with sessionId + expiresAt) on success.
+   */
+  getContextAndStartSession(userId: string): Observable<ImpersonateContext> {
     return this.api
       .get('/web-admin/impersonate/{userId}/context', { params: { userId } })
       .pipe(
-        map((ctx) => ({
-          userId: ctx.user_id,
-          role: ctx.role,
-          displayName: ctx.display_name,
-          email: ctx.email,
-          orgId: ctx.org_id,
-        })),
+        switchMap((ctx) =>
+          this.api
+            .post('/web-admin/impersonate/sessions', {
+              target_user_id: ctx.user_id,
+              role: ctx.role,
+            })
+            .pipe(
+              map((session) => ({
+                userId: ctx.user_id,
+                role: ctx.role,
+                displayName: ctx.display_name,
+                email: ctx.email,
+                orgId: ctx.org_id,
+                sessionId: session.session_id,
+                expiresAt: session.expires_at,
+              })),
+            ),
+        ),
       );
   }
 }

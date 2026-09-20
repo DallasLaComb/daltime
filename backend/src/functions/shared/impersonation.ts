@@ -3,7 +3,7 @@ import type { ImpersonatableRole } from '@daltime/contracts';
 import { requireWebAdminWithLookup, decodeLocalJwtPayload } from './auth.js';
 import { badRequest, forbidden, notFound, setRequestOrigin } from './response.js';
 import { mapHandlerError } from './errors.js';
-import { isRoleMember } from '../web-admin/impersonate/db.js';
+import { isRoleMember, getSession, putAuditRecord } from '../web-admin/impersonate/db.js';
 
 /**
  * Impersonation: the single chokepoint.
@@ -155,14 +155,29 @@ export function withImpersonation<R>(inner: Handler<R>): Handler<R | APIGatewayP
       const role = roleForPath(event.rawPath);
       if (!role) return badRequest('Impersonation is not supported on this route');
 
+      // Validate the active session. One session per actor — must target this userId and role.
+      const session = await getSession(actor.sub);
+      if (
+        !session ||
+        new Date(session.expires_at).getTime() <= Date.now() ||
+        session.target_user_id !== targetUserId ||
+        session.role !== role
+      ) {
+        return forbidden('No active impersonation session');
+      }
+
       if (!(await isRoleMember(targetUserId, role))) {
         return notFound('Impersonated user not found');
       }
 
-      // Structured audit line: who acted as whom, on what. No PII beyond opaque ids.
+      // Persist an audit record and emit a structured log line. No PII beyond opaque ids.
+      void putAuditRecord(session, method, event.rawPath).catch((err: unknown) => {
+        console.error('withImpersonation: audit record write failed', err);
+      });
       console.info(
         JSON.stringify({
           audit: 'impersonation',
+          session_id: session.session_id,
           actor_web_admin_id: actor.web_admin_id,
           actor_sub: actor.sub,
           target_user_id: targetUserId,
