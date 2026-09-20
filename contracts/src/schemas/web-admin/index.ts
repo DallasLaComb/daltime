@@ -8,6 +8,7 @@
  */
 export * from './employees.js';
 export * from './generate-dummy-data.js';
+export * from './impersonate.js';
 export * from './org-admins.js';
 export * from './organizations.js';
 export * from './profile.js';

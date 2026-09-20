@@ -5445,6 +5445,180 @@
         }
       }
     },
+    "/web-admin/impersonate/users": {
+      "get": {
+        "operationId": "listWebAdminImpersonatableUsers",
+        "summary": "List users available to impersonate in an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs step 3 of the web-admin impersonation picker (frontend/src/app/features/web-admin/impersonate). Lists the org-scoped users of a single role that the calling WebAdmin may then impersonate.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/impersonate/handler.ts",
+          "backend/src/functions/web-admin/impersonate/service.ts",
+          "backend/src/functions/web-admin/impersonate/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, <ROLE>#)",
+            "note": "SK prefix is USER# for OrgAdmin, MANAGER# for Manager, EMPLOYEE# for Employee."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "schema": {
+              "description": "Restrict the list to a single role.",
+              "$ref": "#/components/schemas/ImpersonatableRole"
+            },
+            "required": true,
+            "description": "Restrict the list to a single role."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every user matching the requested org and role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpersonateUserListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web-admin/impersonate/{userId}/context": {
+      "get": {
+        "operationId": "getWebAdminImpersonateContext",
+        "summary": "Fetch a user’s context for starting impersonation",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Final step of the impersonation picker: resolves the selected user’s identity and Cognito role, which the frontend stores to rewrite subsequent role-prefixed calls through the impersonation proxy.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/impersonate/handler.ts",
+          "backend/src/functions/web-admin/impersonate/service.ts",
+          "backend/src/functions/web-admin/impersonate/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<userId> AND SK = METADATA",
+            "note": "Reverse-lookup record present for OrgAdmin, Manager, and Employee alike."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Cognito sub of the user to impersonate."
+            },
+            "required": true,
+            "description": "Cognito sub of the user to impersonate."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The impersonated user’s identity and resolved role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpersonateContextResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/web-admin/organizations/{orgId}/org-admins": {
       "get": {
         "operationId": "listWebAdminOrgAdmins",
@@ -7655,6 +7829,15 @@
         ],
         "description": "Month/year to generate dummy availability + open shifts for."
       },
+      "ImpersonatableRole": {
+        "type": "string",
+        "enum": [
+          "OrgAdmin",
+          "Manager",
+          "Employee"
+        ],
+        "description": "A role that can be impersonated."
+      },
       "CreateOrgAdminBody": {
         "type": "object",
         "properties": {
@@ -9221,6 +9404,80 @@
           "message"
         ],
         "additionalProperties": false
+      },
+      "ImpersonateUserListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ImpersonateUserSummary"
+        },
+        "description": "Every user matching the requested org and role."
+      },
+      "ImpersonateUserSummary": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Resolved from name or first/last name."
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Stored account status (Cognito UserStatus)."
+          },
+          "org_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "email",
+          "status",
+          "org_id"
+        ],
+        "additionalProperties": false,
+        "description": "A user available to impersonate within an organization and role."
+      },
+      "ImpersonateContextResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "role": {
+            "$ref": "#/components/schemas/ImpersonatableRole"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Stored account status (Cognito UserStatus)."
+          }
+        },
+        "required": [
+          "user_id",
+          "role",
+          "display_name",
+          "email",
+          "org_id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "The impersonated user’s identity, resolved from DynamoDB + Cognito."
       },
       "WebAdminOrgAdminListResponse": {
         "type": "array",

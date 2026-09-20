@@ -1,7 +1,12 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import {
+  ImpersonateUsersQueryParams,
+  ImpersonateContextPathParams,
+} from '@daltime/contracts';
 import { ok, badRequest, notFound, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listImpersonatableUsers, getUserContext } from './service.js';
 import { resolveProxyRoute } from './route-registry.js';
@@ -12,10 +17,10 @@ const cognitoClient = new CognitoIdentityProviderClient({});
 
 /** Handles GET /web-admin/impersonate/users?orgId=&role= — lists impersonatable users. */
 async function handleListUsers(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
-  const orgId = event.queryStringParameters?.['orgId'];
-  const role = event.queryStringParameters?.['role'];
-  if (!orgId) return badRequest('orgId query parameter is required');
-  if (!role) return badRequest('role query parameter is required');
+  const { orgId, role } = parseWithContract(
+    ImpersonateUsersQueryParams,
+    event.queryStringParameters ?? {},
+  );
   return ok(await listImpersonatableUsers(orgId, role));
 }
 
@@ -121,8 +126,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       return await handleListUsers(event);
     }
     if (method === 'GET' && rawPath.endsWith('/context')) {
-      const userId = event.pathParameters?.['userId'];
-      if (!userId) return badRequest('userId path parameter is required');
+      const { userId } = parseWithContract(
+        ImpersonateContextPathParams,
+        event.pathParameters ?? {},
+      );
       return await handleGetContext(userId);
     }
 

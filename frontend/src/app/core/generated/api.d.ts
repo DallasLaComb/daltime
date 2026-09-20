@@ -840,6 +840,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/impersonate/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List users available to impersonate in an organization
+         * @description Backs step 3 of the web-admin impersonation picker (frontend/src/app/features/web-admin/impersonate). Lists the org-scoped users of a single role that the calling WebAdmin may then impersonate.
+         */
+        get: operations["listWebAdminImpersonatableUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/web-admin/impersonate/{userId}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch a user’s context for starting impersonation
+         * @description Final step of the impersonation picker: resolves the selected user’s identity and Cognito role, which the frontend stores to rewrite subsequent role-prefixed calls through the impersonation proxy.
+         */
+        get: operations["getWebAdminImpersonateContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/web-admin/organizations/{orgId}/org-admins": {
         parameters: {
             query?: never;
@@ -1388,6 +1428,11 @@ export interface components {
             /** @description 1-indexed month (1 = January, 12 = December). */
             month: number;
         };
+        /**
+         * @description A role that can be impersonated.
+         * @enum {string}
+         */
+        ImpersonatableRole: "OrgAdmin" | "Manager" | "Employee";
         /** @description Fields accepted to register a new OrgAdmin via Cognito. */
         CreateOrgAdminBody: {
             /**
@@ -2062,6 +2107,30 @@ export interface components {
         GenerateDummyDataResponse: {
             /** @description Human-readable summary of what was generated. */
             message: string;
+        };
+        /** @description Every user matching the requested org and role. */
+        ImpersonateUserListResponse: components["schemas"]["ImpersonateUserSummary"][];
+        /** @description A user available to impersonate within an organization and role. */
+        ImpersonateUserSummary: {
+            /** @description Cognito sub. */
+            user_id: string;
+            /** @description Resolved from name or first/last name. */
+            display_name: string;
+            email: string;
+            /** @description Stored account status (Cognito UserStatus). */
+            status: string;
+            org_id: string;
+        };
+        /** @description The impersonated user’s identity, resolved from DynamoDB + Cognito. */
+        ImpersonateContextResponse: {
+            /** @description Cognito sub. */
+            user_id: string;
+            role: components["schemas"]["ImpersonatableRole"];
+            display_name: string;
+            email: string;
+            org_id: string;
+            /** @description Stored account status (Cognito UserStatus). */
+            status: string;
         };
         /** @description Every OrgAdmin in the given organization. */
         WebAdminOrgAdminListResponse: components["schemas"]["WebAdminOrgAdminResponse"][];
@@ -5440,6 +5509,117 @@ export interface operations {
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWebAdminImpersonatableUsers: {
+        parameters: {
+            query: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+                /** @description Restrict the list to a single role. */
+                role: components["schemas"]["ImpersonatableRole"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every user matching the requested org and role. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonateUserListResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getWebAdminImpersonateContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the user to impersonate. */
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The impersonated user’s identity and resolved role. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonateContextResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
