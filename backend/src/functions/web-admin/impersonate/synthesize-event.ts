@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import type { WebAdminCaller } from '@daltime/contracts';
 import { decodeLocalJwtPayload } from '../../shared/auth.js';
+import { IMPERSONATE_HEADER } from '../../shared/impersonation.js';
 
 /**
  * The acting WebAdmin, preserved on the synthesized event so an impersonated
@@ -101,8 +102,18 @@ export function synthesizeImpersonatedEvent(
 
   const rawPathPrefix = originalEvent.rawPath.split(`/${impersonatedUserId}/`)[0];
 
+  // The frontend also sends `X-Impersonate-User` (header transport). This event is already
+  // resolved — its claims are the target's — so the header must not reach the real handler's
+  // `withImpersonation` wrapper, which would try to resolve it a second time and reject it.
+  const headers = Object.fromEntries(
+    Object.entries(originalEvent.headers ?? {}).filter(
+      ([name]) => name.toLowerCase() !== IMPERSONATE_HEADER,
+    ),
+  );
+
   return {
     ...originalEvent,
+    headers,
     rawPath: `${rawPathPrefix}/${impersonatedUserId}/${realPath}`,
     pathParameters: { ...pathParams },
     requestContext: {

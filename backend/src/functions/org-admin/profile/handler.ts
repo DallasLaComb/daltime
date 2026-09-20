@@ -7,10 +7,11 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
 import type { OrgAdminProfileResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   if (method === 'OPTIONS') {
@@ -39,3 +40,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin profile handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

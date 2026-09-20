@@ -6,8 +6,9 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getOrganization, updateOrganization } from './service.js';
 import type { OrgAdminOrganizationResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   if (method === 'OPTIONS') {
@@ -36,3 +37,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin organization handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

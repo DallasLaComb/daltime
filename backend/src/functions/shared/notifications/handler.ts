@@ -6,8 +6,9 @@ import { mapHandlerError } from '../errors.js';
 import { parseWithContract } from '../contract-validation.js';
 import { listNotifications, markOneAsRead, markAllAsRead } from './service.js';
 import type { MarkAllNotificationsReadResponse, NotificationListResponse, NotificationResponse } from '@daltime/contracts';
+import { withImpersonation } from '../impersonation.js';
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const notificationId = event.pathParameters?.notificationId;
 
@@ -40,3 +41,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'shared notifications handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

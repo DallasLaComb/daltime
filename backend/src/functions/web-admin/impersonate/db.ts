@@ -1,4 +1,5 @@
 import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import type { ImpersonatableRole } from '@daltime/contracts';
 import { docClient, TABLE_NAME } from '../../shared/dynamo.js';
 
 const ROLE_SK_PREFIX: Record<string, string> = {
@@ -47,4 +48,29 @@ export async function getUserReverseLookup(
     }),
   );
   return (result.Item as Record<string, unknown>) ?? null;
+}
+
+/**
+ * True only when `userId` is a real member of `role`.
+ *
+ * Two reads, both authoritative and DynamoDB-only (role Lambdas have no Cognito
+ * permissions): the user's reverse-lookup record yields their `org_id`, then the
+ * role-specific primary record `ORG#<org_id> / <ROLE_PREFIX><userId>` must exist.
+ * That is the same record the impersonation picker lists, so "impersonatable" and
+ * "verifiable" cannot disagree. A user who exists but holds a different role (an
+ * Employee id paired with a /manager route) is rejected rather than being handed a
+ * Manager identity.
+ */
+export async function isRoleMember(userId: string, role: ImpersonatableRole): Promise<boolean> {
+  const metadata = await getUserReverseLookup(userId);
+  const orgId = metadata?.['org_id'];
+  if (typeof orgId !== 'string' || !orgId) return false;
+
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `ORG#${orgId}`, SK: `${ROLE_SK_PREFIX[role]}${userId}` },
+    }),
+  );
+  return Boolean(result.Item);
 }

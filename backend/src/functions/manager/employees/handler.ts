@@ -22,6 +22,7 @@ import {
   getEmployeeAvailabilityOverridesForManager,
 } from './service.js';
 import type { ManagerEmployeeAvailabilityOverridesResponse, ManagerEmployeeAvailabilityResponse, ManagerEmployeeListResponse, ManagerEmployeeResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -56,7 +57,7 @@ async function handlePut(
   return ok<ManagerEmployeeResponse>(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const employeeId = event.pathParameters?.employeeId;
 
@@ -88,3 +89,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'manager employees handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

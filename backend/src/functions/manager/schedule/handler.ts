@@ -11,8 +11,9 @@ import {
   getScheduleMetaForCaller,
 } from './service.js';
 import type { GenerateDraftScheduleResponse, ManagerScheduleDraftsResponse, PublishScheduleResponse, ScheduleMetaResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const rawPath = event.rawPath;
 
@@ -54,3 +55,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'manager schedule handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

@@ -6,6 +6,7 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getLocations, createLocation, updateLocation, removeLocation } from './service.js';
 import type { OrgAdminLocationListResponse, OrgAdminLocationResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
@@ -21,7 +22,7 @@ async function handlePut(callerSub: string, locationId: string, rawBody: string 
   return ok<OrgAdminLocationResponse>(await updateLocation(callerSub, locationId, body));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const locationId = event.pathParameters?.['locationId'];
 
@@ -47,3 +48,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin locations handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

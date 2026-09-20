@@ -13,6 +13,7 @@ import {
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
 import { listSwapShifts, postSwapShift, claimSwapShift, cancelSwapShift } from './service.js';
 import type { SwapShiftListing, SwapShiftsListResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 /**
  * Lambda handler for all /employee/swap-shifts routes:
@@ -28,7 +29,7 @@ import type { SwapShiftListing, SwapShiftsListResponse } from '@daltime/contract
  * the token signature but does NOT check group membership — that is done here
  * before any routing logic.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   setRequestOrigin(event.headers?.['origin']);
 
   const method = event.requestContext.http.method;
@@ -94,3 +95,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'employee swap-shifts handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

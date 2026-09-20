@@ -196,6 +196,20 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
     expect(synthetic.body).toBe(original.body);
   });
 
+  it('strips X-Impersonate-User so the real handler\'s withImpersonation wrapper does not resolve it a second time', () => {
+    const original = buildEvent();
+    original.headers = { ...original.headers, 'x-impersonate-user': 'imp-user-1', 'X-Impersonate-User': 'imp-user-1' };
+
+    const synthetic = synth(original, 'imp-user-1', 'manager/shifts', {}, 'Manager');
+
+    const names = Object.keys(synthetic.headers ?? {}).map((n) => n.toLowerCase());
+    expect(names).not.toContain('x-impersonate-user');
+    // Unrelated headers survive.
+    expect(synthetic.headers?.['origin'] ?? synthetic.headers?.['authorization']).toBeDefined();
+    // And the original event is untouched.
+    expect(original.headers?.['x-impersonate-user']).toBe('imp-user-1');
+  });
+
   it('does not mutate the original event object', () => {
     const original = buildEvent();
     synth(original, 'imp-user-1', 'manager/shifts/abc123', {

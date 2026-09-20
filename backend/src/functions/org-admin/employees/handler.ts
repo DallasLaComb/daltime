@@ -20,6 +20,7 @@ import {
   enableEmployee,
 } from './service.js';
 import type { OrgAdminEmployeeListResponse, OrgAdminEmployeeResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -47,7 +48,7 @@ async function handlePut(
   return ok<OrgAdminEmployeeResponse>(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const employeeId = event.pathParameters?.employeeId;
 
@@ -79,3 +80,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin employees handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

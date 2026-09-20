@@ -20,6 +20,7 @@ import {
   enableManager,
 } from './service.js';
 import type { OrgAdminManagerListResponse, OrgAdminManagerResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -46,7 +47,7 @@ async function handlePut(
   return ok<OrgAdminManagerResponse>(await updateManager(callerSub, managerId, body, cognitoClient));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const managerId = event.pathParameters?.managerId;
 
@@ -78,3 +79,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin managers handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);
