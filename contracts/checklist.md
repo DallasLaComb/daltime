@@ -294,7 +294,7 @@ this tracker, run the verification chain, and commit the work.
 |---|---|---|---|---|---|---|---|
 | 1 | notifications path-params | 4 | — (already on `ApiClient`) | `contracts/notifications-path-params` | ✅ done | `e98f428` | renamed path-param schema `NotificationIdParam` → exported `MarkOneNotificationPathParams` (+`.min(1)`), wired handler via `parseWithContract`; Bruno files already present; sync green |
 | 2 | org-admin profile | 2 | `org-admin/profile/profile.service.ts` | `contracts/org-admin-profile` | ✅ done | `e4639ac` | added get/updateOrgAdminProfile; handler validates via `UpdateOrgAdminProfileBody`; deleted hand-written org-admin-profile.model.ts; Bruno added |
-| 3 | org-admin organization | 2 | `org-admin/organization/organization.service.ts`, legacy `app/services/organization.service.ts` | `contracts/org-admin-organization` | ✅ done |  |  |
+| 3 | org-admin organization | 2 | `org-admin/organization/organization.service.ts`, legacy `app/services/organization.service.ts` | `contracts/org-admin-organization` | ✅ done | `809d02f` | added get/updateOrgAdminOrganization; handler validates via `UpdateOrgAdminOrganizationBody`; only feature service migrated (legacy `/organizations` service + shared model stay for step 14); Bruno added |
 | 4 | manager employees | 5 | `manager/employees/employees.service.ts` | `contracts/manager-employees` | ⬜ pending | — |  |
 | 5 | manager employee-availability read | 3 | `manager/schedule/employee-availability.service.ts` | `contracts/manager-employee-availability` | ⬜ pending | — |  |
 | 6 | manager locations | 1 | `manager/shifts-needed/locations.service.ts` | `contracts/manager-locations` | ⬜ pending | — |  |
