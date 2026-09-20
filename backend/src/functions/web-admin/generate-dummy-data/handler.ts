@@ -13,8 +13,10 @@
  * Cognito group membership so non-WebAdmin callers cannot reach the logic.
  */
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { GenerateDummyDataBody } from '@daltime/contracts';
 import { ok, methodNotAllowed, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { generateDummyData } from './service.js';
 
@@ -23,9 +25,10 @@ import { generateDummyData } from './service.js';
  * Validates the body, enforces WebAdmin auth, and delegates to the service.
  */
 async function handlePost(rawBody: string | undefined): Promise<ReturnType<typeof ok>> {
-  const parsed = parseBody<unknown>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  const message = await generateDummyData(parsed.data);
+  const body = parseWithContract(GenerateDummyDataBody, parsed.data);
+  const message = await generateDummyData(body);
   return ok({ message });
 }
 

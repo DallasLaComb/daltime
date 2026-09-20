@@ -1,16 +1,9 @@
 /**
  * Types for the generate-dummy-data feature.
- * These are local to this slice — the availability and shift types that
- * actually get written to DynamoDB are imported from shared models.
+ * These are local to this slice — the request body comes from the contract
+ * (`@daltime/contracts`) and the availability/shift types that actually get
+ * written to DynamoDB are imported from shared models.
  */
-
-/** Validated, parsed request body for POST /web-admin/generate-dummy-data. */
-export interface GenerateDummyDataBody {
-  /** Full 4-digit year (e.g. 2026). Valid range: 2020–2030. */
-  year: number;
-  /** 1-indexed month (1 = January, 12 = December). */
-  month: number;
-}
 
 /**
  * Per-org data discovery bundle — everything the service layer needs before

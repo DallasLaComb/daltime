@@ -820,6 +820,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/generate-dummy-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate dummy data (dev/test seeding)
+         * @description Dev/test helper scoped to the seed org only: generates availability records and open shifts for a requested month. Never touches real customer orgs.
+         */
+        post: operations["generateWebAdminDummyData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/web-admin/organizations/{orgId}/org-admins": {
         parameters: {
             query?: never;
@@ -1360,6 +1380,13 @@ export interface components {
         /** @description The location to assign to the manager/employee. */
         AssignUserLocationBody: {
             location_id: string;
+        };
+        /** @description Month/year to generate dummy availability + open shifts for. */
+        GenerateDummyDataBody: {
+            /** @description Full 4-digit year, 2020–2030. */
+            year: number;
+            /** @description 1-indexed month (1 = January, 12 = December). */
+            month: number;
         };
         /** @description Fields accepted to register a new OrgAdmin via Cognito. */
         CreateOrgAdminBody: {
@@ -2031,6 +2058,10 @@ export interface components {
             updated_at: string;
             /** @description Joined from the ORG#<org_id> METADATA record. */
             org_name: string;
+        };
+        GenerateDummyDataResponse: {
+            /** @description Human-readable summary of what was generated. */
+            message: string;
         };
         /** @description Every OrgAdmin in the given organization. */
         WebAdminOrgAdminListResponse: components["schemas"]["WebAdminOrgAdminResponse"][];
@@ -5354,6 +5385,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebAdminEmployeeListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generateWebAdminDummyData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateDummyDataBody"];
+            };
+        };
+        responses: {
+            /** @description A summary of the generated dummy data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateDummyDataResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */

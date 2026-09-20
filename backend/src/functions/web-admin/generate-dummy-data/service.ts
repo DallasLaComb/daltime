@@ -8,13 +8,14 @@
  * alphabetically by email always gets no availability record written).
  */
 import { randomUUID } from 'node:crypto';
+import type { GenerateDummyDataBody } from '@daltime/contracts';
 import { ValidationError } from '../../shared/errors.js';
 import { listOrgLocations } from '../../shared/dynamo.js';
 import { listOrganizations } from '../organizations/db.js';
 import { listEmployeesByOrg } from '../../org-admin/employees/db.js';
 import { listManagersByOrg } from '../../org-admin/managers/db.js';
 import { batchWriteAvailability, batchWriteShifts } from './db.js';
-import type { GenerateDummyDataBody, OrgBundle, ShiftPreset } from './model.js';
+import type { OrgBundle, ShiftPreset } from './model.js';
 import type {
   EmployeeAvailability,
   WeeklySchedule,

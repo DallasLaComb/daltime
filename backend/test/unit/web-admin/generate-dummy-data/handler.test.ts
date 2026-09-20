@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import { ForbiddenError, ValidationError } from '../../../../src/functions/shared/errors.js';
+import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 
 // ─── Mocks (must be declared before dynamic imports) ─────────────────────────
 
@@ -204,107 +204,84 @@ describe('POST — input validation (400)', () => {
   });
 
   it('returns 400 when body is missing year', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(new ValidationError('year is required'));
-
     const event = buildEvent('POST', JSON.stringify({ month: 6 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
     expect(parseBody(result).error).toMatch(/year/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 when body is missing month', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(new ValidationError('month is required'));
-
     const event = buildEvent('POST', JSON.stringify({ year: 2026 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
     expect(parseBody(result).error).toMatch(/month/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for month: 0 (below 1)', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('month must be between 1 and 12 (1-indexed)'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2026, month: 0 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    expect(parseBody(result).error).toMatch(/month must be between 1 and 12/);
+    expect(parseBody(result).error).toMatch(/month/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for month: 13 (above 12)', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('month must be between 1 and 12 (1-indexed)'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2026, month: 13 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    expect(parseBody(result).error).toMatch(/month must be between 1 and 12/);
+    expect(parseBody(result).error).toMatch(/month/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for month as a string "january"', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('month must be an integer'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2026, month: 'january' }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
     expect(parseBody(result).error).toMatch(/month/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for year below 2020', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('year must be between 2020 and 2030'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2019, month: 6 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    expect(parseBody(result).error).toMatch(/year must be between 2020 and 2030/);
+    expect(parseBody(result).error).toMatch(/year/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for year above 2030', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('year must be between 2020 and 2030'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2031, month: 6 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    expect(parseBody(result).error).toMatch(/year must be between 2020 and 2030/);
+    expect(parseBody(result).error).toMatch(/year/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for year as a string', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('year must be an integer'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: '2026', month: 6 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
     expect(parseBody(result).error).toMatch(/year/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 
   it('returns 400 for float year (non-integer)', async () => {
-    vi.mocked(generateDummyData).mockRejectedValue(
-      new ValidationError('year must be an integer'),
-    );
-
     const event = buildEvent('POST', JSON.stringify({ year: 2026.5, month: 6 }));
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
     expect(parseBody(result).error).toMatch(/year/i);
+    expect(generateDummyData).not.toHaveBeenCalled();
   });
 });
 
@@ -325,15 +302,15 @@ describe('POST — happy path (200)', () => {
     expect(generateDummyData).toHaveBeenCalledWith({ year: 2026, month: 6 });
   });
 
-  it('passes the full body to generateDummyData (including extra unknown fields)', async () => {
+  it('strips extra unknown fields before calling generateDummyData', async () => {
     vi.mocked(generateDummyData).mockResolvedValue('Generated dummy data for 1/2025: 0 records');
 
     const body = { year: 2025, month: 1, unknownField: 'should be ignored' };
     const event = buildEvent('POST', JSON.stringify(body));
     await handler(event);
 
-    // generateDummyData is called with the parsed body; validation inside service will strip/reject
-    expect(generateDummyData).toHaveBeenCalledWith(body);
+    // The contract schema strips unknown keys, so the service only ever sees the declared fields.
+    expect(generateDummyData).toHaveBeenCalledWith({ year: 2025, month: 1 });
   });
 
   it('returns 200 with CORS headers on success', async () => {
