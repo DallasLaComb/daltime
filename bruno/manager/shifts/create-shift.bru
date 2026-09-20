@@ -1,0 +1,22 @@
+meta {
+  name: Create Manager Shift
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/manager/shifts
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "employee_id": "<employee_id>",
+    "location_id": "<location_id>",
+    "date": "2026-07-08",
+    "start_time": "09:00",
+    "end_time": "14:00",
+    "type": "morning"
+  }
+}
