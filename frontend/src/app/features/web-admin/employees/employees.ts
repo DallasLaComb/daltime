@@ -10,8 +10,10 @@ import {
   SearchBarComponent,
 } from '@common-daltime';
 import type { ColumnDef } from '@common-daltime';
-import { WebAdminEmployeesService } from '../../../services/web-admin-employees.service';
-import type { WebAdminEmployeeResponse } from '../../../core/models/web-admin-employee.model';
+import {
+  WebAdminEmployeesService,
+  type WebAdminEmployeeResponse,
+} from '../../../services/web-admin-employees.service';
 
 @Component({
   selector: 'app-web-admin-employees',

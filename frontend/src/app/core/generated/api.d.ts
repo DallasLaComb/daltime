@@ -800,6 +800,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every employee across all organizations
+         * @description Backs the web-admin cross-org employee inventory screen. Lists every employee in every organization, joining each row’s org name from the ORG METADATA record.
+         */
+        get: operations["listWebAdminEmployees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/web-admin/profile": {
         parameters: {
             query?: never;
@@ -1862,6 +1882,35 @@ export interface components {
          * @enum {string}
          */
         UserLocationType: "MANAGER" | "EMPLOYEE";
+        /** @description Every employee across all organizations. */
+        WebAdminEmployeeListResponse: components["schemas"]["WebAdminEmployeeResponse"][];
+        /** @description An employee across all organizations, with the owning organization’s name. */
+        WebAdminEmployeeResponse: {
+            /** @description Cognito sub. */
+            employee_id: string;
+            first_name: string;
+            last_name: string;
+            /** Format: email */
+            email: string;
+            /** @description Empty string if not provided. */
+            phone: string;
+            org_id: string;
+            status: components["schemas"]["UserStatus"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+            /** @description Joined from the ORG#<org_id> METADATA record. */
+            org_name: string;
+        };
         /** @description The calling web-admin's own profile, enriched with their live Cognito status. */
         WebAdminProfileResponse: {
             /** @description WADMIN#<uuid> — stable audit identifier. */
@@ -5110,6 +5159,44 @@ export interface operations {
             };
             /** @description The requested record does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWebAdminEmployees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every employee across all organizations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminEmployeeListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

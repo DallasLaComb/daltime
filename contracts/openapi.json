@@ -5302,6 +5302,65 @@
         }
       }
     },
+    "/web-admin/employees": {
+      "get": {
+        "operationId": "listWebAdminEmployees",
+        "summary": "List every employee across all organizations",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs the web-admin cross-org employee inventory screen. Lists every employee in every organization, joining each row’s org name from the ORG METADATA record.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/employees/handler.ts",
+          "backend/src/functions/web-admin/employees/service.ts",
+          "backend/src/functions/web-admin/employees/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "GSI1PK = EMPLOYEE",
+            "note": "GSI1 query returns every employee record across all orgs (cross-org inventory view)."
+          },
+          {
+            "command": "BatchGet",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Batch-fetches each distinct org’s name to join as org_name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every employee across all organizations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminEmployeeListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/web-admin/profile": {
       "get": {
         "operationId": "getWebAdminProfile",
@@ -8163,6 +8222,75 @@
           "EMPLOYEE"
         ],
         "description": "Kind of user a location is assigned to."
+      },
+      "WebAdminEmployeeListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/WebAdminEmployeeResponse"
+        },
+        "description": "Every employee across all organizations."
+      },
+      "WebAdminEmployeeResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "org_name": {
+            "type": "string",
+            "description": "Joined from the ORG#<org_id> METADATA record."
+          }
+        },
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "status",
+          "created_at",
+          "updated_at",
+          "org_name"
+        ],
+        "additionalProperties": false,
+        "description": "An employee across all organizations, with the owning organization’s name."
       },
       "WebAdminProfileResponse": {
         "type": "object",
