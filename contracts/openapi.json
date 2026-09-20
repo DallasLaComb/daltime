@@ -1731,6 +1731,65 @@
         }
       }
     },
+    "/manager/locations": {
+      "get": {
+        "operationId": "listManagerLocations",
+        "summary": "List the calling manager's locations",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager shifts-needed and schedule screens, which need the org’s locations to scope shifts. Resolves the caller’s org_id from their JWT sub and lists every location in that org.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/locations/handler.ts",
+          "backend/src/functions/manager/locations/service.ts",
+          "backend/src/functions/manager/locations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, LOCATION#)",
+            "note": "Lists the org’s locations. Key attributes are stripped from each row before responding."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every location in the manager’s organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerLocationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/profile": {
       "get": {
         "operationId": "getManagerProfile",
@@ -4823,6 +4882,57 @@
         ],
         "additionalProperties": false,
         "description": "An employee record as returned to a Manager, enriched with live Cognito status."
+      },
+      "ManagerLocationListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ManagerLocationResponse"
+        },
+        "description": "Every location in the calling manager’s organization."
+      },
+      "ManagerLocationResponse": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "user_id of the creator."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "location_id",
+          "org_id",
+          "name",
+          "created_by",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "A location the calling manager can schedule shifts at."
       },
       "ManagerProfileResponse": {
         "type": "object",

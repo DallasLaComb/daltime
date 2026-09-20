@@ -272,6 +272,26 @@ export interface paths {
         patch: operations["enableManagerEmployee"];
         trace?: never;
     };
+    "/manager/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling manager's locations
+         * @description Backs the manager shifts-needed and schedule screens, which need the org’s locations to scope shifts. Resolves the caller’s org_id from their JWT sub and lists every location in that org.
+         */
+        get: operations["listManagerLocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manager/profile": {
         parameters: {
             query?: never;
@@ -1043,6 +1063,29 @@ export interface components {
              * @example 2026-02-23T18:04:11.000Z
              */
             updated_at: string;
+        };
+        /** @description Every location in the calling manager’s organization. */
+        ManagerLocationListResponse: components["schemas"]["ManagerLocationResponse"][];
+        /** @description A location the calling manager can schedule shifts at. */
+        ManagerLocationResponse: {
+            location_id: string;
+            org_id: string;
+            name: string;
+            address?: string;
+            /** @description user_id of the creator. */
+            created_by: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at?: string;
         };
         /** @description A manager's own profile, enriched with their live Cognito status. */
         ManagerProfileResponse: {
@@ -2246,6 +2289,44 @@ export interface operations {
             };
             /** @description The requested record does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listManagerLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every location in the manager’s organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerLocationListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
