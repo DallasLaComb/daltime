@@ -199,7 +199,7 @@ cd frontend && npm start
 
 # Deploy backend changes to the shared dev stack
 cd backend && sam build --parameter-overrides LambdaArchitecture=arm64 --template-file ../infra/template.yaml
-sam deploy --template-file .aws-sam/build/template.yaml --stack-name daltime-backend-dev --s3-bucket daltime-sam-artifacts --capabilities CAPABILITY_IAM --no-confirm-changeset --no-fail-on-empty-changeset --region us-east-1 --profile daltime-dev --parameter-overrides 'AllowedOrigins=http://localhost:4200,https://dev.daltime.com' CognitoUserPoolId=us-east-1_kzQ806uSv CognitoClientId=1nl13tbaqb47s8f0tfc07lc24m
+sam deploy --template-file .aws-sam/build/template.yaml --stack-name daltime-backend-dev --s3-bucket daltime-sam-artifacts --capabilities CAPABILITY_IAM --no-confirm-changeset --no-fail-on-empty-changeset --region us-east-1 --profile daltime-dev --parameter-overrides 'AllowedOrigins=http://localhost:4200,https://dev.daltime.com,https://localhost' CognitoUserPoolId=us-east-1_kzQ806uSv CognitoClientId=1nl13tbaqb47s8f0tfc07lc24m
 ```
 
 ## Testing
