@@ -1,7 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { UpdateOrgAdminOrganizationBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { getOrganization, updateOrganization } from './service.js';
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -22,9 +24,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<{ name?: string; address?: string }>(event.body);
+      const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
-      return ok(await updateOrganization(callerSub, parsed.data));
+      const body = parseWithContract(UpdateOrgAdminOrganizationBody, parsed.data);
+      return ok(await updateOrganization(callerSub, body));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

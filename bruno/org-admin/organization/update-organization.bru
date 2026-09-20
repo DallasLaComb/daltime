@@ -1,0 +1,17 @@
+meta {
+  name: Update Org-Admin Organization
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/org-admin/organization
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Alexandria Coffee Co."
+  }
+}

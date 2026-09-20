@@ -2194,6 +2194,169 @@
         }
       }
     },
+    "/org-admin/organization": {
+      "get": {
+        "operationId": "getOrgAdminOrganization",
+        "summary": "Get the calling org-admin's organization",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin organization screen (frontend/src/app/features/org-admin/organization). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/organization/handler.ts",
+          "backend/src/functions/org-admin/organization/service.ts",
+          "backend/src/functions/org-admin/organization/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Reverse lookup that resolves the caller’s org_id before the org-partition read."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Fetches the organization record; key attributes are stripped before returning."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling org-admin's organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminOrganizationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateOrgAdminOrganization",
+        "summary": "Update the calling org-admin's organization",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Saves edits made on the org-admin organization screen. Accepts a partial update of name and/or address; unspecified fields are carried over from the existing record.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/organization/handler.ts",
+          "backend/src/functions/org-admin/organization/service.ts",
+          "backend/src/functions/org-admin/organization/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Reads the existing record so unspecified fields are carried over."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Sets name/address/updated_at. Returns ALL_NEW, which becomes the response body."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrgAdminOrganizationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminOrganizationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org-admin/profile": {
       "get": {
         "operationId": "getOrgAdminProfile",
@@ -3355,6 +3518,20 @@
         },
         "description": "Partial update of a manager’s name or phone."
       },
+      "UpdateOrgAdminOrganizationBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": "Partial update of the calling OrgAdmin's organization."
+      },
       "UpdateOrgAdminProfileBody": {
         "type": "object",
         "properties": {
@@ -4061,6 +4238,50 @@
         ],
         "additionalProperties": false,
         "description": "A manager record as returned to an OrgAdmin, enriched with live Cognito status."
+      },
+      "OrgAdminOrganizationResponse": {
+        "type": "object",
+        "properties": {
+          "org_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "org_admin_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Atomic counter maintained by the org-admins Lambda."
+          }
+        },
+        "required": [
+          "org_id",
+          "name",
+          "address",
+          "created_at",
+          "updated_at",
+          "org_admin_count"
+        ],
+        "additionalProperties": false,
+        "description": "The calling OrgAdmin's own organization."
       },
       "OrgAdminProfileResponse": {
         "type": "object",

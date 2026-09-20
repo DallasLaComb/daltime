@@ -1,19 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type { Organization, UpdateOrganizationBody } from '../../../core/models/organization.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type OrgAdminOrganizationResponse = ApiSchema<'OrgAdminOrganizationResponse'>;
+export type UpdateOrgAdminOrganizationBody = ApiSchema<'UpdateOrgAdminOrganizationBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class OrgAdminOrganizationService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/org-admin/organization`;
+  private readonly api = inject(ApiClient);
 
-  get(): Observable<Organization> {
-    return this.http.get<Organization>(this.baseUrl);
+  get(): Observable<OrgAdminOrganizationResponse> {
+    return this.api.get('/org-admin/organization');
   }
 
-  update(body: UpdateOrganizationBody): Observable<Organization> {
-    return this.http.put<Organization>(this.baseUrl, body);
+  update(body: UpdateOrgAdminOrganizationBody): Observable<OrgAdminOrganizationResponse> {
+    return this.api.put('/org-admin/organization', body);
   }
 }

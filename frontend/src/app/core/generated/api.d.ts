@@ -308,6 +308,30 @@ export interface paths {
         patch: operations["enableOrgAdminManager"];
         trace?: never;
     };
+    "/org-admin/organization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the calling org-admin's organization
+         * @description Backs the org-admin organization screen (frontend/src/app/features/org-admin/organization). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.
+         */
+        get: operations["getOrgAdminOrganization"];
+        /**
+         * Update the calling org-admin's organization
+         * @description Saves edits made on the org-admin organization screen. Accepts a partial update of name and/or address; unspecified fields are carried over from the existing record.
+         */
+        put: operations["updateOrgAdminOrganization"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org-admin/profile": {
         parameters: {
             query?: never;
@@ -629,6 +653,11 @@ export interface components {
             last_name?: string;
             phone?: string;
         };
+        /** @description Partial update of the calling OrgAdmin's organization. */
+        UpdateOrgAdminOrganizationBody: {
+            name?: string;
+            address?: string;
+        };
         /** @description Update the calling OrgAdmin's name. */
         UpdateOrgAdminProfileBody: {
             /** @description The OrgAdmin's display name. */
@@ -939,6 +968,26 @@ export interface components {
              * @example 2026-02-23T18:04:11.000Z
              */
             updated_at: string;
+        };
+        /** @description The calling OrgAdmin's own organization. */
+        OrgAdminOrganizationResponse: {
+            org_id: string;
+            name: string;
+            address: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+            /** @description Atomic counter maintained by the org-admins Lambda. */
+            org_admin_count: number;
         };
         /** @description The calling OrgAdmin's own profile, enriched with their live Cognito status. */
         OrgAdminProfileResponse: {
@@ -2276,6 +2325,113 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOrgAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calling org-admin's organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminOrganizationResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateOrgAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrgAdminOrganizationBody"];
+            };
+        };
+        responses: {
+            /** @description The updated organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminOrganizationResponse"];
+                };
             };
             /** @description Request was malformed or failed validation. */
             400: {
