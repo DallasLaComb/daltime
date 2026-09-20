@@ -2194,6 +2194,174 @@
         }
       }
     },
+    "/org-admin/profile": {
+      "get": {
+        "operationId": "getOrgAdminProfile",
+        "summary": "Get the calling org-admin's profile",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin profile screen (frontend/src/app/features/org-admin/profile). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/profile/handler.ts",
+          "backend/src/functions/org-admin/profile/service.ts",
+          "backend/src/functions/org-admin/profile/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Reverse lookup that resolves the caller’s org_id before the org-partition read."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userId>",
+            "note": "Fetches the org-admin record itself; status is then enriched from Cognito."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling org-admin's profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminProfileResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateOrgAdminProfile",
+        "summary": "Update the calling org-admin's profile",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Saves edits made on the org-admin profile screen. Only `name` is mutable — email, org, and status are owned by Cognito or the org who created the org-admin.",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/profile/handler.ts",
+          "backend/src/functions/org-admin/profile/service.ts",
+          "backend/src/functions/org-admin/profile/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id before the org-partition write."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userId>",
+            "note": "Fetches the current org-admin record to obtain the email Cognito updates."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userId>",
+            "note": "Primary record; SET name and updated_at. Response is the pre-update record with the new name."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<userId> AND SK = METADATA",
+            "note": "Keeps name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrgAdminProfileBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",
@@ -3187,6 +3355,20 @@
         },
         "description": "Partial update of a manager’s name or phone."
       },
+      "UpdateOrgAdminProfileBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The OrgAdmin's display name."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "description": "Update the calling OrgAdmin's name."
+      },
       "EmployeeAvailabilityOverridesResponse": {
         "type": "object",
         "properties": {
@@ -3879,6 +4061,46 @@
         ],
         "additionalProperties": false,
         "description": "A manager record as returned to an OrgAdmin, enriched with live Cognito status."
+      },
+      "OrgAdminProfileResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "name",
+          "org_id",
+          "status",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "The calling OrgAdmin's own profile, enriched with their live Cognito status."
       },
       "HealthResponse": {
         "type": "object",

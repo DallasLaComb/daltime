@@ -8,3 +8,4 @@
  */
 export * from './employees.js';
 export * from './managers.js';
+export * from './profile.js';

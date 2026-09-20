@@ -1,8 +1,10 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { UpdateOrgAdminProfileBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
@@ -25,9 +27,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
 
     if (method === 'PUT') {
-      const parsed = parseBody<{ name?: string }>(event.body);
+      const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
-      return ok(await updateProfile(callerSub, parsed.data, cognitoClient));
+      const body = parseWithContract(UpdateOrgAdminProfileBody, parsed.data);
+      return ok(await updateProfile(callerSub, body, cognitoClient));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);

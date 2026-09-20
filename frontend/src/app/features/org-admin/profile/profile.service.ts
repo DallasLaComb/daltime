@@ -1,22 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  OrgAdminProfileResponse,
-  UpdateOrgAdminProfileBody,
-} from '../../../core/models/org-admin-profile.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type OrgAdminProfileResponse = ApiSchema<'OrgAdminProfileResponse'>;
+export type UpdateOrgAdminProfileBody = ApiSchema<'UpdateOrgAdminProfileBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/org-admin/profile`;
+  private readonly api = inject(ApiClient);
 
   get(): Observable<OrgAdminProfileResponse> {
-    return this.http.get<OrgAdminProfileResponse>(this.baseUrl);
+    return this.api.get('/org-admin/profile');
   }
 
   update(body: UpdateOrgAdminProfileBody): Observable<OrgAdminProfileResponse> {
-    return this.http.put<OrgAdminProfileResponse>(this.baseUrl, body);
+    return this.api.put('/org-admin/profile', body);
   }
 }

@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { ProfileService } from './profile.service';
-import type { OrgAdminProfileResponse } from '../../../core/models/org-admin-profile.model';
 import { ButtonComponent } from '@common-daltime';
+import { ProfileService, type OrgAdminProfileResponse } from './profile.service';
 
 @Component({
   selector: 'app-org-admin-profile',
