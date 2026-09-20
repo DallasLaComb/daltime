@@ -1,5 +1,6 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { CreateManagerEmployeeBody, UpdateManagerEmployeeBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import {
   ok,
@@ -10,6 +11,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   listEmployees,
   createEmployee,
@@ -35,15 +37,10 @@ async function handleGet(callerSub: string, path: string, employeeId: string | u
 }
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<{
-    email: string;
-    first_name: string;
-    last_name: string;
-    phone?: string;
-    temp_password: string;
-  }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createEmployee(callerSub, parsed.data, cognitoClient));
+  const body = parseWithContract(CreateManagerEmployeeBody, parsed.data);
+  return created(await createEmployee(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -52,9 +49,10 @@ async function handlePut(
   rawBody: string | undefined,
 ) {
   if (!employeeId) return badRequest('employeeId path parameter is required');
-  const parsed = parseBody<{ first_name?: string; last_name?: string; phone?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateEmployee(callerSub, employeeId, parsed.data, cognitoClient));
+  const body = parseWithContract(UpdateManagerEmployeeBody, parsed.data);
+  return ok(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

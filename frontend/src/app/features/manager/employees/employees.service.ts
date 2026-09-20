@@ -1,38 +1,41 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  EmployeeResponse,
-  CreateEmployeeBody,
-  UpdateEmployeeBody,
-} from '../../../core/models/employee.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
 
-type CreateManagerEmployeeBody = Omit<CreateEmployeeBody, 'manager_id'>;
-type UpdateManagerEmployeeBody = Pick<UpdateEmployeeBody, 'first_name' | 'last_name' | 'phone'>;
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type ManagerEmployeeResponse = ApiSchema<'ManagerEmployeeResponse'>;
+export type CreateManagerEmployeeBody = ApiSchema<'CreateManagerEmployeeBody'>;
+export type UpdateManagerEmployeeBody = ApiSchema<'UpdateManagerEmployeeBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class ManagerEmployeesService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/employees`;
+  private readonly api = inject(ApiClient);
 
-  getAll(): Observable<EmployeeResponse[]> {
-    return this.http.get<EmployeeResponse[]>(this.baseUrl);
+  getAll(): Observable<ManagerEmployeeResponse[]> {
+    return this.api.get('/manager/employees');
   }
 
-  create(body: CreateManagerEmployeeBody): Observable<EmployeeResponse> {
-    return this.http.post<EmployeeResponse>(this.baseUrl, body);
+  create(body: CreateManagerEmployeeBody): Observable<ManagerEmployeeResponse> {
+    return this.api.post('/manager/employees', body);
   }
 
-  update(employeeId: string, body: UpdateManagerEmployeeBody): Observable<EmployeeResponse> {
-    return this.http.put<EmployeeResponse>(`${this.baseUrl}/${employeeId}`, body);
+  update(
+    employeeId: string,
+    body: UpdateManagerEmployeeBody,
+  ): Observable<ManagerEmployeeResponse> {
+    return this.api.put('/manager/employees/{employeeId}', body, { params: { employeeId } });
   }
 
   disable(employeeId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${employeeId}`);
+    return this.api.delete('/manager/employees/{employeeId}', { params: { employeeId } });
   }
 
   enable(employeeId: string): Observable<void> {
-    return this.http.patch<void>(`${this.baseUrl}/${employeeId}`, {});
+    return this.api.patch('/manager/employees/{employeeId}', {}, { params: { employeeId } });
   }
 }

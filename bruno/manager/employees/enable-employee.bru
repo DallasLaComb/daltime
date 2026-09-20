@@ -1,0 +1,11 @@
+meta {
+  name: Enable Employee
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{base_url}}/manager/employees/{{employee_id}}
+  body: none
+  auth: none
+}

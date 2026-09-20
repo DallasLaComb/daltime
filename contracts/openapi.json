@@ -1097,6 +1097,448 @@
         }
       }
     },
+    "/manager/employees": {
+      "get": {
+        "operationId": "listManagerEmployees",
+        "summary": "List the calling manager's employees",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager employee roster screen (frontend/src/app/features/manager/employees). Lists only employees whose manager_id matches the caller.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)",
+            "filter": "manager_id = <managerId>",
+            "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every employee reporting to the caller, with live Cognito status merged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerEmployeeListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createManagerEmployee",
+        "summary": "Register a new employee",
+        "tags": [
+          "manager"
+        ],
+        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen’s \"Add employee\" action.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeSub>",
+            "note": "Primary record, carrying GSI1PK = EMPLOYEE and GSI1SK = <created_at>. Written in parallel with the reverse-lookup record below."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<employeeSub> AND SK = METADATA",
+            "note": "Reverse-lookup record, so the employee can be resolved by ID alone."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManagerEmployeeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created employee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerEmployeeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A Cognito user with this email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/employees/{employeeId}": {
+      "put": {
+        "operationId": "updateManagerEmployee",
+        "summary": "Update an employee",
+        "tags": [
+          "manager"
+        ],
+        "description": "Saves edits made on the manager employee roster screen — name or phone. Rejects updating an employee that does not report to the caller.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Fetches the employee to confirm they report to the caller."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Primary record; SET of updated_at plus each supplied field. Returns ALL_NEW."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
+            "note": "Keeps first_name/last_name/updated_at on the reverse-lookup record in sync."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateManagerEmployeeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated employee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerEmployeeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disableManagerEmployee",
+        "summary": "Disable an employee",
+        "tags": [
+          "manager"
+        ],
+        "description": "Soft-deletes an employee from the roster screen — disables their Cognito account and marks the stored record DISABLED without deleting either.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Fetches the employee to confirm they report to the caller and get the email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Sets status = DISABLED."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Employee disabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "enableManagerEmployee",
+        "summary": "Re-enable a disabled employee",
+        "tags": [
+          "manager"
+        ],
+        "description": "Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Takes no request body.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/employees/handler.ts",
+          "backend/src/functions/manager/employees/service.ts",
+          "backend/src/functions/manager/employees/db.ts",
+          "backend/src/functions/shared/contract-validation.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Fetches the employee to confirm they report to the caller and get the email for Cognito."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<employeeId>",
+            "note": "Sets status = CONFIRMED."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employeeId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the employee."
+            },
+            "required": true,
+            "description": "Cognito sub of the employee."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Employee re-enabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/manager/profile": {
       "get": {
         "operationId": "getManagerProfile",
@@ -3393,6 +3835,56 @@
         ],
         "description": "Body for POST /employee/swap-shifts — the shift being offered for swap."
       },
+      "CreateManagerEmployeeBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "description": "Cognito username. Trimmed before validation.",
+            "format": "email",
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          },
+          "temp_password": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Temporary Cognito password. Sent verbatim — never trimmed."
+          }
+        },
+        "required": [
+          "email",
+          "first_name",
+          "last_name",
+          "temp_password"
+        ],
+        "description": "Fields accepted to register a new employee that reports to the calling manager."
+      },
+      "UpdateManagerEmployeeBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "description": "Partial update of an employee's name or phone."
+      },
       "UpdateManagerProfileBody": {
         "type": "object",
         "properties": {
@@ -4024,6 +4516,75 @@
           "cancelled"
         ],
         "description": "Lifecycle status of a shift swap listing."
+      },
+      "ManagerEmployeeListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ManagerEmployeeResponse"
+        },
+        "description": "Every employee reporting to the calling Manager."
+      },
+      "ManagerEmployeeResponse": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty string if not provided."
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager this employee reports to."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "org_id",
+          "manager_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "An employee record as returned to a Manager, enriched with live Cognito status."
       },
       "ManagerProfileResponse": {
         "type": "object",

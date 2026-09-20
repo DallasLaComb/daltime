@@ -180,6 +180,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manager/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling manager's employees
+         * @description Backs the manager employee roster screen (frontend/src/app/features/manager/employees). Lists only employees whose manager_id matches the caller.
+         */
+        get: operations["listManagerEmployees"];
+        put?: never;
+        /**
+         * Register a new employee
+         * @description Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen’s "Add employee" action.
+         */
+        post: operations["createManagerEmployee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/employees/{employeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update an employee
+         * @description Saves edits made on the manager employee roster screen — name or phone. Rejects updating an employee that does not report to the caller.
+         */
+        put: operations["updateManagerEmployee"];
+        post?: never;
+        /**
+         * Disable an employee
+         * @description Soft-deletes an employee from the roster screen — disables their Cognito account and marks the stored record DISABLED without deleting either.
+         */
+        delete: operations["disableManagerEmployee"];
+        options?: never;
+        head?: never;
+        /**
+         * Re-enable a disabled employee
+         * @description Reverses a disable action from the roster screen — re-activates the Cognito account and the stored record. Takes no request body.
+         */
+        patch: operations["enableManagerEmployee"];
+        trace?: never;
+    };
     "/manager/profile": {
         parameters: {
             query?: never;
@@ -605,6 +657,25 @@ export interface components {
         PostSwapShiftBody: {
             shift_id: string;
         };
+        /** @description Fields accepted to register a new employee that reports to the calling manager. */
+        CreateManagerEmployeeBody: {
+            /**
+             * Format: email
+             * @description Cognito username. Trimmed before validation.
+             */
+            email: string;
+            first_name: string;
+            last_name: string;
+            phone?: string;
+            /** @description Temporary Cognito password. Sent verbatim — never trimmed. */
+            temp_password: string;
+        };
+        /** @description Partial update of an employee's name or phone. */
+        UpdateManagerEmployeeBody: {
+            first_name?: string;
+            last_name?: string;
+            phone?: string;
+        };
         /** @description Partial update of the calling manager’s own profile. */
         UpdateManagerProfileBody: {
             first_name?: string;
@@ -880,6 +951,35 @@ export interface components {
          * @enum {string}
          */
         SwapStatus: "open" | "claimed" | "cancelled";
+        /** @description Every employee reporting to the calling Manager. */
+        ManagerEmployeeListResponse: components["schemas"]["ManagerEmployeeResponse"][];
+        /** @description An employee record as returned to a Manager, enriched with live Cognito status. */
+        ManagerEmployeeResponse: {
+            /** @description Cognito sub. */
+            employee_id: string;
+            first_name: string;
+            last_name: string;
+            /** Format: email */
+            email: string;
+            /** @description Empty string if not provided. */
+            phone: string;
+            org_id: string;
+            /** @description Manager this employee reports to. */
+            manager_id: string;
+            status: components["schemas"]["UserStatus"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+        };
         /** @description A manager's own profile, enriched with their live Cognito status. */
         ManagerProfileResponse: {
             /** @description Cognito sub. */
@@ -1689,6 +1789,281 @@ export interface operations {
             };
             /** @description The swap listing is no longer open — already claimed, cancelled, or a duplicate. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listManagerEmployees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every employee reporting to the caller, with live Cognito status merged in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerEmployeeListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createManagerEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateManagerEmployeeBody"];
+            };
+        };
+        responses: {
+            /** @description The created employee. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerEmployeeResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A Cognito user with this email already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateManagerEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateManagerEmployeeBody"];
+            };
+        };
+        responses: {
+            /** @description The updated employee. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerEmployeeResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    disableManagerEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Employee disabled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    enableManagerEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cognito sub of the employee. */
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Employee re-enabled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

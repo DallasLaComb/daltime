@@ -6,4 +6,5 @@
  * Owned by the manager slice work — the root `src/index.ts` re-exports this file, so
  * nothing outside this directory needs editing to add a slice.
  */
+export * from './employees.js';
 export * from './profile.js';
