@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { SwapShiftApiFields } from '../../entities/swap-shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/swap-shifts/handler.ts',
@@ -95,7 +95,7 @@ export const SwapShiftsListResponse = z
       'The two swap-shifts panels: what the caller can take, and what the caller has posted.',
   });
 
-registerOperation('get', '/employee/swap-shifts', {
+registerRoleOperation('get', '/employee/swap-shifts', {
   operationId: 'listSwapShifts',
   summary: 'List open swap listings from peers and the caller’s own posted listings',
   tags: ['employee'],
@@ -133,7 +133,7 @@ registerOperation('get', '/employee/swap-shifts', {
   },
 });
 
-registerOperation('post', '/employee/swap-shifts', {
+registerRoleOperation('post', '/employee/swap-shifts', {
   operationId: 'postSwapShift',
   summary: 'Post one of the caller’s own published shifts for swap',
   tags: ['employee'],
@@ -192,7 +192,7 @@ registerOperation('post', '/employee/swap-shifts', {
   },
 });
 
-registerOperation('post', '/employee/swap-shifts/{swapId}/claim', {
+registerRoleOperation('post', '/employee/swap-shifts/{swapId}/claim', {
   operationId: 'claimSwapShift',
   summary: 'Claim an open swap listing',
   tags: ['employee'],
@@ -246,7 +246,7 @@ registerOperation('post', '/employee/swap-shifts/{swapId}/claim', {
   },
 });
 
-registerOperation('delete', '/employee/swap-shifts/{swapId}', {
+registerRoleOperation('delete', '/employee/swap-shifts/{swapId}', {
   operationId: 'cancelSwapShift',
   summary: 'Cancel (unpost) a swap listing the caller posted',
   tags: ['employee'],

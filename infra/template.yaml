@@ -468,6 +468,7 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
+          - X-Impersonate-User
         AllowMethods:
           - GET
           - POST

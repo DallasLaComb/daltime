@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { NotificationApiFields } from '../../entities/notification.js';
-import { registerOperation, type DynamoAccess } from '../../registry.js';
+import { registerOperation, registerRoleOperation, type DynamoAccess } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/shared/notifications/handler.ts',
@@ -145,8 +145,10 @@ const MARK_ONE_DYNAMODB: DynamoAccess[] = [
 function registerNotificationOperations(role: RolePrefix): void {
   const label = OPERATION_ID_LABEL[role];
   const base = `/${role}/notifications`;
+  // A WebAdmin acts as itself on /web-admin routes, so only the impersonatable roles declare the header.
+  const register = role === 'web-admin' ? registerOperation : registerRoleOperation;
 
-  registerOperation('get', base, {
+  register('get', base, {
     operationId: `list${label}Notifications`,
     summary: `List the calling ${role}'s notifications`,
     tags: [role],
@@ -166,7 +168,7 @@ function registerNotificationOperations(role: RolePrefix): void {
     },
   });
 
-  registerOperation('patch', base, {
+  register('patch', base, {
     operationId: `markAll${label}NotificationsRead`,
     summary: `Mark all of the calling ${role}'s unread notifications as read`,
     tags: [role],
@@ -186,7 +188,7 @@ function registerNotificationOperations(role: RolePrefix): void {
     },
   });
 
-  registerOperation('patch', `${base}/{notificationId}`, {
+  register('patch', `${base}/{notificationId}`, {
     operationId: `markOne${label}NotificationRead`,
     summary: `Mark one of the calling ${role}'s notifications as read`,
     tags: [role],

@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { ShiftApiFields, ShiftType } from '../../entities/shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/shifts/handler.ts',
@@ -112,7 +112,7 @@ const ShiftIdPathParams = z.object({
   shiftId: z.string().meta({ description: 'The managed shift’s shift_id.' }),
 });
 
-registerOperation('get', '/manager/shifts', {
+registerRoleOperation('get', '/manager/shifts', {
   operationId: 'listManagerShifts',
   summary: "List the calling manager's shifts in a month",
   tags: ['manager'],
@@ -144,7 +144,7 @@ registerOperation('get', '/manager/shifts', {
   },
 });
 
-registerOperation('post', '/manager/shifts', {
+registerRoleOperation('post', '/manager/shifts', {
   operationId: 'createManagerShift',
   summary: 'Create a shift',
   tags: ['manager'],
@@ -181,7 +181,7 @@ registerOperation('post', '/manager/shifts', {
   },
 });
 
-registerOperation('put', '/manager/shifts/{shiftId}', {
+registerRoleOperation('put', '/manager/shifts/{shiftId}', {
   requestParams: { path: ShiftIdPathParams },
   operationId: 'updateManagerShift',
   summary: 'Update a shift',
@@ -224,7 +224,7 @@ registerOperation('put', '/manager/shifts/{shiftId}', {
   },
 });
 
-registerOperation('delete', '/manager/shifts/{shiftId}', {
+registerRoleOperation('delete', '/manager/shifts/{shiftId}', {
   requestParams: { path: ShiftIdPathParams },
   operationId: 'deleteManagerShift',
   summary: 'Delete a shift',

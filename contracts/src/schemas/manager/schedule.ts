@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ManagerShiftResponse } from './shifts.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/schedule/handler.ts',
@@ -64,7 +64,7 @@ export const ManagerScheduleDraftsResponse = z
       'The month’s draft shifts. The backend returns `unknown[]` today; declared as ManagerShiftResponse[] once typed.',
   });
 
-registerOperation('post', '/manager/schedule/generate', {
+registerRoleOperation('post', '/manager/schedule/generate', {
   operationId: 'generateManagerDraftSchedule',
   summary: 'Generate a draft schedule for a month',
   tags: ['manager'],
@@ -116,7 +116,7 @@ registerOperation('post', '/manager/schedule/generate', {
   },
 });
 
-registerOperation('post', '/manager/schedule/publish', {
+registerRoleOperation('post', '/manager/schedule/publish', {
   operationId: 'publishManagerSchedule',
   summary: 'Publish a month’s draft shifts',
   tags: ['manager'],
@@ -153,7 +153,7 @@ registerOperation('post', '/manager/schedule/publish', {
   },
 });
 
-registerOperation('get', '/manager/schedule/drafts', {
+registerRoleOperation('get', '/manager/schedule/drafts', {
   operationId: 'getManagerScheduleDrafts',
   summary: 'Get a month’s draft shifts',
   tags: ['manager'],
@@ -184,7 +184,7 @@ registerOperation('get', '/manager/schedule/drafts', {
   },
 });
 
-registerOperation('get', '/manager/schedule/meta', {
+registerRoleOperation('get', '/manager/schedule/meta', {
   operationId: 'getManagerScheduleMeta',
   summary: 'Get draft-generation budget for a month',
   tags: ['manager'],

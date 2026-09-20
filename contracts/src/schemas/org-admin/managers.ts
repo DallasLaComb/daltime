@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { ManagerApiFields } from '../../entities/manager.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/managers/handler.ts',
@@ -92,7 +92,7 @@ const ManagerIdPathParams = z.object({
   managerId: z.string().meta({ description: 'Cognito sub of the manager.' }),
 });
 
-registerOperation('get', '/org-admin/managers', {
+registerRoleOperation('get', '/org-admin/managers', {
   operationId: 'listOrgAdminManagers',
   summary: 'List managers in the caller’s organization',
   tags: ['org-admin'],
@@ -122,7 +122,7 @@ registerOperation('get', '/org-admin/managers', {
   },
 });
 
-registerOperation('post', '/org-admin/managers', {
+registerRoleOperation('post', '/org-admin/managers', {
   operationId: 'createOrgAdminManager',
   summary: 'Register a new manager',
   tags: ['org-admin'],
@@ -168,7 +168,7 @@ registerOperation('post', '/org-admin/managers', {
   },
 });
 
-registerOperation('put', '/org-admin/managers/{managerId}', {
+registerRoleOperation('put', '/org-admin/managers/{managerId}', {
   requestParams: { path: ManagerIdPathParams },
   operationId: 'updateOrgAdminManager',
   summary: 'Update a manager',
@@ -210,7 +210,7 @@ registerOperation('put', '/org-admin/managers/{managerId}', {
   },
 });
 
-registerOperation('delete', '/org-admin/managers/{managerId}', {
+registerRoleOperation('delete', '/org-admin/managers/{managerId}', {
   requestParams: { path: ManagerIdPathParams },
   operationId: 'disableOrgAdminManager',
   summary: 'Disable a manager',
@@ -255,7 +255,7 @@ registerOperation('delete', '/org-admin/managers/{managerId}', {
   },
 });
 
-registerOperation('patch', '/org-admin/managers/{managerId}', {
+registerRoleOperation('patch', '/org-admin/managers/{managerId}', {
   requestParams: { path: ManagerIdPathParams },
   operationId: 'enableOrgAdminManager',
   summary: 'Re-enable a disabled manager',

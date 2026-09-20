@@ -34,6 +34,7 @@ export * from './entities/web-admin.js';
 
 export {
   registerOperation,
+  registerRoleOperation,
   getRegisteredPaths,
   getRegisteredOperationCount,
   noDynamoAccess,

@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { LocationApiFields } from '../../entities/location.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/locations/handler.ts',
@@ -64,7 +64,7 @@ export const UpdateOrgAdminLocationBody = z
     description: 'Partial update of a location’s name or address. Empty address clears it.',
   });
 
-registerOperation('get', '/org-admin/locations', {
+registerRoleOperation('get', '/org-admin/locations', {
   operationId: 'listOrgAdminLocations',
   summary: "List the calling org-admin's locations",
   tags: ['org-admin'],
@@ -93,7 +93,7 @@ registerOperation('get', '/org-admin/locations', {
   },
 });
 
-registerOperation('post', '/org-admin/locations', {
+registerRoleOperation('post', '/org-admin/locations', {
   operationId: 'createOrgAdminLocation',
   summary: 'Create a location',
   tags: ['org-admin'],
@@ -126,7 +126,7 @@ registerOperation('post', '/org-admin/locations', {
   },
 });
 
-registerOperation('put', '/org-admin/locations/{locationId}', {
+registerRoleOperation('put', '/org-admin/locations/{locationId}', {
   requestParams: { path: LocationIdPathParams },
   operationId: 'updateOrgAdminLocation',
   summary: 'Update a location',
@@ -166,7 +166,7 @@ registerOperation('put', '/org-admin/locations/{locationId}', {
   },
 });
 
-registerOperation('delete', '/org-admin/locations/{locationId}', {
+registerRoleOperation('delete', '/org-admin/locations/{locationId}', {
   requestParams: { path: LocationIdPathParams },
   operationId: 'deleteOrgAdminLocation',
   summary: 'Delete a location',

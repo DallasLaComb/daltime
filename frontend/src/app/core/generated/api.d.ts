@@ -2273,7 +2273,10 @@ export interface operations {
     getEmployeeAvailabilityOverrides: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2311,7 +2314,10 @@ export interface operations {
     updateEmployeeAvailabilityOverrides: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2362,7 +2368,10 @@ export interface operations {
     getEmployeeAvailability: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2400,7 +2409,10 @@ export interface operations {
     updateEmployeeAvailability: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2454,7 +2466,10 @@ export interface operations {
                 /** @description The calendar day to look for available shifts. */
                 date: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2501,7 +2516,10 @@ export interface operations {
     getEmployeeProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2548,7 +2566,10 @@ export interface operations {
     updateEmployeeProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2615,7 +2636,10 @@ export interface operations {
                 /** @description YYYY-MM-DD week-start date. Returns the 7-day window starting on (and including) this date. */
                 week?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2662,7 +2686,10 @@ export interface operations {
     listSwapShifts: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2700,7 +2727,10 @@ export interface operations {
     postSwapShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2769,7 +2799,10 @@ export interface operations {
     claimSwapShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The swap listing’s swap_id. */
                 swapId: string;
@@ -2837,7 +2870,10 @@ export interface operations {
     cancelSwapShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The swap listing’s swap_id. */
                 swapId: string;
@@ -2903,7 +2939,10 @@ export interface operations {
     getManagerEmployeeAvailability: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the managed employee. */
                 employeeId: string;
@@ -2962,7 +3001,10 @@ export interface operations {
     getManagerEmployeeAvailabilityOverrides: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the managed employee. */
                 employeeId: string;
@@ -3021,7 +3063,10 @@ export interface operations {
     listManagerEmployees: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3059,7 +3104,10 @@ export interface operations {
     createManagerEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3119,7 +3167,10 @@ export interface operations {
     updateManagerEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -3182,7 +3233,10 @@ export interface operations {
     disableManagerEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -3239,7 +3293,10 @@ export interface operations {
     enableManagerEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -3296,7 +3353,10 @@ export interface operations {
     listManagerLocations: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3334,7 +3394,10 @@ export interface operations {
     getManagerProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3381,7 +3444,10 @@ export interface operations {
     updateManagerProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3444,7 +3510,10 @@ export interface operations {
                 /** @description YYYY-MM — all shifts in the given calendar month. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3491,7 +3560,10 @@ export interface operations {
     createManagerShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3542,7 +3614,10 @@ export interface operations {
     updateManagerShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The managed shift’s shift_id. */
                 shiftId: string;
@@ -3605,7 +3680,10 @@ export interface operations {
     deleteManagerShift: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The managed shift’s shift_id. */
                 shiftId: string;
@@ -3665,7 +3743,10 @@ export interface operations {
                 /** @description YYYY-MM — the schedule month to operate on. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3715,7 +3796,10 @@ export interface operations {
                 /** @description YYYY-MM — the schedule month to operate on. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3765,7 +3849,10 @@ export interface operations {
                 /** @description YYYY-MM — the schedule month to operate on. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3815,7 +3902,10 @@ export interface operations {
                 /** @description YYYY-MM — the schedule month to operate on. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3865,7 +3955,10 @@ export interface operations {
                 /** @description YYYY-MM — all shift-needs in the given calendar month. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3912,7 +4005,10 @@ export interface operations {
     createManagerShiftNeeded: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3963,7 +4059,10 @@ export interface operations {
     updateManagerShiftNeeded: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The shift-need’s shift_id. */
                 shiftId: string;
@@ -4026,7 +4125,10 @@ export interface operations {
     deleteManagerShiftNeeded: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The shift-need’s shift_id. */
                 shiftId: string;
@@ -4083,7 +4185,10 @@ export interface operations {
     listOrgAdminEmployees: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4121,7 +4226,10 @@ export interface operations {
     createOrgAdminEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4181,7 +4289,10 @@ export interface operations {
     updateOrgAdminEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -4244,7 +4355,10 @@ export interface operations {
     disableOrgAdminEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -4301,7 +4415,10 @@ export interface operations {
     enableOrgAdminEmployee: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -4358,7 +4475,10 @@ export interface operations {
     listOrgAdminLocations: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4396,7 +4516,10 @@ export interface operations {
     createOrgAdminLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4447,7 +4570,10 @@ export interface operations {
     updateOrgAdminLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The location’s location_id. */
                 locationId: string;
@@ -4510,7 +4636,10 @@ export interface operations {
     deleteOrgAdminLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description The location’s location_id. */
                 locationId: string;
@@ -4567,7 +4696,10 @@ export interface operations {
     listOrgAdminManagers: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4605,7 +4737,10 @@ export interface operations {
     createOrgAdminManager: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4665,7 +4800,10 @@ export interface operations {
     updateOrgAdminManager: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -4728,7 +4866,10 @@ export interface operations {
     disableOrgAdminManager: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -4785,7 +4926,10 @@ export interface operations {
     enableOrgAdminManager: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -4842,7 +4986,10 @@ export interface operations {
     getOrgAdminOrganization: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4889,7 +5036,10 @@ export interface operations {
     updateOrgAdminOrganization: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4949,7 +5099,10 @@ export interface operations {
     getOrgAdminProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4996,7 +5149,10 @@ export interface operations {
     updateOrgAdminProfile: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5059,7 +5215,10 @@ export interface operations {
                 /** @description YYYY-MM — all shifts in the given calendar month. */
                 month?: string;
             };
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5097,7 +5256,10 @@ export interface operations {
     listManagerAssignedLocations: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -5147,7 +5309,10 @@ export interface operations {
     assignManagerLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -5219,7 +5384,10 @@ export interface operations {
     removeManagerLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the manager. */
                 managerId: string;
@@ -5269,7 +5437,10 @@ export interface operations {
     listEmployeeAssignedLocations: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -5319,7 +5490,10 @@ export interface operations {
     assignEmployeeLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -5391,7 +5565,10 @@ export interface operations {
     removeEmployeeLocation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Cognito sub of the employee. */
                 employeeId: string;
@@ -6357,7 +6534,10 @@ export interface operations {
     listOrgAdminNotifications: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6386,7 +6566,10 @@ export interface operations {
     markAllOrgAdminNotificationsRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6415,7 +6598,10 @@ export interface operations {
     markOneOrgAdminNotificationRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller. */
                 notificationId: string;
@@ -6465,7 +6651,10 @@ export interface operations {
     listManagerNotifications: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6494,7 +6683,10 @@ export interface operations {
     markAllManagerNotificationsRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6523,7 +6715,10 @@ export interface operations {
     markOneManagerNotificationRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller. */
                 notificationId: string;
@@ -6573,7 +6768,10 @@ export interface operations {
     listEmployeeNotifications: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6602,7 +6800,10 @@ export interface operations {
     markAllEmployeeNotificationsRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6631,7 +6832,10 @@ export interface operations {
     markOneEmployeeNotificationRead: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
             path: {
                 /** @description Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller. */
                 notificationId: string;

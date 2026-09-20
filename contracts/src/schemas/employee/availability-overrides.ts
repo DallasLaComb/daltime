@@ -4,7 +4,7 @@ import {
   EmployeeAvailabilityOverridesApiFields,
   DateOverrides,
 } from '../../entities/availability.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/availability-overrides/handler.ts',
@@ -41,7 +41,7 @@ export const UpsertOverridesBody = z
     description: 'Full date-overrides replacement for PUT /employee/availability/overrides.',
   });
 
-registerOperation('get', '/employee/availability/overrides', {
+registerRoleOperation('get', '/employee/availability/overrides', {
   operationId: 'getEmployeeAvailabilityOverrides',
   summary: 'Get the calling employee’s date-specific availability overrides',
   tags: ['employee'],
@@ -71,7 +71,7 @@ registerOperation('get', '/employee/availability/overrides', {
   },
 });
 
-registerOperation('put', '/employee/availability/overrides', {
+registerRoleOperation('put', '/employee/availability/overrides', {
   operationId: 'updateEmployeeAvailabilityOverrides',
   summary: 'Replace the calling employee’s date-specific availability overrides',
   tags: ['employee'],

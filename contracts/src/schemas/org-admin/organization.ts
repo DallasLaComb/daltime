@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { OrganizationApiFields } from '../../entities/organization.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/organization/handler.ts',
@@ -42,7 +42,7 @@ export const UpdateOrgAdminOrganizationBody = z
     description: "Partial update of the calling OrgAdmin's organization.",
   });
 
-registerOperation('get', '/org-admin/organization', {
+registerRoleOperation('get', '/org-admin/organization', {
   operationId: 'getOrgAdminOrganization',
   summary: "Get the calling org-admin's organization",
   tags: ['org-admin'],
@@ -73,7 +73,7 @@ registerOperation('get', '/org-admin/organization', {
   },
 });
 
-registerOperation('put', '/org-admin/organization', {
+registerRoleOperation('put', '/org-admin/organization', {
   operationId: 'updateOrgAdminOrganization',
   summary: "Update the calling org-admin's organization",
   tags: ['org-admin'],

@@ -14,9 +14,18 @@ import { ImpersonationService } from '../services/impersonation.service';
  * This keeps existing components and services unchanged — they call their
  * normal endpoints and the interceptor transparently rewrites the path.
  *
+ * Phase 2 of the impersonation redesign (contracts/checklist.md §11): the request
+ * ALSO carries `X-Impersonate-User: {userId}`, the header the contract now declares
+ * on every role operation. The backend ignores it for now — the URL rewrite is still
+ * what routes the call — so both transports run in parallel until the phase 3 cutover
+ * removes the rewrite.
+ *
  * Registered AFTER authInterceptor so both the Authorization header and
  * the rewritten URL are present on the same request.
  */
+
+/** Must match the `x-impersonate-user` header declared by `ImpersonationHeader` in the contract. */
+const IMPERSONATE_HEADER = 'X-Impersonate-User';
 
 const ROLE_PREFIXES = ['/org-admin/', '/manager/', '/employee/'] as const;
 
@@ -40,5 +49,10 @@ export const impersonationInterceptor: HttpInterceptorFn = (req, next) => {
 
   const proxyUrl = `${environment.api.baseUrl}/web-admin/impersonate/${viewingAs.userId}${path}`;
 
-  return next(req.clone({ url: proxyUrl }));
+  return next(
+    req.clone({
+      url: proxyUrl,
+      setHeaders: { [IMPERSONATE_HEADER]: viewingAs.userId },
+    }),
+  );
 };

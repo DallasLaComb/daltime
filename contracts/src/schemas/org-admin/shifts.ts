@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ShiftApiFields } from '../../entities/shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/shifts/handler.ts',
@@ -31,7 +31,7 @@ export const OrgAdminShiftsQuery = z
   })
   .meta({ id: 'OrgAdminShiftsQuery' });
 
-registerOperation('get', '/org-admin/shifts', {
+registerRoleOperation('get', '/org-admin/shifts', {
   operationId: 'listOrgAdminShifts',
   summary: "List the calling org-admin's organization's shifts in a month",
   tags: ['org-admin'],

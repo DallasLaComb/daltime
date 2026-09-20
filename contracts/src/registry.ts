@@ -1,4 +1,5 @@
 import type { ZodOpenApiOperationObject, ZodOpenApiPathsObject } from 'zod-openapi';
+import { ImpersonationHeader } from './schemas/common.js';
 
 /**
  * HTTP methods an operation can be registered under.
@@ -101,6 +102,25 @@ export function registerOperation(
     'x-implementation-path': implementation,
     'x-dynamodb-access': dynamodb,
   } as ZodOpenApiOperationObject;
+}
+
+/**
+ * Register an operation on a role route (employee / manager / org-admin).
+ *
+ * Identical to `registerOperation` except it declares the optional
+ * `x-impersonate-user` header once, merged with whatever `requestParams` the
+ * operation already has. Web-admin and shared/health operations keep using
+ * `registerOperation` — a WebAdmin acts as itself there and health is unauthenticated.
+ */
+export function registerRoleOperation(
+  method: HttpMethod,
+  path: string,
+  input: RegisterInput,
+): void {
+  registerOperation(method, path, {
+    ...input,
+    requestParams: { ...input.requestParams, header: ImpersonationHeader },
+  });
 }
 
 /** All operations registered so far. Consumed by `generate.ts`. */

@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ShiftNeededApiFields, DateOnly, TimeOfDay } from '../../entities/shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/shifts-needed/handler.ts',
@@ -102,7 +102,7 @@ const ShiftIdPathParams = z.object({
   shiftId: z.string().meta({ description: 'The shift-need’s shift_id.' }),
 });
 
-registerOperation('get', '/manager/shifts-needed', {
+registerRoleOperation('get', '/manager/shifts-needed', {
   operationId: 'listManagerShiftNeeded',
   summary: "List the calling manager's staffing needs in a month",
   tags: ['manager'],
@@ -134,7 +134,7 @@ registerOperation('get', '/manager/shifts-needed', {
   },
 });
 
-registerOperation('post', '/manager/shifts-needed', {
+registerRoleOperation('post', '/manager/shifts-needed', {
   operationId: 'createManagerShiftNeeded',
   summary: 'Post a staffing need',
   tags: ['manager'],
@@ -173,7 +173,7 @@ registerOperation('post', '/manager/shifts-needed', {
   },
 });
 
-registerOperation('put', '/manager/shifts-needed/{shiftId}', {
+registerRoleOperation('put', '/manager/shifts-needed/{shiftId}', {
   requestParams: { path: ShiftIdPathParams },
   operationId: 'updateManagerShiftNeeded',
   summary: 'Update a staffing need',
@@ -219,7 +219,7 @@ registerOperation('put', '/manager/shifts-needed/{shiftId}', {
   },
 });
 
-registerOperation('delete', '/manager/shifts-needed/{shiftId}', {
+registerRoleOperation('delete', '/manager/shifts-needed/{shiftId}', {
   requestParams: { path: ShiftIdPathParams },
   operationId: 'deleteManagerShiftNeeded',
   summary: 'Delete a staffing need',

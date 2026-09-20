@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { LocationApiFields } from '../../entities/location.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/locations/handler.ts',
@@ -19,7 +19,7 @@ export const ManagerLocationListResponse = z.array(ManagerLocationResponse).meta
   description: 'Every location in the calling manager’s organization.',
 });
 
-registerOperation('get', '/manager/locations', {
+registerRoleOperation('get', '/manager/locations', {
   operationId: 'listManagerLocations',
   summary: "List the calling manager's locations",
   tags: ['manager'],

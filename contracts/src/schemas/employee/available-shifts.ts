@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ShiftApiFields, DateOnly } from '../../entities/shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/available-shifts/handler.ts',
@@ -23,7 +23,7 @@ export const AvailableShiftsResponse = z
   .array(ShiftApiFields)
   .meta({ id: 'AvailableShiftsResponse', description: 'Shifts open for pickup on the requested date.' });
 
-registerOperation('get', '/employee/available-shifts', {
+registerRoleOperation('get', '/employee/available-shifts', {
   operationId: 'listAvailableShifts',
   summary: 'List shifts other employees have offered up for pickup on a date',
   tags: ['employee'],

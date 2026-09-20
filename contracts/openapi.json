@@ -76,6 +76,17 @@
             "note": "Point read for the employee’s own record. Returns {} (not 404) when none exists yet."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The calling employee’s date-specific overrides.",
@@ -131,6 +142,17 @@
             "command": "Put",
             "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY_OVERRIDES",
             "note": "Full-item replace of the employee’s date overrides."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -212,6 +234,17 @@
             "note": "Point read for the employee’s own record. Returns {} (not 404) when none exists yet."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The calling employee’s weekly availability.",
@@ -267,6 +300,17 @@
             "command": "Put",
             "keyCondition": "PK = USER#<callerSub> AND SK = AVAILABILITY",
             "note": "Full-item replace of the employee’s weekly schedule."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -362,6 +406,15 @@
             },
             "required": true,
             "description": "The calendar day to look for available shifts."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -433,6 +486,17 @@
             "command": "Get",
             "keyCondition": "PK = ORG#<orgId> AND SK = EMPLOYEE#<callerSub>",
             "note": "Fetches the employee record itself; status is then enriched from Cognito."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -507,6 +571,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
             "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -645,6 +720,15 @@
               "example": "2026-05-27"
             },
             "description": "YYYY-MM-DD week-start date. Returns the 7-day window starting on (and including) this date."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -722,6 +806,17 @@
             "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, \"SWAP#\")",
             "filter": "posted_by_employee_id = :employeeId",
             "note": "The \"mine\" list — base-table query scoped to the org partition, all statuses."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -802,6 +897,17 @@
             "command": "Put",
             "keyCondition": "PK = USER#<managerId> AND SK = NOTIFICATION#<created_at>#<rawId>",
             "note": "Best-effort manager notification; a write failure here does not fail the request."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -931,6 +1037,15 @@
             },
             "required": true,
             "description": "The swap listing’s swap_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1038,6 +1153,15 @@
             },
             "required": true,
             "description": "The swap listing’s swap_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1137,6 +1261,15 @@
             },
             "required": true,
             "description": "Cognito sub of the managed employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1233,6 +1366,15 @@
             },
             "required": true,
             "description": "Cognito sub of the managed employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1316,6 +1458,17 @@
             "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Every employee reporting to the caller, with live Cognito status merged in.",
@@ -1377,6 +1530,17 @@
             "command": "Put",
             "keyCondition": "PK = USER#<employeeSub> AND SK = METADATA",
             "note": "Reverse-lookup record, so the employee can be resolved by ID alone."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -1489,6 +1653,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -1594,6 +1767,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1682,6 +1864,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1756,6 +1947,17 @@
             "note": "Lists the org’s locations. Key attributes are stripped from each row before responding."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Every location in the manager’s organization.",
@@ -1815,6 +2017,17 @@
             "command": "Get",
             "keyCondition": "PK = ORG#<orgId> AND SK = MANAGER#<callerSub>",
             "note": "Fetches the manager record itself; status is then enriched from Cognito."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -1889,6 +2102,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
             "note": "Keeps first_name/last_name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -1991,6 +2215,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — all shifts in the given calendar month."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2064,6 +2297,17 @@
             "command": "Put",
             "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT#<shiftId>",
             "note": "Primary record plus GSI1PK/Gsi1SK for month-range listing. Responds with key attributes stripped."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -2166,6 +2410,15 @@
             },
             "required": true,
             "description": "The managed shift’s shift_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -2271,6 +2524,15 @@
             },
             "required": true,
             "description": "The managed shift’s shift_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2375,6 +2637,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — the schedule month to operate on."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2462,6 +2733,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — the schedule month to operate on."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2544,6 +2824,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — the schedule month to operate on."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2625,6 +2914,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — the schedule month to operate on."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2707,6 +3005,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — all shift-needs in the given calendar month."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -2780,6 +3087,17 @@
             "command": "Put",
             "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
             "note": "Primary record plus GSI1PK/GSI1SK for month-range listing; GSI1SK is the posting date."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -2882,6 +3200,15 @@
             },
             "required": true,
             "description": "The shift-need’s shift_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -2987,6 +3314,15 @@
             },
             "required": true,
             "description": "The shift-need’s shift_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -3064,6 +3400,17 @@
             "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Every employee in the org, with live Cognito status merged in.",
@@ -3127,6 +3474,17 @@
             "command": "Put",
             "keyCondition": "PK = USER#<employeeSub> AND SK = METADATA",
             "note": "Reverse-lookup record, so the employee can be resolved by ID alone. Carries no manager_id or phone."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -3241,6 +3599,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -3353,6 +3720,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -3448,6 +3824,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -3522,6 +3907,17 @@
             "note": "Lists the org’s locations; key attributes are stripped from each row."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Every location in the org-admin’s organization.",
@@ -3577,6 +3973,17 @@
             "command": "Put",
             "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
             "note": "Primary record with created_by/created_at/updated_at."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -3673,6 +4080,15 @@
             },
             "required": true,
             "description": "The location’s location_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -3777,6 +4193,15 @@
             },
             "required": true,
             "description": "The location’s location_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -3854,6 +4279,17 @@
             "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Every manager in the org, with live Cognito status merged in.",
@@ -3922,6 +4358,17 @@
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = USER#<orgAdminId>",
             "note": "ADD manager_count :inc on the caller OrgAdmin’s own record. orgAdminId is the user_id read from the caller’s METADATA record, which is not necessarily the JWT sub (impersonation). Runs after both Puts."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -4036,6 +4483,15 @@
             },
             "required": true,
             "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -4153,6 +4609,15 @@
             },
             "required": true,
             "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -4248,6 +4713,15 @@
             },
             "required": true,
             "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -4323,6 +4797,17 @@
             "note": "Fetches the organization record; key attributes are stripped before returning."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The calling org-admin's organization.",
@@ -4394,6 +4879,17 @@
             "command": "Update",
             "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
             "note": "Sets name/address/updated_at. Returns ALL_NEW, which becomes the response body."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -4486,6 +4982,17 @@
             "note": "Fetches the org-admin record itself; status is then enriched from Cognito."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The calling org-admin's profile.",
@@ -4562,6 +5069,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<userId> AND SK = METADATA",
             "note": "Keeps name on the reverse-lookup record in sync with the primary."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -4664,6 +5182,15 @@
               "pattern": "^\\d{4}-\\d{2}$"
             },
             "description": "YYYY-MM — all shifts in the given calendar month."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -4739,6 +5266,15 @@
             },
             "required": true,
             "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -4832,6 +5368,15 @@
             },
             "required": true,
             "description": "Cognito sub of the manager."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -4962,6 +5507,15 @@
             },
             "required": true,
             "description": "The location’s location_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -5040,6 +5594,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -5133,6 +5696,15 @@
             },
             "required": true,
             "description": "Cognito sub of the employee."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "requestBody": {
@@ -5263,6 +5835,15 @@
             },
             "required": true,
             "description": "The location’s location_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -6744,6 +7325,17 @@
             "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The caller's notifications, newest first.",
@@ -6790,6 +7382,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
             "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -6852,6 +7455,15 @@
             },
             "required": true,
             "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -6918,6 +7530,17 @@
             "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The caller's notifications, newest first.",
@@ -6964,6 +7587,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
             "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -7026,6 +7660,15 @@
             },
             "required": true,
             "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -7092,6 +7735,17 @@
             "note": "ScanIndexForward: false. SK embeds `created_at` first, so newest-first ordering falls out of the base-table sort key with no GSI required."
           }
         ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
+          }
+        ],
         "responses": {
           "200": {
             "description": "The caller's notifications, newest first.",
@@ -7138,6 +7792,17 @@
             "command": "Update",
             "keyCondition": "PK = USER#<callerSub> AND SK = <SK of each item returned by the Query above>",
             "note": "One UpdateItem per unread item found above, issued in parallel via `Promise.all` — sets `read = true`. Skipped entirely (no writes) when the caller has zero unread notifications."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {
@@ -7200,6 +7865,15 @@
             },
             "required": true,
             "description": "Opaque composite id `<created_at>#<rawId>` returned as `notification_id` on list/create. Must be `encodeURIComponent`-encoded by the caller."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, read-only (non-GET rejected). The actor is recorded server-side."
           }
         ],
         "responses": {

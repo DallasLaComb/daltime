@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { EmployeeApiFields } from '../../entities/employee.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/employees/handler.ts',
@@ -83,7 +83,7 @@ const EmployeeIdPathParams = z.object({
   employeeId: z.string().meta({ description: 'Cognito sub of the employee.' }),
 });
 
-registerOperation('get', '/manager/employees', {
+registerRoleOperation('get', '/manager/employees', {
   operationId: 'listManagerEmployees',
   summary: "List the calling manager's employees",
   tags: ['manager'],
@@ -114,7 +114,7 @@ registerOperation('get', '/manager/employees', {
   },
 });
 
-registerOperation('post', '/manager/employees', {
+registerRoleOperation('post', '/manager/employees', {
   operationId: 'createManagerEmployee',
   summary: 'Register a new employee',
   tags: ['manager'],
@@ -158,7 +158,7 @@ registerOperation('post', '/manager/employees', {
   },
 });
 
-registerOperation('put', '/manager/employees/{employeeId}', {
+registerRoleOperation('put', '/manager/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'updateManagerEmployee',
   summary: 'Update an employee',
@@ -205,7 +205,7 @@ registerOperation('put', '/manager/employees/{employeeId}', {
   },
 });
 
-registerOperation('delete', '/manager/employees/{employeeId}', {
+registerRoleOperation('delete', '/manager/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'disableManagerEmployee',
   summary: 'Disable an employee',
@@ -240,7 +240,7 @@ registerOperation('delete', '/manager/employees/{employeeId}', {
   },
 });
 
-registerOperation('patch', '/manager/employees/{employeeId}', {
+registerRoleOperation('patch', '/manager/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'enableManagerEmployee',
   summary: 'Re-enable a disabled employee',

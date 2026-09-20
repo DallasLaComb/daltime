@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ManagerApiFields } from '../../entities/manager.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/profile/handler.ts',
@@ -45,7 +45,7 @@ export const UpdateManagerProfileBody = z
     description: 'Partial update of the calling manager’s own profile.',
   });
 
-registerOperation('get', '/manager/profile', {
+registerRoleOperation('get', '/manager/profile', {
   operationId: 'getManagerProfile',
   summary: 'Get the calling manager’s profile',
   tags: ['manager'],
@@ -76,7 +76,7 @@ registerOperation('get', '/manager/profile', {
   },
 });
 
-registerOperation('put', '/manager/profile', {
+registerRoleOperation('put', '/manager/profile', {
   operationId: 'updateManagerProfile',
   summary: 'Update the calling manager’s profile',
   tags: ['manager'],

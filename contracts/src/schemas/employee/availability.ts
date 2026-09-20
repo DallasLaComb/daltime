@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { EmployeeAvailabilityApiFields, WeeklySchedule } from '../../entities/availability.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/availability/handler.ts',
@@ -39,7 +39,7 @@ export const UpsertAvailabilityBody = z
     description: 'Full weekly schedule replacement for PUT /employee/availability.',
   });
 
-registerOperation('get', '/employee/availability', {
+registerRoleOperation('get', '/employee/availability', {
   operationId: 'getEmployeeAvailability',
   summary: 'Get the calling employee’s recurring weekly availability',
   tags: ['employee'],
@@ -69,7 +69,7 @@ registerOperation('get', '/employee/availability', {
   },
 });
 
-registerOperation('put', '/employee/availability', {
+registerRoleOperation('put', '/employee/availability', {
   operationId: 'updateEmployeeAvailability',
   summary: 'Replace the calling employee’s recurring weekly availability',
   tags: ['employee'],

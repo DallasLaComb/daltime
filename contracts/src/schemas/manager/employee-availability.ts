@@ -4,7 +4,7 @@ import {
   EmployeeAvailabilityApiFields,
   EmployeeAvailabilityOverridesApiFields,
 } from '../../entities/availability.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/manager/employees/handler.ts',
@@ -46,7 +46,7 @@ export const ManagerEmployeeAvailabilityOverridesResponse = EmployeeAvailability
   },
 );
 
-registerOperation('get', '/manager/employees/{employeeId}/availability', {
+registerRoleOperation('get', '/manager/employees/{employeeId}/availability', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'getManagerEmployeeAvailability',
   summary: "Get a managed employee's recurring weekly availability",
@@ -85,7 +85,7 @@ registerOperation('get', '/manager/employees/{employeeId}/availability', {
   },
 });
 
-registerOperation('get', '/manager/employees/{employeeId}/availability/overrides', {
+registerRoleOperation('get', '/manager/employees/{employeeId}/availability/overrides', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'getManagerEmployeeAvailabilityOverrides',
   summary: "Get a managed employee's date-specific availability overrides",

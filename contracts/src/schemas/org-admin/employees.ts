@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { EmployeeApiFields } from '../../entities/employee.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/employees/handler.ts',
@@ -107,7 +107,7 @@ const EmployeeIdPathParams = z.object({
   employeeId: z.string().meta({ description: 'Cognito sub of the employee.' }),
 });
 
-registerOperation('get', '/org-admin/employees', {
+registerRoleOperation('get', '/org-admin/employees', {
   operationId: 'listOrgAdminEmployees',
   summary: 'List employees in the caller’s organization',
   tags: ['org-admin'],
@@ -137,7 +137,7 @@ registerOperation('get', '/org-admin/employees', {
   },
 });
 
-registerOperation('post', '/org-admin/employees', {
+registerRoleOperation('post', '/org-admin/employees', {
   operationId: 'createOrgAdminEmployee',
   summary: 'Register a new employee',
   tags: ['org-admin'],
@@ -178,7 +178,7 @@ registerOperation('post', '/org-admin/employees', {
   },
 });
 
-registerOperation('put', '/org-admin/employees/{employeeId}', {
+registerRoleOperation('put', '/org-admin/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'updateOrgAdminEmployee',
   summary: 'Update an employee',
@@ -221,7 +221,7 @@ registerOperation('put', '/org-admin/employees/{employeeId}', {
   },
 });
 
-registerOperation('delete', '/org-admin/employees/{employeeId}', {
+registerRoleOperation('delete', '/org-admin/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'disableOrgAdminEmployee',
   summary: 'Disable an employee',
@@ -261,7 +261,7 @@ registerOperation('delete', '/org-admin/employees/{employeeId}', {
   },
 });
 
-registerOperation('patch', '/org-admin/employees/{employeeId}', {
+registerRoleOperation('patch', '/org-admin/employees/{employeeId}', {
   requestParams: { path: EmployeeIdPathParams },
   operationId: 'enableOrgAdminEmployee',
   summary: 'Re-enable a disabled employee',

@@ -29,6 +29,24 @@ export const ErrorResponse = z
   })
   .meta({ id: 'ErrorResponse', description: 'Standard error envelope.' });
 
+/**
+ * Request header a WebAdmin sends to act as another user on a role route.
+ *
+ * Declared once here and merged onto every employee/manager/org-admin operation
+ * by `registerRoleOperation` (see `registry.ts`), so the ~60 role ops do not each
+ * copy it. Header names are lower-case because that is how API Gateway HTTP APIs
+ * deliver them to the Lambda.
+ */
+export const ImpersonationHeader = z
+  .object({
+    'x-impersonate-user': z.string().optional().meta({
+      description:
+        'WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, ' +
+        'read-only (non-GET rejected). The actor is recorded server-side.',
+    }),
+  })
+  .meta({ id: 'ImpersonationHeader' });
+
 /** Response entries reused across operations, so error shapes stay identical everywhere. */
 export const errorResponses = {
   400: {

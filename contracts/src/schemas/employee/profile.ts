@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { EmployeeApiFields } from '../../entities/employee.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/profile/handler.ts',
@@ -45,7 +45,7 @@ export const UpdateEmployeeProfileBody = z
     description: 'Partial update of the calling employee’s own profile.',
   });
 
-registerOperation('get', '/employee/profile', {
+registerRoleOperation('get', '/employee/profile', {
   operationId: 'getEmployeeProfile',
   summary: 'Get the calling employee’s profile',
   tags: ['employee'],
@@ -76,7 +76,7 @@ registerOperation('get', '/employee/profile', {
   },
 });
 
-registerOperation('put', '/employee/profile', {
+registerRoleOperation('put', '/employee/profile', {
   operationId: 'updateEmployeeProfile',
   summary: 'Update the calling employee’s profile',
   tags: ['employee'],

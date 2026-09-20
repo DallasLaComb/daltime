@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { errorResponses } from '../common.js';
 import { ShiftApiFields, DateOnly } from '../../entities/shift.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/employee/shifts/handler.ts',
@@ -38,7 +38,7 @@ export const EmployeeShiftsResponse = z.array(ShiftApiFields).meta({
   description: 'The calling employee’s own shifts within the requested time window.',
 });
 
-registerOperation('get', '/employee/shifts', {
+registerRoleOperation('get', '/employee/shifts', {
   operationId: 'listEmployeeShifts',
   summary: 'List the calling employee’s own shifts within a time window',
   tags: ['employee'],

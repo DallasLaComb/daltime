@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { ErrorResponse, errorResponses } from '../common.js';
 import { UserLocationApiFields } from '../../entities/location.js';
-import { registerOperation } from '../../registry.js';
+import { registerRoleOperation } from '../../registry.js';
 
 const IMPLEMENTATION = [
   'backend/src/functions/org-admin/manager-locations/handler.ts',
@@ -50,7 +50,7 @@ function registerUserLocationRoutes(
     })
     .meta({ id: `${entity === 'manager' ? 'Manager' : 'Employee'}LocationPathParams` });
 
-  registerOperation('get', base, {
+  registerRoleOperation('get', base, {
     operationId: `list${entity === 'manager' ? 'Manager' : 'Employee'}AssignedLocations`,
     summary: `List a ${entity}'s assigned locations`,
     tags: ['org-admin'],
@@ -69,7 +69,7 @@ function registerUserLocationRoutes(
     },
   });
 
-  registerOperation('post', base, {
+  registerRoleOperation('post', base, {
     operationId: `assign${entity === 'manager' ? 'Manager' : 'Employee'}Location`,
     summary: `Assign a location to a ${entity}`,
     tags: ['org-admin'],
@@ -93,7 +93,7 @@ function registerUserLocationRoutes(
     },
   });
 
-  registerOperation('delete', `${base}/{locationId}`, {
+  registerRoleOperation('delete', `${base}/{locationId}`, {
     operationId: `remove${entity === 'manager' ? 'Manager' : 'Employee'}Location`,
     summary: `Remove a location from a ${entity}`,
     tags: ['org-admin'],
