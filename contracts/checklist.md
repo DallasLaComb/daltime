@@ -291,6 +291,22 @@ Delete only when this returns zero (or alias every importer in the same PR).
   one route table so impersonation cannot drift from the real routes.
 - **Decision pending — standardize `ErrorResponse`/`errorResponses` on every op** during Wave 3
   (infra exists in `contracts/src/schemas/common.ts`; adopt as you create each domain).
+- **Impersonation redesign — researched 2026-09-20, phase 1 shipped.** Industry consensus
+  (Curity/OAuth RFC 8693, Ory middleware, Pigment production writeup): keep both identities
+  (actor + subject), enforce read-only, time-bound the session, and centralize in middleware.
+  Phase 1 (shipped) closed the two correctness gaps without changing the transport:
+  `synthesize-event.ts` now carries the acting WebAdmin as flattened `act_sub` /
+  `act_web_admin_id` claims, and `handler.ts` rejects any non-GET with `403`. Remaining phases
+  (not started; security-sensitive, touch auth on every role Lambda):
+  1. Move from URL-rewriting + `{proxy+}` + `route-registry.ts` to an `X-Impersonate-User`
+     request header resolved centrally in `shared/auth.ts` — this restores API Gateway
+     per-route auth/WAF/metrics and puts impersonated calls back on typed, documented paths.
+     Then delete `route-registry.ts`, the `{proxy+}` template events, and `synthesize-event.ts`.
+  2. Add a reusable `ImpersonationHeader` schema in `contracts/src/schemas/common.ts` and apply
+     it to role operations via a `withImpersonation(op)` helper, so the header is part of the
+     contract and `ApiClient` sees the truth.
+  3. North star: app-issued, short-lived impersonation token (Pigment/RFC 8693) — Cognito cannot
+     mint a JWT with another user's `sub`, so this needs a custom authorizer. Not attempted.
 
 ## 10. Agent execution protocol — stepped mode
 

@@ -149,13 +149,46 @@ describe('Impersonate generic dispatch — handler.ts', () => {
 
     await handler(
       buildApiGwEvent({
-        method: 'PUT',
+        method: 'GET',
         path: `/web-admin/impersonate/${IMPERSONATED_USER_ID}/manager/shifts/shift-9`,
       }),
     );
 
     const forwardedEvent = managerShiftsHandler.mock.calls[0][0];
     expect(forwardedEvent.pathParameters).toEqual({ shiftId: 'shift-9' });
+  });
+
+  it('rejects a non-GET request with 403 before resolving or forwarding anything', async () => {
+    const result = (await handler(
+      buildApiGwEvent({
+        method: 'DELETE',
+        path: `/web-admin/impersonate/${IMPERSONATED_USER_ID}/manager/shifts/shift-9`,
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(403);
+    expect(body(result).error).toContain('read-only');
+    expect(getUserReverseLookup).not.toHaveBeenCalled();
+    expect(managerShiftsHandler).not.toHaveBeenCalled();
+  });
+
+  it('preserves the acting WebAdmin as RFC 8693 `act_*` claims on the forwarded event', async () => {
+    managerShiftsHandler.mockResolvedValue({ statusCode: 200, headers: {}, body: '[]' });
+
+    await handler(
+      buildApiGwEvent({
+        method: 'GET',
+        path: `/web-admin/impersonate/${IMPERSONATED_USER_ID}/manager/shifts`,
+      }),
+    );
+
+    const forwardedEvent = managerShiftsHandler.mock.calls[0][0];
+    expect(forwardedEvent.requestContext.authorizer.jwt.claims['act_sub']).toBe(mockCaller.sub);
+    expect(forwardedEvent.requestContext.authorizer.jwt.claims['act_web_admin_id']).toBe(
+      mockCaller.web_admin_id,
+    );
+    // The impersonated user is still the effective subject.
+    expect(forwardedEvent.requestContext.authorizer.jwt.claims.sub).toBe(IMPERSONATED_USER_ID);
   });
 
   it('dispatches notifications routes for any of the three roles through the same shared handler', async () => {

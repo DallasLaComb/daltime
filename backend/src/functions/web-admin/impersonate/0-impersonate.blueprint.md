@@ -17,6 +17,10 @@ The proxy now works like this instead:
 5. The handler **dynamically imports the real handler module and calls it in-process**, passing a cloned copy of the original event with the impersonated `userId` substituted for the Web-Admin's own resolved Cognito sub in the JWT claims, and the path/pathParameters rewritten to look exactly like a direct call to the real route.
 6. The real handler runs completely unmodified — it cannot tell the difference between a direct call and an impersonated one. Its own authz/data-scoping logic (which always derives the caller from `getCallerSub(event)`) operates on the impersonated user's identity.
 
+**Read-only guarantee.** Impersonation is for *observing* another user's view, not acting as them. The dispatcher rejects any non-GET request with `403 "Impersonation sessions are read-only"` before resolving the target user or touching any data. This matches the read-only guarantee Ory and Pigment treat as the heart of a safe impersonation feature.
+
+**Actor attribution.** The acting WebAdmin is preserved on every synthesized event as RFC 8693-style actor claims (`act_sub`, `act_web_admin_id`), in addition to the impersonated user's `sub`/`cognito:groups`. (The claims are flattened because API Gateway's JWT authorizer coerces every claim to a primitive.) An impersonated action therefore remains attributable to the human who initiated it, while downstream role handlers stay unaware — `getCallerSub`/`getCallerGroups` are unaffected and audit code can read `act_sub` when it needs the actor.
+
 **Net effect:** adding a new real feature route only ever requires ONE new entry in `route-registry.ts` (the path pattern + which handler module owns it) — never a second copy of the route's HTTP-method/path registration, and never any change to `infra/template.yaml`'s `ImpersonateFunction` events.
 
 ---
@@ -122,7 +126,7 @@ This means two layers of authorization are enforced before any impersonation is 
 
 If either check fails, the handler returns `403 Forbidden` immediately — the impersonated user's identity is never resolved and no sub-handler is invoked.
 
-**Synthesized event isolation:** The returned `WebAdminCaller` (which includes `web_admin_id`) is available in the handler for future audit logging. It is intentionally NOT threaded into synthesized events passed to real role handlers. Synthesized events carry only the impersonated user's `sub` in the JWT claims, so every downstream handler operates entirely on the impersonated user's identity — the web admin's identity is invisible to them.
+**Synthesized event actor:** The returned `WebAdminCaller` (which includes `web_admin_id`) is threaded into every synthesized event as `act_sub` / `act_web_admin_id` claims. Downstream handlers still derive their effective identity from `sub`/`cognito:groups` (the impersonated user), so the actor is additive rather than something each role handler must understand — but the audit trail always knows who was really behind the request.
 
 ---
 

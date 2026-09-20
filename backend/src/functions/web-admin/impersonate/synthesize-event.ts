@@ -1,5 +1,12 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import type { WebAdminCaller } from '@daltime/contracts';
 import { decodeLocalJwtPayload } from '../../shared/auth.js';
+
+/**
+ * The acting WebAdmin, preserved on the synthesized event so an impersonated
+ * action stays attributable to the human who initiated it.
+ */
+export type ImpersonationActor = Pick<WebAdminCaller, 'sub' | 'web_admin_id'>;
 
 /**
  * Resolve the JWT claims for the caller of this impersonate handler.
@@ -58,6 +65,16 @@ function resolveCallerClaims(
  * the *identity the downstream business logic sees* is substituted, and
  * only after this Lambda's own authn/authz already accepted the caller.
  *
+ * The acting WebAdmin is preserved alongside the substituted subject as
+ * flattened RFC 8693 `act` claims (`act_sub`, `act_web_admin_id`). API
+ * Gateway's JWT authorizer coerces every claim to a primitive, so the nested
+ * `act: { sub }` object form cannot be represented in this event type — the
+ * flattened form carries the same information. Ory and Pigment both treat
+ * losing the actor as the cardinal impersonation sin: the subject must never
+ * become the only identity in the request. The `act_*` claims are additive:
+ * downstream handlers' `getCallerSub`/`getCallerGroups` are unaffected, and
+ * audit code can attribute the action without touching any role handler.
+ *
  * Throws a descriptive Error when running SAM local and the Authorization
  * header is missing or malformed — this surfaces a clear message rather than
  * a silent crash or a misleading TypeError.
@@ -68,6 +85,7 @@ export function synthesizeImpersonatedEvent(
   realPath: string,
   pathParams: Record<string, string>,
   impersonatedUserRole: string,
+  actor: ImpersonationActor,
 ): APIGatewayProxyEventV2WithJWTAuthorizer {
   // Resolve the base claims from either the authorizer (deployed) or the
   // Authorization header (SAM local). The result must be non-null before we
@@ -101,6 +119,10 @@ export function synthesizeImpersonatedEvent(
             ...baseClaims,
             sub: impersonatedUserId,
             'cognito:groups': impersonatedUserRole,
+            // RFC 8693 actor claims, flattened because API Gateway coerces
+            // every JWT claim to a primitive string.
+            act_sub: actor.sub,
+            act_web_admin_id: actor.web_admin_id,
           },
         },
       },

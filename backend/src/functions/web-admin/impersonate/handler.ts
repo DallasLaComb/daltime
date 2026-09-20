@@ -4,13 +4,13 @@ import {
   ImpersonateUsersQueryParams,
   ImpersonateContextPathParams,
 } from '@daltime/contracts';
-import { ok, badRequest, notFound, setRequestOrigin } from '../../shared/response.js';
+import { ok, badRequest, forbidden, notFound, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listImpersonatableUsers, getUserContext } from './service.js';
 import { resolveProxyRoute } from './route-registry.js';
-import { synthesizeImpersonatedEvent } from './synthesize-event.js';
+import { synthesizeImpersonatedEvent, type ImpersonationActor } from './synthesize-event.js';
 import { getUserReverseLookup } from './db.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
@@ -62,12 +62,25 @@ function deriveRoleFromPath(afterUserId: string): string {
  * functions): any current or future org-admin/manager/employee route is
  * reachable here as soon as it has an entry in route-registry.ts, with zero
  * new code in this handler.
+ *
+ * Read-only: impersonation exists to *observe* another user's view, not to
+ * act as them. Every non-GET request is rejected before any data is touched.
+ * This matches the read-only guarantee both Ory and Pigment treat as the
+ * heart of a safe impersonation feature. It is a coarse gate on the HTTP
+ * method, so routes whose "write" is semantically a GET (none today) would
+ * still pass; the method is the durable boundary here.
  */
 async function dispatchToRealHandler(
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
   userId: string,
   afterUserId: string,
+  actor: ImpersonationActor,
 ) {
+  const method = event.requestContext.http.method;
+  if (method !== 'GET') {
+    return forbidden('Impersonation sessions are read-only');
+  }
+
   // Fail closed: the impersonated userId must resolve to a real user before
   // we forward any request on their behalf — this preserves the existing
   // authorization boundary (no widening of who can be impersonated).
@@ -76,7 +89,7 @@ async function dispatchToRealHandler(
 
   const resolved = resolveProxyRoute(afterUserId);
   if (!resolved) {
-    return badRequest(`Unhandled proxy route: ${event.requestContext.http.method} ${afterUserId}`);
+    return badRequest(`Unhandled proxy route: ${method} ${afterUserId}`);
   }
 
   const { route, pathParams } = resolved;
@@ -91,6 +104,7 @@ async function dispatchToRealHandler(
     afterUserId,
     pathParams,
     impersonatedUserRole,
+    actor,
   );
   return realHandler(syntheticEvent);
 }
@@ -117,10 +131,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     // audit logging if needed in the future.
     // Throws ForbiddenError (→ 403) if the caller is not in the WebAdmin
     // Cognito group, has no provisioned DynamoDB record, or is DISABLED.
-    // The returned caller includes web_admin_id for future audit logging;
-    // it is NOT threaded into synthesized sub-handler events because those
-    // events represent the impersonated user's identity, not the WebAdmin's.
-    await requireWebAdminWithLookup(event);
+    // The returned caller is threaded into every synthesized sub-handler event
+    // as an RFC 8693 `act` claim, so an impersonated action remains
+    // attributable to the WebAdmin who initiated it.
+    const caller = await requireWebAdminWithLookup(event);
 
     if (method === 'GET' && rawPath.endsWith('/impersonate/users')) {
       return await handleListUsers(event);
@@ -138,7 +152,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
     const afterUserId = rawPath.split(`/impersonate/${userId}/`)[1] ?? '';
 
-    return await dispatchToRealHandler(event, userId, afterUserId);
+    return await dispatchToRealHandler(event, userId, afterUserId, caller);
   } catch (err) {
     return mapHandlerError(err, 'web-admin impersonate handler');
   }

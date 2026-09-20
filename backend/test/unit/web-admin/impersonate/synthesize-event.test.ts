@@ -120,6 +120,23 @@ function buildSamLocalEvent(
   } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer;
 }
 
+
+// The acting WebAdmin threaded into every synthesized event as the RFC 8693
+// `act` claim. A single fixture keeps the call sites focused on identity
+// substitution while still exercising the real actor plumbing.
+const TEST_ACTOR = { sub: 'web-admin-sub-1', web_admin_id: 'WADMIN#uuid-test' } as const;
+
+/** Call the real synthesizer with the standard test actor. */
+function synth(
+  event: APIGatewayProxyEventV2WithJWTAuthorizer,
+  impersonatedUserId: string,
+  realPath: string,
+  pathParams: Record<string, string>,
+  role: string,
+): APIGatewayProxyEventV2WithJWTAuthorizer {
+  return synthesizeImpersonatedEvent(event, impersonatedUserId, realPath, pathParams, role, TEST_ACTOR);
+}
+
 // Keep the original buildEvent() alias so pre-existing test helpers work unchanged.
 function buildEvent(): APIGatewayProxyEventV2WithJWTAuthorizer {
   return buildDeployedEvent('imp-user-1');
@@ -133,7 +150,7 @@ afterEach(() => {
 
 describe('synthesizeImpersonatedEvent — deployed path (requestContext.authorizer.jwt.claims present)', () => {
   it('substitutes the impersonated userId for the caller sub in the JWT claims', () => {
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       buildEvent(),
       'imp-user-1',
       'manager/shifts/abc123',
@@ -145,7 +162,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
   });
 
   it('replaces pathParameters with only the real route params (drops userId/proxy)', () => {
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       buildEvent(),
       'imp-user-1',
       'manager/shifts/abc123',
@@ -157,7 +174,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
   });
 
   it('rewrites rawPath to the real-route-shaped path', () => {
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       buildEvent(),
       'imp-user-1',
       'manager/shifts/abc123',
@@ -170,7 +187,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
 
   it('preserves the HTTP method, body, and query string unrelated to identity', () => {
     const original = buildEvent();
-    const synthetic = synthesizeImpersonatedEvent(original, 'imp-user-1', 'manager/shifts/abc123', {
+    const synthetic = synth(original, 'imp-user-1', 'manager/shifts/abc123', {
       shiftId: 'abc123',
     }, 'Manager');
 
@@ -181,7 +198,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
 
   it('does not mutate the original event object', () => {
     const original = buildEvent();
-    synthesizeImpersonatedEvent(original, 'imp-user-1', 'manager/shifts/abc123', {
+    synth(original, 'imp-user-1', 'manager/shifts/abc123', {
       shiftId: 'abc123',
     }, 'Manager');
 
@@ -197,7 +214,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
     // requestContext.authorizer.jwt.claims.sub. This test explicitly confirms that claim
     // is the impersonated user's identity (not the web-admin's sub) in the synthesized event.
     const original = buildEvent(); // has sub: 'web-admin-sub-1'
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       original,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -211,13 +228,32 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
     expect(synthetic.requestContext.authorizer.jwt.claims['sub']).not.toBe('web-admin-sub-1');
   });
 
+  it('preserves the acting WebAdmin as RFC 8693 `act_*` claims alongside the impersonated subject', () => {
+    // The actor must never be lost: the subject becomes the impersonated user,
+    // but the `act_*` claims still identify who really initiated the request.
+    const synthetic = synth(
+      buildEvent(),
+      'imp-user-1',
+      'manager/shifts/abc123',
+      { shiftId: 'abc123' },
+      'Manager',
+    );
+
+    expect(synthetic.requestContext.authorizer.jwt.claims['act_sub']).toBe(TEST_ACTOR.sub);
+    expect(synthetic.requestContext.authorizer.jwt.claims['act_web_admin_id']).toBe(
+      TEST_ACTOR.web_admin_id,
+    );
+    // The effective subject is still the impersonated user, not the actor.
+    expect(synthetic.requestContext.authorizer.jwt.claims['sub']).toBe('imp-user-1');
+  });
+
   it("sets cognito:groups to the impersonated user's role, not the WebAdmin's group", () => {
     // Without overwriting cognito:groups, a downstream handler calling
     // getCallerGroups would see 'WebAdmin' (the caller who originally hit the
     // impersonate Lambda) rather than the impersonated user's actual role.
     // This would let manager-only or employee-only checks misbehave.
     const original = buildEvent(); // original has no cognito:groups claim set
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       original,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -230,7 +266,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
   });
 
   it("sets cognito:groups to 'Employee' when impersonating via an employee route", () => {
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       buildEvent(),
       'imp-user-1',
       'employee/shifts',
@@ -242,7 +278,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
   });
 
   it("sets cognito:groups to 'OrgAdmin' when impersonating via an org-admin route", () => {
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       buildEvent(),
       'imp-user-1',
       'org-admin/profile',
@@ -259,7 +295,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
     // and confirm it is never called when the authorizer is populated.
     const decodeSpy = vi.spyOn(authModule, 'decodeLocalJwtPayload');
 
-    synthesizeImpersonatedEvent(
+    synth(
       buildEvent(), // authorizer.jwt.claims is present
       'imp-user-1',
       'manager/shifts/abc123',
@@ -288,7 +324,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
       },
     } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer;
 
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       deployedEvent,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -311,7 +347,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
       iss: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test',
     };
     const event = buildDeployedEvent('imp-user-1', extraClaims);
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       event,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -328,7 +364,7 @@ describe('synthesizeImpersonatedEvent — deployed path (requestContext.authoriz
     for (const userId of USER_ID_POOL) {
       const role = pick(ROLE_POOL);
       const event = buildDeployedEvent(userId);
-      const synthetic = synthesizeImpersonatedEvent(event, userId, `${role.toLowerCase()}/profile`, {}, role);
+      const synthetic = synth(event, userId, `${role.toLowerCase()}/profile`, {}, role);
 
       // Log values explicitly so a failure is reproducible.
       const syntheticSub = synthetic.requestContext.authorizer.jwt.claims['sub'];
@@ -346,7 +382,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     const callerPayload = { sub: 'web-admin-local-sub', 'cognito:groups': 'WebAdmin' };
     const event = buildSamLocalEvent(callerPayload, 'imp-user-1');
 
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       event,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -371,7 +407,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     };
     const event = buildSamLocalEvent(callerPayload, 'imp-user-1');
 
-    const synthetic = synthesizeImpersonatedEvent(
+    const synthetic = synth(
       event,
       'imp-user-1',
       'manager/shifts/abc123',
@@ -417,7 +453,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer;
 
     expect(() =>
-      synthesizeImpersonatedEvent(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
+      synth(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
     ).toThrow('synthesizeImpersonatedEvent: could not resolve caller JWT claims');
   });
 
@@ -425,7 +461,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     const event = buildSamLocalEvent({}, 'imp-user-1', 'Basic dXNlcjpwYXNz');
 
     expect(() =>
-      synthesizeImpersonatedEvent(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
+      synth(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
     ).toThrow('synthesizeImpersonatedEvent: could not resolve caller JWT claims');
   });
 
@@ -434,7 +470,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     const event = buildSamLocalEvent({}, 'imp-user-1', 'Bearer notavalidjwt');
 
     expect(() =>
-      synthesizeImpersonatedEvent(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
+      synth(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
     ).toThrow('synthesizeImpersonatedEvent: could not resolve caller JWT claims');
   });
 
@@ -445,7 +481,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
     const event = buildSamLocalEvent({}, 'imp-user-1', `Bearer ${header}.${badPayload}.fakesig`);
 
     expect(() =>
-      synthesizeImpersonatedEvent(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
+      synth(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
     ).toThrow('synthesizeImpersonatedEvent: could not resolve caller JWT claims');
   });
 
@@ -468,7 +504,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
 
     // Must throw our own descriptive Error, not a native TypeError.
     expect(() =>
-      synthesizeImpersonatedEvent(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
+      synth(event, 'imp-user-1', 'manager/shifts/abc123', {}, 'Manager'),
     ).toThrow('synthesizeImpersonatedEvent: could not resolve caller JWT claims');
   });
 
@@ -478,7 +514,7 @@ describe('synthesizeImpersonatedEvent — SAM-local path (requestContext.authori
       const callerPayload = { sub: 'local-web-admin-sub', 'cognito:groups': 'WebAdmin' };
       const event = buildSamLocalEvent(callerPayload, userId);
 
-      const synthetic = synthesizeImpersonatedEvent(
+      const synthetic = synth(
         event,
         userId,
         `${role.toLowerCase()}/profile`,
