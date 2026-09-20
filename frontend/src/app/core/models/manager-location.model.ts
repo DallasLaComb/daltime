@@ -1,19 +1,6 @@
-export interface ManagerLocation {
-  location_id: string;
-  org_id: string;
-  name: string;
-  address?: string;
-  created_by: string;
-  created_at: string;
-  updated_at?: string;
-}
+import type { ApiSchema } from '../api/api-client';
 
-export interface CreateLocationBody {
-  name: string;
-  address?: string;
-}
-
-export interface UpdateLocationBody {
-  name?: string;
-  address?: string;
-}
+/** Wire shapes come from the generated contract (`contracts/openapi.json`); do not hand-edit. */
+export type ManagerLocation = ApiSchema<'ManagerLocationResponse'>;
+export type CreateLocationBody = ApiSchema<'CreateOrgAdminLocationBody'>;
+export type UpdateLocationBody = ApiSchema<'UpdateOrgAdminLocationBody'>;

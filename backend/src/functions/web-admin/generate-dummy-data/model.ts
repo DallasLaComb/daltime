@@ -1,3 +1,5 @@
+import type { ShiftType } from '@daltime/contracts';
+
 /**
  * Types for the generate-dummy-data feature.
  * These are local to this slice — the request body comes from the contract
@@ -26,5 +28,5 @@ export interface OrgBundle {
 export interface ShiftPreset {
   start_time: string;
   end_time: string;
-  type: 'morning' | 'afternoon' | 'night';
+  type: ShiftType;
 }

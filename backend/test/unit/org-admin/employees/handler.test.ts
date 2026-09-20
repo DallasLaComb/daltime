@@ -81,7 +81,7 @@ const mockEmployee = {
   phone: '555-5678',
   org_id: 'org-123',
   manager_id: 'mgr-sub-123',
-  status: 'CONFIRMED',
+  status: 'CONFIRMED' as const,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };

@@ -310,6 +310,25 @@ Delete only when this returns zero (or alias every importer in the same PR).
   `org-admin/shifts` and `employee/{shifts,available-shifts}` services can be deleted (their unit
   tests assert those messages, so it is a separate change).
 
+- **Single-source-of-truth sweep, part 2 — done 2026-09-20.**
+  - **Backend entity models** (`shared/models/**`, `web-admin/profile/model.ts`): all 12 were
+    hand-written copies of shapes the contract already owned (`entities/*` says "Replaces …" but
+    it never happened). Now thin re-exports of the contract types under the same names (e.g.
+    `Shift = ShiftRecord`), so importers are unchanged and the stored shape has one definition.
+    Only `generate-dummy-data/model.ts` (`OrgBundle`, internal) remains, and it now uses the
+    contract's `ShiftType`.
+  - **Frontend `core/models/*`**: all 8 files are now `ApiSchema<…>` aliases of the generated
+    types (incl. availability). Zero hand-written wire types remain in `frontend/src`.
+  - **Contract bug found + fixed:** `apiShapeOf()` (`entities/keys.ts`) lost its type through
+    `.d.ts` emit, so every `*ApiFields` type and every response type built on one was
+    `Record<string, unknown>` **on the backend** — the wire shape looked typed but wasn't checked.
+    Added an explicit return type; `openapi.json` is byte-identical, 17 API-shaped types are now
+    precise. This is why the backend model swap surfaced 1 real type error instead of hundreds.
+  - **Not covered / follow-ups:** `ScheduleMeta` in `manager/schedule/db.ts` is a stored counter
+    item with no contract entity (add `ScheduleMetaRecord`). Backend `test/` is not type-checked
+    (`tsconfig` includes `src` only); ~98 pre-existing typing errors in test fixtures — consider a
+    `tsconfig.test.json` + CI step. Service-level `month`/`date` regex checks remain (see above).
+
 ## 10. Agent execution protocol — stepped mode
 
 This migration is too large for one agent shot. Work is broken into discrete steps below.

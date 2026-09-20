@@ -54,7 +54,7 @@ const mockProfile = {
   first_name: 'Alice',
   last_name: 'Smith',
   entity_type: 'WEB_ADMIN' as const,
-  status: 'CONFIRMED',
+  status: 'CONFIRMED' as const,
   created_at: '2025-01-01T00:00:00.000Z',
 };
 

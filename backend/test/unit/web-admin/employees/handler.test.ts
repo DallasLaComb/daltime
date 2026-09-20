@@ -73,7 +73,7 @@ const sampleEmployee = {
   phone: '+1-555-0000',
   org_id: 'org-1',
   org_name: 'Acme Corp',
-  status: 'CONFIRMED',
+  status: 'CONFIRMED' as const,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };

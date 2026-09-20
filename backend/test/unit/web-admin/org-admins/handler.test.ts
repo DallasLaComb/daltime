@@ -94,7 +94,7 @@ const mockUser = {
   email: 'admin@acme.com',
   name: 'Jane Admin',
   org_id: 'org-123',
-  status: 'FORCE_CHANGE_PASSWORD',
+  status: 'FORCE_CHANGE_PASSWORD' as const,
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
