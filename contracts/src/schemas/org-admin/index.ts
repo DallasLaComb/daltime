@@ -11,4 +11,5 @@ export * from './locations.js';
 export * from './managers.js';
 export * from './organization.js';
 export * from './profile.js';
+export * from './shifts.js';
 export * from './user-locations.js';

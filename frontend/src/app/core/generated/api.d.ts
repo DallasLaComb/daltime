@@ -692,6 +692,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org-admin/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling org-admin's organization's shifts in a month
+         * @description Backs the org-admin schedule screen (frontend/src/app/features/org-admin/schedule). Lists every shift in the caller’s organization for the month from the `month` query param (defaulting to current month).
+         */
+        get: operations["listOrgAdminShifts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org-admin/managers/{managerId}/locations": {
         parameters: {
             query?: never;
@@ -1743,6 +1763,52 @@ export interface components {
              * @example 2026-02-23T18:04:11.000Z
              */
             created_at: string;
+        };
+        /** @description Every shift in the OrgAdmin’s organization within the requested month. */
+        OrgAdminShiftListResponse: components["schemas"]["OrgAdminShiftResponse"][];
+        /** @description A shift within the OrgAdmin’s organization. */
+        OrgAdminShiftResponse: {
+            shift_id: string;
+            org_id: string;
+            manager_id: string;
+            employee_id: string;
+            /** @description Denormalized at assignment time. */
+            employee_name: string;
+            location_id: string;
+            /** @description Denormalized at assignment time. */
+            location_name: string;
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            date: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            type: components["schemas"]["ShiftType"];
+            status: components["schemas"]["ShiftStatus"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+            /** @description True when the assigned employee has offered this shift for pickup by peers. */
+            available_for_pickup?: boolean;
         };
         /** @description The locations assigned to a manager or employee. */
         UserLocationListResponse: components["schemas"]["UserLocationResponse"][];
@@ -4604,6 +4670,47 @@ export interface operations {
             };
             /** @description The requested record does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listOrgAdminShifts: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — all shifts in the given calendar month. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every shift in the org for the requested month. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgAdminShiftListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

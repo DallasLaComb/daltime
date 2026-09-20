@@ -4628,6 +4628,78 @@
         }
       }
     },
+    "/org-admin/shifts": {
+      "get": {
+        "operationId": "listOrgAdminShifts",
+        "summary": "List the calling org-admin's organization's shifts in a month",
+        "tags": [
+          "org-admin"
+        ],
+        "description": "Backs the org-admin schedule screen (frontend/src/app/features/org-admin/schedule). Lists every shift in the caller’s organization for the month from the `month` query param (defaulting to current month).",
+        "x-implementation-path": [
+          "backend/src/functions/org-admin/shifts/handler.ts",
+          "backend/src/functions/org-admin/shifts/service.ts",
+          "backend/src/functions/org-admin/shifts/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, SHIFT#)",
+            "filter": "begins_with(#date, <month>)",
+            "note": "Lists the org’s shifts for the month; key attributes are stripped and rows sorted by date then start_time."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "description": "YYYY-MM — all shifts in the given calendar month.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            },
+            "description": "YYYY-MM — all shifts in the given calendar month."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every shift in the org for the requested month.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminShiftListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org-admin/managers/{managerId}/locations": {
       "get": {
         "operationId": "listManagerAssignedLocations",
@@ -7771,6 +7843,102 @@
         ],
         "additionalProperties": false,
         "description": "The calling OrgAdmin's own profile, enriched with their live Cognito status."
+      },
+      "OrgAdminShiftListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OrgAdminShiftResponse"
+        },
+        "description": "Every shift in the OrgAdmin’s organization within the requested month."
+      },
+      "OrgAdminShiftResponse": {
+        "type": "object",
+        "properties": {
+          "shift_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          },
+          "employee_id": {
+            "type": "string"
+          },
+          "employee_name": {
+            "type": "string",
+            "description": "Denormalized at assignment time."
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string",
+            "description": "Denormalized at assignment time."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ShiftStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "available_for_pickup": {
+            "description": "True when the assigned employee has offered this shift for pickup by peers.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "shift_id",
+          "org_id",
+          "manager_id",
+          "employee_id",
+          "employee_name",
+          "location_id",
+          "location_name",
+          "date",
+          "start_time",
+          "end_time",
+          "type",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "A shift within the OrgAdmin’s organization."
       },
       "UserLocationListResponse": {
         "type": "array",
