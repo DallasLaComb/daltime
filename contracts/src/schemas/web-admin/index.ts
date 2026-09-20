@@ -7,5 +7,6 @@
  * nothing outside this directory needs editing to add a slice.
  */
 export * from './employees.js';
+export * from './org-admins.js';
 export * from './organizations.js';
 export * from './profile.js';

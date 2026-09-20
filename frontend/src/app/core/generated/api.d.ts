@@ -820,6 +820,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/organizations/{orgId}/org-admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the OrgAdmins in an organization
+         * @description Lists every OrgAdmin in the given org, enriched with live Cognito status.
+         */
+        get: operations["listWebAdminOrgAdmins"];
+        put?: never;
+        /**
+         * Create an OrgAdmin for an organization
+         * @description Creates a Cognito user in the OrgAdmin group and the corresponding DynamoDB records, from the web-admin org-admins screen. Stamps the acting web-admin for audit.
+         */
+        post: operations["createWebAdminOrgAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/web-admin/organizations/{orgId}/org-admins/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disable an OrgAdmin
+         * @description Soft-deletes an OrgAdmin — disables their Cognito account and marks the stored record DISABLED.
+         */
+        delete: operations["disableWebAdminOrgAdmin"];
+        options?: never;
+        head?: never;
+        /**
+         * Re-enable a disabled OrgAdmin
+         * @description Re-activates a disabled OrgAdmin’s Cognito account and stored record.
+         */
+        patch: operations["enableWebAdminOrgAdmin"];
+        trace?: never;
+    };
     "/organizations": {
         parameters: {
             query?: never;
@@ -1312,6 +1360,17 @@ export interface components {
         /** @description The location to assign to the manager/employee. */
         AssignUserLocationBody: {
             location_id: string;
+        };
+        /** @description Fields accepted to register a new OrgAdmin via Cognito. */
+        CreateOrgAdminBody: {
+            /**
+             * Format: email
+             * @description Cognito username. Trimmed before validation.
+             */
+            email: string;
+            name: string;
+            /** @description Temporary Cognito password. Sent verbatim — never trimmed. */
+            temp_password: string;
         };
         /** @description Fields accepted to create a new organization. */
         CreateOrganizationBody: {
@@ -1972,6 +2031,24 @@ export interface components {
             updated_at: string;
             /** @description Joined from the ORG#<org_id> METADATA record. */
             org_name: string;
+        };
+        /** @description Every OrgAdmin in the given organization. */
+        WebAdminOrgAdminListResponse: components["schemas"]["WebAdminOrgAdminResponse"][];
+        /** @description An OrgAdmin record as returned to a WebAdmin, enriched with live Cognito status. */
+        WebAdminOrgAdminResponse: {
+            /** @description Cognito sub. */
+            user_id: string;
+            /** Format: email */
+            email: string;
+            name: string;
+            org_id: string;
+            status: components["schemas"]["UserStatus"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
         };
         /** @description Every organization. */
         WebAdminOrganizationListResponse: components["schemas"]["WebAdminOrganizationResponse"][];
@@ -5281,6 +5358,237 @@ export interface operations {
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWebAdminOrgAdmins: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every OrgAdmin in the organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrgAdminListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createWebAdminOrgAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrgAdminBody"];
+            };
+        };
+        responses: {
+            /** @description The created OrgAdmin. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrgAdminResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A Cognito user with this email already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    disableWebAdminOrgAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+                /** @description Cognito sub of the OrgAdmin. */
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OrgAdmin disabled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    enableWebAdminOrgAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+                /** @description Cognito sub of the OrgAdmin. */
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OrgAdmin re-enabled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

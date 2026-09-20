@@ -1,6 +1,6 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import type { CreateOrgAdminBody } from '../../shared/models/web-admin/org-admin-user.model.js';
+import { CreateOrgAdminBody } from '@daltime/contracts';
 import {
   ok,
   created,
@@ -10,6 +10,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listOrgAdmins, createOrgAdmin, disableOrgAdmin, enableOrgAdmin } from './service.js';
 
@@ -17,9 +18,10 @@ const cognitoClient = new CognitoIdentityProviderClient({});
 
 /** Handle POST /organizations/{orgId}/org-admins — create a new OrgAdmin. */
 async function handlePost(orgId: string, rawBody: string | undefined, webAdminId: string) {
-  const parsed = parseBody<CreateOrgAdminBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createOrgAdmin(orgId, parsed.data, cognitoClient, webAdminId));
+  const body = parseWithContract(CreateOrgAdminBody, parsed.data);
+  return created(await createOrgAdmin(orgId, body, cognitoClient, webAdminId));
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {

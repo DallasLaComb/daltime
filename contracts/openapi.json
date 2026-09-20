@@ -5361,6 +5361,387 @@
         }
       }
     },
+    "/web-admin/organizations/{orgId}/org-admins": {
+      "get": {
+        "operationId": "listWebAdminOrgAdmins",
+        "summary": "List the OrgAdmins in an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Lists every OrgAdmin in the given org, enriched with live Cognito status.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/org-admins/handler.ts",
+          "backend/src/functions/web-admin/org-admins/service.ts",
+          "backend/src/functions/web-admin/org-admins/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, USER#)",
+            "note": "Lists the org’s OrgAdmins; key attributes stripped and status enriched from Cognito."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every OrgAdmin in the organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrgAdminListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebAdminOrgAdmin",
+        "summary": "Create an OrgAdmin for an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Creates a Cognito user in the OrgAdmin group and the corresponding DynamoDB records, from the web-admin org-admins screen. Stamps the acting web-admin for audit.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/org-admins/handler.ts",
+          "backend/src/functions/web-admin/org-admins/service.ts",
+          "backend/src/functions/web-admin/org-admins/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Verifies the org exists before creating the user."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userSub>",
+            "note": "Primary record plus GSI1PK = ORG_ADMIN / GSI1SK = created_at."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = USER#<userSub> AND SK = METADATA",
+            "note": "Reverse-lookup record so the OrgAdmin can be resolved by ID alone."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Increments org_admin_count."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrgAdminBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created OrgAdmin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrgAdminResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A Cognito user with this email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web-admin/organizations/{orgId}/org-admins/{userId}": {
+      "delete": {
+        "operationId": "disableWebAdminOrgAdmin",
+        "summary": "Disable an OrgAdmin",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Soft-deletes an OrgAdmin — disables their Cognito account and marks the stored record DISABLED.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/org-admins/handler.ts",
+          "backend/src/functions/web-admin/org-admins/service.ts",
+          "backend/src/functions/web-admin/org-admins/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<userId> AND SK = METADATA",
+            "note": "Reverse lookup to get the email for the Cognito disable."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userId>",
+            "note": "Sets status = DISABLED."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Decrements org_admin_count."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the OrgAdmin."
+            },
+            "required": true,
+            "description": "Cognito sub of the OrgAdmin."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OrgAdmin disabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "enableWebAdminOrgAdmin",
+        "summary": "Re-enable a disabled OrgAdmin",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Re-activates a disabled OrgAdmin’s Cognito account and stored record.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/org-admins/handler.ts",
+          "backend/src/functions/web-admin/org-admins/service.ts",
+          "backend/src/functions/web-admin/org-admins/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<userId> AND SK = METADATA",
+            "note": "Reverse lookup to get the email for the Cognito enable."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = USER#<userId>",
+            "note": "Sets status = CONFIRMED."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Increments org_admin_count."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "schema": {
+              "type": "string",
+              "description": "Cognito sub of the OrgAdmin."
+            },
+            "required": true,
+            "description": "Cognito sub of the OrgAdmin."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OrgAdmin re-enabled."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/organizations": {
       "get": {
         "operationId": "listWebAdminOrganizations",
@@ -7168,6 +7549,31 @@
         ],
         "description": "The location to assign to the manager/employee."
       },
+      "CreateOrgAdminBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "description": "Cognito username. Trimmed before validation.",
+            "format": "email",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "temp_password": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Temporary Cognito password. Sent verbatim — never trimmed."
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "temp_password"
+        ],
+        "description": "Fields accepted to register a new OrgAdmin via Cognito."
+      },
       "CreateOrganizationBody": {
         "type": "object",
         "properties": {
@@ -8696,6 +9102,53 @@
         ],
         "additionalProperties": false,
         "description": "An employee across all organizations, with the owning organization’s name."
+      },
+      "WebAdminOrgAdminListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/WebAdminOrgAdminResponse"
+        },
+        "description": "Every OrgAdmin in the given organization."
+      },
+      "WebAdminOrgAdminResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Cognito sub."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "name",
+          "org_id",
+          "status",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "An OrgAdmin record as returned to a WebAdmin, enriched with live Cognito status."
       },
       "WebAdminOrganizationListResponse": {
         "type": "array",

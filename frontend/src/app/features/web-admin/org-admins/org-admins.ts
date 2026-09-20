@@ -13,9 +13,8 @@ import {
   PasswordInputComponent,
 } from '@common-daltime';
 import type { ColumnDef } from '@common-daltime';
-import { OrgAdminsService } from '../../../services/org-admins.service';
+import { OrgAdminsService, type OrgAdminUserResponse } from '../../../services/org-admins.service';
 import { OrganizationService } from '../../../services/organization.service';
-import type { OrgAdminUserResponse } from '../../../core/models/org-admin-user.model';
 
 @Component({
   selector: 'app-org-admins',

@@ -1,27 +1,37 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import type { OrgAdminUserResponse, CreateOrgAdminBody } from '../core/models/org-admin-user.model';
+import { ApiClient, type ApiSchema } from '../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ */
+export type WebAdminOrgAdmin = ApiSchema<'WebAdminOrgAdminResponse'>;
+export type CreateOrgAdminBody = ApiSchema<'CreateOrgAdminBody'>;
+/** Back-compat alias for the former hand-written OrgAdminUserResponse model name. */
+export type OrgAdminUserResponse = WebAdminOrgAdmin;
 
 @Injectable({ providedIn: 'root' })
 export class OrgAdminsService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/web-admin/organizations`;
+  private readonly api = inject(ApiClient);
 
-  getAll(orgId: string): Observable<OrgAdminUserResponse[]> {
-    return this.http.get<OrgAdminUserResponse[]>(`${this.baseUrl}/${orgId}/org-admins`);
+  getAll(orgId: string): Observable<WebAdminOrgAdmin[]> {
+    return this.api.get('/web-admin/organizations/{orgId}/org-admins', { params: { orgId } });
   }
 
-  create(orgId: string, body: CreateOrgAdminBody): Observable<OrgAdminUserResponse> {
-    return this.http.post<OrgAdminUserResponse>(`${this.baseUrl}/${orgId}/org-admins`, body);
+  create(orgId: string, body: CreateOrgAdminBody): Observable<WebAdminOrgAdmin> {
+    return this.api.post('/web-admin/organizations/{orgId}/org-admins', body, { params: { orgId } });
   }
 
   disable(orgId: string, userId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${orgId}/org-admins/${userId}`);
+    return this.api.delete('/web-admin/organizations/{orgId}/org-admins/{userId}', {
+      params: { orgId, userId },
+    });
   }
 
   enable(orgId: string, userId: string): Observable<void> {
-    return this.http.patch<void>(`${this.baseUrl}/${orgId}/org-admins/${userId}`, {});
+    return this.api.patch('/web-admin/organizations/{orgId}/org-admins/{userId}', {}, {
+      params: { orgId, userId },
+    });
   }
 }
