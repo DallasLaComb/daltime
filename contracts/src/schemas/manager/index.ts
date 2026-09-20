@@ -11,3 +11,4 @@ export * from './employees.js';
 export * from './locations.js';
 export * from './profile.js';
 export * from './shifts.js';
+export * from './shifts-needed.js';

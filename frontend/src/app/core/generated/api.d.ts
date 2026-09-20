@@ -364,6 +364,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manager/shifts-needed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling manager's staffing needs in a month
+         * @description Backs the manager shifts-needed screen (frontend/src/app/features/manager/shifts-needed). Lists every unfilled staffing need the caller owns, filtered to the `month` query param (defaulting to next month).
+         */
+        get: operations["listManagerShiftNeeded"];
+        put?: never;
+        /**
+         * Post a staffing need
+         * @description Creates an unfilled staffing need from the manager shifts-needed screen’s "add need" action.
+         */
+        post: operations["createManagerShiftNeeded"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/shifts-needed/{shiftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a staffing need
+         * @description Saves edits to a shift-need the caller owns — rescheduling, re-targeting a location, or adjusting the count/notes.
+         */
+        put: operations["updateManagerShiftNeeded"];
+        post?: never;
+        /**
+         * Delete a staffing need
+         * @description Removes a shift-need the caller owns from the shifts-needed screen.
+         */
+        delete: operations["deleteManagerShiftNeeded"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org-admin/employees": {
         parameters: {
             query?: never;
@@ -821,6 +869,52 @@ export interface components {
             end_time?: string;
             type?: components["schemas"]["ShiftType"];
         };
+        /** @description Fields accepted to post a new unfilled staffing need. */
+        CreateManagerShiftNeededBody: {
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            date: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            /** @description How many employees are needed, 1–50. */
+            employee_count: number;
+            location_id: string;
+            /** @description Optional notes, 500 characters or fewer. */
+            notes?: string;
+        };
+        /** @description Partial update of a shift-need. */
+        UpdateManagerShiftNeededBody: {
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            date?: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time?: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time?: string;
+            employee_count?: number;
+            location_id?: string;
+            notes?: string;
+        };
         /** @description Fields accepted to register a new employee via Cognito. */
         CreateEmployeeBody: {
             /**
@@ -1235,6 +1329,47 @@ export interface components {
             updated_at: string;
             /** @description True when the assigned employee has offered this shift for pickup by peers. */
             available_for_pickup?: boolean;
+        };
+        /** @description Every shift-need the calling manager owns within the requested month. */
+        ManagerShiftNeededListResponse: components["schemas"]["ManagerShiftNeededResponse"][];
+        /** @description An unfilled shift-need posted by the calling manager. */
+        ManagerShiftNeededResponse: {
+            shift_id: string;
+            org_id: string;
+            manager_id: string;
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            date: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            /** @description How many employees are needed. */
+            employee_count: number;
+            location_id: string;
+            location_name: string;
+            notes?: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
         };
         /** @description Every employee in the caller OrgAdmin’s organization. */
         OrgAdminEmployeeListResponse: components["schemas"]["OrgAdminEmployeeResponse"][];
@@ -2749,6 +2884,227 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Shift deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listManagerShiftNeeded: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM — all shift-needs in the given calendar month. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calling manager's staffing needs in the requested month. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerShiftNeededListResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createManagerShiftNeeded: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateManagerShiftNeededBody"];
+            };
+        };
+        responses: {
+            /** @description The created shift-need. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerShiftNeededResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateManagerShiftNeeded: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The shift-need’s shift_id. */
+                shiftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateManagerShiftNeededBody"];
+            };
+        };
+        responses: {
+            /** @description The updated shift-need. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerShiftNeededResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteManagerShiftNeeded: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The shift-need’s shift_id. */
+                shiftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shift-need deleted. */
             200: {
                 headers: {
                     [name: string]: unknown;

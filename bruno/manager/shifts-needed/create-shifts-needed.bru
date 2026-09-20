@@ -1,0 +1,22 @@
+meta {
+  name: Create Manager Shift Need
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/manager/shifts-needed
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "date": "2026-07-09",
+    "start_time": "09:00",
+    "end_time": "14:00",
+    "employee_count": 2,
+    "location_id": "<location_id>",
+    "notes": "Need cover"
+  }
+}

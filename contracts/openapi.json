@@ -2320,6 +2320,371 @@
         }
       }
     },
+    "/manager/shifts-needed": {
+      "get": {
+        "operationId": "listManagerShiftNeeded",
+        "summary": "List the calling manager's staffing needs in a month",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the manager shifts-needed screen (frontend/src/app/features/manager/shifts-needed). Lists every unfilled staffing need the caller owns, filtered to the `month` query param (defaulting to next month).",
+        "x-implementation-path": [
+          "backend/src/functions/manager/shifts-needed/handler.ts",
+          "backend/src/functions/manager/shifts-needed/service.ts",
+          "backend/src/functions/manager/shifts-needed/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Query",
+            "keyCondition": "GSI1PK = MANAGER#<managerId> AND begins_with(GSI1SK, <month>)",
+            "note": "GSI1 query filtering the manager’s shift-needs to the requested month; key attributes are stripped and rows sorted by date then start_time."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "description": "YYYY-MM — all shift-needs in the given calendar month.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            },
+            "description": "YYYY-MM — all shift-needs in the given calendar month."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling manager's staffing needs in the requested month.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerShiftNeededListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createManagerShiftNeeded",
+        "summary": "Post a staffing need",
+        "tags": [
+          "manager"
+        ],
+        "description": "Creates an unfilled staffing need from the manager shifts-needed screen’s \"add need\" action.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/shifts-needed/handler.ts",
+          "backend/src/functions/manager/shifts-needed/service.ts",
+          "backend/src/functions/manager/shifts-needed/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Confirms the target location belongs to the caller’s organization."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "Primary record plus GSI1PK/GSI1SK for month-range listing; GSI1SK is the posting date."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManagerShiftNeededBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created shift-need.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerShiftNeededResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/shifts-needed/{shiftId}": {
+      "put": {
+        "operationId": "updateManagerShiftNeeded",
+        "summary": "Update a staffing need",
+        "tags": [
+          "manager"
+        ],
+        "description": "Saves edits to a shift-need the caller owns — rescheduling, re-targeting a location, or adjusting the count/notes.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/shifts-needed/handler.ts",
+          "backend/src/functions/manager/shifts-needed/service.ts",
+          "backend/src/functions/manager/shifts-needed/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "Fetches the shift-need to confirm the caller owns it."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Only when location_id changes — confirms the new location belongs to the caller’s org."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "Sets the supplied fields plus updated_at. Returns ALL_NEW."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "schema": {
+              "type": "string",
+              "description": "The shift-need’s shift_id."
+            },
+            "required": true,
+            "description": "The shift-need’s shift_id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateManagerShiftNeededBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated shift-need.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerShiftNeededResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteManagerShiftNeeded",
+        "summary": "Delete a staffing need",
+        "tags": [
+          "manager"
+        ],
+        "description": "Removes a shift-need the caller owns from the shifts-needed screen.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/shifts-needed/handler.ts",
+          "backend/src/functions/manager/shifts-needed/service.ts",
+          "backend/src/functions/manager/shifts-needed/db.ts",
+          "backend/src/functions/shared/handler-factories.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves the caller’s org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "Confirms the shift-need exists and belongs to the caller."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "Deletes the shift-need record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "schema": {
+              "type": "string",
+              "description": "The shift-need’s shift_id."
+            },
+            "required": true,
+            "description": "The shift-need’s shift_id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shift-need deleted."
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org-admin/employees": {
       "get": {
         "operationId": "listOrgAdminEmployees",
@@ -4599,6 +4964,91 @@
         },
         "description": "Partial update of a shift."
       },
+      "CreateManagerShiftNeededBody": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "How many employees are needed, 1–50."
+          },
+          "location_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notes": {
+            "description": "Optional notes, 500 characters or fewer.",
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "date",
+          "start_time",
+          "end_time",
+          "employee_count",
+          "location_id"
+        ],
+        "description": "Fields accepted to post a new unfilled staffing need."
+      },
+      "UpdateManagerShiftNeededBody": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "location_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "description": "Partial update of a shift-need."
+      },
       "CreateEmployeeBody": {
         "type": "object",
         "properties": {
@@ -5535,6 +5985,90 @@
         ],
         "additionalProperties": false,
         "description": "A shift assigned by (or belonging to) the calling manager."
+      },
+      "ManagerShiftNeededListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ManagerShiftNeededResponse"
+        },
+        "description": "Every shift-need the calling manager owns within the requested month."
+      },
+      "ManagerShiftNeededResponse": {
+        "type": "object",
+        "properties": {
+          "shift_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "employee_count": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "How many employees are needed."
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "shift_id",
+          "org_id",
+          "manager_id",
+          "date",
+          "start_time",
+          "end_time",
+          "employee_count",
+          "location_id",
+          "location_name",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "An unfilled shift-need posted by the calling manager."
       },
       "OrgAdminEmployeeListResponse": {
         "type": "array",
