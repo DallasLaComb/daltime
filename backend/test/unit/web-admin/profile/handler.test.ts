@@ -14,7 +14,9 @@ import type {
   APIGatewayProxyEventV2WithJWTAuthorizer,
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
+import { UpdateWebAdminProfileBody } from '@daltime/contracts';
 import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 
 // Mock CognitoIdentityProviderClient — handler instantiates it at module load time.
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
@@ -251,50 +253,37 @@ describe('PUT /web-admin/profile — validation', () => {
     expect(updateProfile).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when service throws ValidationError (no fields provided)', async () => {
-    // Service-level validation error for an empty object body — the service
-    // is responsible for the "at least one field" check.
-    const { ValidationError } = await import(
-      '../../../../src/functions/shared/errors.js'
-    );
-    vi.mocked(updateProfile).mockRejectedValue(
-      new ValidationError('At least one of first_name or last_name must be provided'),
-    );
+  it('returns 400 when the contract rejects an empty body (no fields provided)', async () => {
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({})),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
+    expect(updateProfile).not.toHaveBeenCalled();
     expect(body(result)).toEqual({
-      error: 'At least one of first_name or last_name must be provided',
+      error: contractErrorMessage(UpdateWebAdminProfileBody, {}),
     });
   });
 
-  it('returns 400 when service throws ValidationError for an empty first_name string', async () => {
-    const { ValidationError } = await import(
-      '../../../../src/functions/shared/errors.js'
-    );
-    vi.mocked(updateProfile).mockRejectedValue(
-      new ValidationError('first_name cannot be empty'),
-    );
+  it('returns 400 when the contract rejects an empty first_name string', async () => {
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ first_name: '   ' })),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect((body(result) as { error: string }).error).toMatch(/first_name cannot be empty/);
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(UpdateWebAdminProfileBody, { first_name: '   ' }),
+    });
   });
 
-  it('returns 400 when service throws ValidationError for an empty last_name string', async () => {
-    const { ValidationError } = await import(
-      '../../../../src/functions/shared/errors.js'
-    );
-    vi.mocked(updateProfile).mockRejectedValue(
-      new ValidationError('last_name cannot be empty'),
-    );
+  it('returns 400 when the contract rejects an empty last_name string', async () => {
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ last_name: '' })),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect((body(result) as { error: string }).error).toMatch(/last_name cannot be empty/);
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(UpdateWebAdminProfileBody, { last_name: '' }),
+    });
   });
 });
 

@@ -10,8 +10,10 @@ vi.mock('../../../../src/functions/shared/notifications/service.js', () => ({
   markAllAsRead: vi.fn(),
 }));
 
+import { MarkOneNotificationPathParams } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/shared/notifications/handler.js';
-import { ValidationError, NotFoundError } from '../../../../src/functions/shared/errors.js';
+import { NotFoundError } from '../../../../src/functions/shared/errors.js';
 import {
   listNotifications,
   markOneAsRead,
@@ -225,7 +227,9 @@ describe('PATCH /{role}/notifications/{notificationId} — mark one read', () =>
     expect(markOneAsRead).not.toHaveBeenCalled();
     expect(markAllAsRead).not.toHaveBeenCalled();
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'notificationId path parameter is required' });
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(MarkOneNotificationPathParams, { notificationId: '' }),
+    });
   });
 
   it('returns 500 when markOneAsRead throws an unexpected error', async () => {
