@@ -1,8 +1,5 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import type {
-  CreateOrganizationBody,
-  UpdateOrganizationBody,
-} from '../../shared/models/web-admin/organization.model.js';
+import { CreateOrganizationBody, UpdateOrganizationBody } from '@daltime/contracts';
 import {
   ok,
   created,
@@ -13,6 +10,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import {
   listOrganizations,
@@ -24,16 +22,18 @@ import {
 
 /** Handle POST /organizations — create a new organization. */
 async function handlePost(rawBody: string | undefined, webAdminId: string) {
-  const parsed = parseBody<CreateOrganizationBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createOrganization(parsed.data, webAdminId));
+  const body = parseWithContract(CreateOrganizationBody, parsed.data);
+  return created(await createOrganization(body, webAdminId));
 }
 
 /** Handle PUT /organizations/{orgId} — update an existing organization. */
 async function handlePut(orgId: string, rawBody: string | undefined, webAdminId: string) {
-  const parsed = parseBody<UpdateOrganizationBody>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  const org = await updateOrganization(orgId, parsed.data, webAdminId);
+  const body = parseWithContract(UpdateOrganizationBody, parsed.data);
+  const org = await updateOrganization(orgId, body, webAdminId);
   return org ? ok(org) : notFound(`Organization '${orgId}' not found`);
 }
 

@@ -5361,6 +5361,379 @@
         }
       }
     },
+    "/organizations": {
+      "get": {
+        "operationId": "listWebAdminOrganizations",
+        "summary": "List all organizations",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs the web-admin organization list screen (frontend/src/app/features/web-admin/organizations).",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/organizations/handler.ts",
+          "backend/src/functions/web-admin/organizations/service.ts",
+          "backend/src/functions/web-admin/organizations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Query",
+            "keyCondition": "GSI1PK = ORG",
+            "note": "GSI1 query returns every organization (cross-org inventory view)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrganizationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebAdminOrganization",
+        "summary": "Create an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Creates a new organization and stamps the creating web-admin for audit.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/organizations/handler.ts",
+          "backend/src/functions/web-admin/organizations/service.ts",
+          "backend/src/functions/web-admin/organizations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Primary record plus GSI1PK = ORG / GSI1SK = created_at."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrganizationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations/{orgId}": {
+      "get": {
+        "operationId": "getWebAdminOrganization",
+        "summary": "Get an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Fetches a single organization by id.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/organizations/handler.ts",
+          "backend/src/functions/web-admin/organizations/service.ts",
+          "backend/src/functions/web-admin/organizations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Point read of the organization record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrganizationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateWebAdminOrganization",
+        "summary": "Update an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Saves edits to an organization’s name and/or address, stamping the acting web-admin.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/organizations/handler.ts",
+          "backend/src/functions/web-admin/organizations/service.ts",
+          "backend/src/functions/web-admin/organizations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Reads the existing record to carry over unspecified fields."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Sets name/address/updated_at; ALL_NEW becomes the response."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminOrganizationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWebAdminOrganization",
+        "summary": "Delete an organization",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Hard-deletes an organization by id.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/organizations/handler.ts",
+          "backend/src/functions/web-admin/organizations/service.ts",
+          "backend/src/functions/web-admin/organizations/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Confirms the organization exists."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = ORG#<orgId> AND SK = METADATA",
+            "note": "Deletes the organization record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orgId",
+            "schema": {
+              "type": "string",
+              "description": "The organization’s org_id."
+            },
+            "required": true,
+            "description": "The organization’s org_id."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Organization deleted."
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/web-admin/profile": {
       "get": {
         "operationId": "getWebAdminProfile",
@@ -6794,6 +7167,38 @@
           "location_id"
         ],
         "description": "The location to assign to the manager/employee."
+      },
+      "CreateOrganizationBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ],
+        "description": "Fields accepted to create a new organization."
+      },
+      "UpdateOrganizationBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": "Partial update of an organization’s name and/or address."
       },
       "UpdateWebAdminProfileBody": {
         "type": "object",
@@ -8291,6 +8696,57 @@
         ],
         "additionalProperties": false,
         "description": "An employee across all organizations, with the owning organization’s name."
+      },
+      "WebAdminOrganizationListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/WebAdminOrganizationResponse"
+        },
+        "description": "Every organization."
+      },
+      "WebAdminOrganizationResponse": {
+        "type": "object",
+        "properties": {
+          "org_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "org_admin_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Atomic counter maintained by the org-admins Lambda."
+          }
+        },
+        "required": [
+          "org_id",
+          "name",
+          "address",
+          "created_at",
+          "updated_at",
+          "org_admin_count"
+        ],
+        "additionalProperties": false,
+        "description": "An organization as returned to a WebAdmin."
       },
       "WebAdminProfileResponse": {
         "type": "object",

@@ -820,6 +820,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all organizations
+         * @description Backs the web-admin organization list screen (frontend/src/app/features/web-admin/organizations).
+         */
+        get: operations["listWebAdminOrganizations"];
+        put?: never;
+        /**
+         * Create an organization
+         * @description Creates a new organization and stamps the creating web-admin for audit.
+         */
+        post: operations["createWebAdminOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{orgId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization
+         * @description Fetches a single organization by id.
+         */
+        get: operations["getWebAdminOrganization"];
+        /**
+         * Update an organization
+         * @description Saves edits to an organization’s name and/or address, stamping the acting web-admin.
+         */
+        put: operations["updateWebAdminOrganization"];
+        post?: never;
+        /**
+         * Delete an organization
+         * @description Hard-deletes an organization by id.
+         */
+        delete: operations["deleteWebAdminOrganization"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/web-admin/profile": {
         parameters: {
             query?: never;
@@ -1260,6 +1312,16 @@ export interface components {
         /** @description The location to assign to the manager/employee. */
         AssignUserLocationBody: {
             location_id: string;
+        };
+        /** @description Fields accepted to create a new organization. */
+        CreateOrganizationBody: {
+            name: string;
+            address: string;
+        };
+        /** @description Partial update of an organization’s name and/or address. */
+        UpdateOrganizationBody: {
+            name?: string;
+            address?: string;
         };
         /** @description Partial update of the calling web-admin’s name. */
         UpdateWebAdminProfileBody: {
@@ -1910,6 +1972,28 @@ export interface components {
             updated_at: string;
             /** @description Joined from the ORG#<org_id> METADATA record. */
             org_name: string;
+        };
+        /** @description Every organization. */
+        WebAdminOrganizationListResponse: components["schemas"]["WebAdminOrganizationResponse"][];
+        /** @description An organization as returned to a WebAdmin. */
+        WebAdminOrganizationResponse: {
+            org_id: string;
+            name: string;
+            address: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+            /** @description Atomic counter maintained by the org-admins Lambda. */
+            org_admin_count: number;
         };
         /** @description The calling web-admin's own profile, enriched with their live Cognito status. */
         WebAdminProfileResponse: {
@@ -5197,6 +5281,256 @@ export interface operations {
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWebAdminOrganizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrganizationListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createWebAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrganizationBody"];
+            };
+        };
+        responses: {
+            /** @description The created organization. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrganizationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getWebAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrganizationResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateWebAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizationBody"];
+            };
+        };
+        responses: {
+            /** @description The updated organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminOrganizationResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteWebAdminOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The organization’s org_id. */
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
