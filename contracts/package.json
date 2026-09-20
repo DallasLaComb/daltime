@@ -19,6 +19,7 @@
     "build": "tsc -p tsconfig.json",
     "generate": "npm run build && node dist/generate.js",
     "check": "npm run generate && git diff --exit-code -- openapi.json",
+    "check:routes": "node scripts/check-routes.mjs",
     "sync": "node scripts/contracts-sync.mjs"
   },
   "prettier": {

@@ -255,18 +255,21 @@ Delete only when this returns zero (or alias every importer in the same PR).
 
 ## 8. Guardrails to add (Wave 5, after domains land)
 
-- [ ] **CI drift check** — fail if committed openapi.json is stale:
-  ```bash
-  npm run generate -w contracts && git diff --exit-code -- contracts/openapi.json
-  ```
-  (Already exists as `npm run check -w contracts` — wire it into `.github/workflows/ci.yml`.)
-- [ ] **Lint ban on HttpClient outside the client** (flip warn → error once inventory hits 0):
-  ```js
-  "no-restricted-imports": ["error", {
-    paths: [{ name: "@angular/common/http",
-              message: "Use core/api/api-client (contracts-generated types)." }]
-  }]
-  ```
+- [x] **CI drift check** — fail if committed openapi.json is stale. Wired in `ci.yml` (`contracts`
+  job: regenerates `openapi.json` + frontend `api.d.ts` and fails on `git diff`).
+- [x] **Route drift check** — `contracts/scripts/check-routes.mjs` (`npm run check:routes`, also a
+  step in `contracts:sync` and the CI `contracts` job) diffs every `infra/template.yaml` route
+  against `openapi.json` in both directions. Intentional gaps go in `ALLOWED_UNDOCUMENTED` with a
+  reason; a stale allowance also fails. Currently only the 5 impersonation `{proxy+}` routes
+  (remove with impersonation phase 3).
+- [x] **Backend test type-check (ratchet)** — `backend/tsconfig.test.json` +
+  `npm run typecheck:tests`, in CI. 98 pre-existing fixture errors are recorded in
+  `backend/scripts/test-types-baseline.json`; new errors fail, the baseline may only shrink
+  (`npm run typecheck:tests -- --update` after fixing some). Burn it down opportunistically.
+- [x] **Lint in CI + ban on HttpClient outside the client** — `frontend/eslint.config.js`
+  restricts importing `HttpClient` (interceptors, `provideHttpClient`, `HttpErrorResponse` stay
+  allowed; `api-client.ts` and specs exempt). Lint now runs in CI for both packages (it never did
+  before — 4 stray unused imports were fixed to get it green).
 - [ ] Update `contracts/README.md` status section — it still says "spec in progress".
 
 ## 9. Gotchas (append as you learn)

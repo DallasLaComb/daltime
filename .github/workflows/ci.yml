@@ -51,6 +51,12 @@ jobs:
         run: npm run contracts:types
         working-directory: frontend
 
+      # Routes are declared only in infra/template.yaml. This fails if a route ships with
+      # no contract operation, or an operation is documented for a route that does not exist.
+      - name: Check template routes match the contract
+        run: npm run check:routes
+        working-directory: contracts
+
       - name: Fail if generated output drifted from the committed files
         run: |
           if ! git diff --exit-code -- contracts/openapi.json frontend/src/app/core/generated/; then
@@ -93,6 +99,12 @@ jobs:
         run: npm audit --audit-level=high
         working-directory: frontend
         continue-on-error: true
+
+      # Includes the ban on injecting HttpClient outside core/api/api-client.ts, which keeps
+      # every API call typed from contracts/openapi.json.
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
 
       - name: Run tests
         run: npm test
@@ -156,6 +168,22 @@ jobs:
       # function. Keep this a hard gate — prod deps must stay clean.
       - name: npm audit
         run: npm audit --audit-level=high --omit=dev
+        working-directory: backend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: backend
+
+      # Handlers and services must fit the contract types (vendored above).
+      - name: Type-check source
+        run: npx tsc --noEmit
+        working-directory: backend
+
+      # Same for test fixtures. vitest strips types without checking them, so this is the only
+      # thing that notices a fixture drifting from the contract. Ratcheted against
+      # scripts/test-types-baseline.json: new errors fail, the baseline can only shrink.
+      - name: Type-check tests (ratchet)
+        run: npm run typecheck:tests
         working-directory: backend
 
       - name: Run tests

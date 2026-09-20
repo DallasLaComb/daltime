@@ -5,6 +5,7 @@
  * Runs the full contract propagation chain and stops at the first failure:
  *
  *   1. contracts: build + generate (Zod schemas → contracts/openapi.json)
+ *      + check:routes (every infra/template.yaml route ↔ an openapi.json operation)
  *   2. backend:   sync-contracts   (built package → backend/vendor/contracts)
  *   3. backend:   tsc --noEmit     (catches handlers broken by a shape change)
  *   4. frontend:  contracts:types  (openapi.json → core/generated/api.d.ts)
@@ -28,6 +29,7 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const steps = [
   { label: 'contracts: build + generate openapi.json', dir: 'contracts', cmd: [npm, ['run', 'generate']] },
+  { label: 'contracts: template routes match openapi.json', dir: 'contracts', cmd: [npm, ['run', 'check:routes']] },
   { label: 'backend: sync vendored contracts', dir: 'backend', cmd: [npm, ['run', 'contracts:build']] },
   { label: 'backend: typecheck (tsc --noEmit)', dir: 'backend', cmd: ['npx', ['tsc', '--noEmit']] },
   { label: 'frontend: generate api.d.ts', dir: 'frontend', cmd: [npm, ['run', 'contracts:types']] },

@@ -12,7 +12,6 @@ import type { ShiftNeeded } from '../../../core/models/manager-shift-needed.mode
 import type {
   DayAvailability,
   DayOfWeek,
-  WeeklySchedule,
 } from '../../../core/models/employee-availability.model';
 import { toDateKey, toMonthKey, buildViewLabel } from '../../../core/utils/schedule.utils';
 import { ScheduleBaseComponent } from '../../../core/utils/schedule-base';

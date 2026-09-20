@@ -19,7 +19,6 @@ import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/respon
 import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
-import type { UpdateProfileRequest } from './model.js';
 
 /** Shared Cognito client — initialised once per Lambda cold start. */
 const cognitoClient = new CognitoIdentityProviderClient({});
