@@ -208,6 +208,8 @@ describe('app.routes — integration: WebAdmin impersonating Employee (story #30
     displayName: 'Imp Employee',
     email: 'imp@test.com',
     orgId: 'org-002',
+    sessionId: 'test-session-id',
+    expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
   };
 
   it('WebAdmin impersonating Employee can navigate to /employee/schedule', async () => {

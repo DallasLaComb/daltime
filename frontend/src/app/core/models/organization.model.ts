@@ -1,18 +1,6 @@
-export interface Organization {
-  org_id: string;
-  name: string;
-  address: string;
-  created_at: string;
-  updated_at: string;
-  org_admin_count: number | undefined;
-}
+import type { ApiSchema } from '../api/api-client';
 
-export interface CreateOrganizationBody {
-  name: string;
-  address: string;
-}
-
-export interface UpdateOrganizationBody {
-  name?: string;
-  address?: string;
-}
+/** Wire shapes come from the generated contract (`contracts/openapi.json`); do not hand-edit. */
+export type Organization = ApiSchema<'WebAdminOrganizationResponse'>;
+export type CreateOrganizationBody = ApiSchema<'CreateOrganizationBody'>;
+export type UpdateOrganizationBody = ApiSchema<'UpdateOrganizationBody'>;

@@ -1,0 +1,19 @@
+meta {
+  name: Update Employee
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/manager/employees/{{employee_id}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "first_name": "John",
+    "last_name": "Smith Jr",
+    "phone": "555-987-6543"
+  }
+}

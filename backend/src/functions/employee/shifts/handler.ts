@@ -1,8 +1,12 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { ShiftsQueryParams } from '@daltime/contracts';
 import { getCallerSub, getCallerGroups } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { listMyShifts } from './service.js';
+import type { EmployeeShiftsResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 /**
  * Lambda handler for GET /employee/shifts.
@@ -16,7 +20,7 @@ import { listMyShifts } from './service.js';
  * Returns 403 if the caller is not in the Employee Cognito group.
  * Results are scoped to the caller's own shifts within their org.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   if (method === 'OPTIONS') {
@@ -36,10 +40,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const callerSub = getCallerSub(event);
 
     if (method === 'GET') {
-      const month = event.queryStringParameters?.['month'];
-      const date = event.queryStringParameters?.['date'];
-      const week = event.queryStringParameters?.['week'];
-      return ok(await listMyShifts(callerSub, { month, date, week }));
+      const query = parseWithContract(ShiftsQueryParams, event.queryStringParameters ?? {});
+      return ok<EmployeeShiftsResponse>(await listMyShifts(callerSub, query));
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
@@ -47,3 +49,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'employee shifts handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

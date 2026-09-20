@@ -3,7 +3,7 @@ import {
   updateOrgAndMetadataRecord,
   getOrgEntityRecord,
 } from '../../shared/dynamo.js';
-import type { Employee } from '../../shared/models/org-admin/employee.model.js';
+import type { EmployeeRecord } from '@daltime/contracts';
 
 export async function getCallerLookup(
   employeeId: string,
@@ -11,8 +11,8 @@ export async function getCallerLookup(
   return getMetadataRecord(employeeId);
 }
 
-export async function getRecord(orgId: string, employeeId: string): Promise<Employee | null> {
-  return getOrgEntityRecord<Employee>(orgId, 'EMPLOYEE', employeeId);
+export async function getRecord(orgId: string, employeeId: string): Promise<EmployeeRecord | null> {
+  return getOrgEntityRecord<EmployeeRecord>(orgId, 'EMPLOYEE', employeeId);
 }
 
 export async function updateRecord(
@@ -20,8 +20,8 @@ export async function updateRecord(
   employeeId: string,
   fields: { first_name?: string; last_name?: string; phone?: string },
   updatedAt: string,
-): Promise<Employee | null> {
-  return updateOrgAndMetadataRecord<Employee>(
+): Promise<EmployeeRecord | null> {
+  return updateOrgAndMetadataRecord<EmployeeRecord>(
     { PK: `ORG#${orgId}`, SK: `EMPLOYEE#${employeeId}` },
     employeeId,
     fields,

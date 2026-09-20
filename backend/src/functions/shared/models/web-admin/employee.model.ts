@@ -1,28 +1,6 @@
-export interface WebAdminEmployee {
-  PK: string;
-  SK: string;
-  GSI1PK?: string;
-  GSI1SK?: string;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  org_id: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { EmployeeRecord, WebAdminEmployeeResponse as Response } from '@daltime/contracts';
 
-export interface WebAdminEmployeeResponse {
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  org_id: string;
-  org_name: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+/** Employee item as the web-admin sees it (no manager). Shape owned by `@daltime/contracts`. */
+export type WebAdminEmployee = Omit<EmployeeRecord, 'manager_id'>;
+
+export type WebAdminEmployeeResponse = Response;

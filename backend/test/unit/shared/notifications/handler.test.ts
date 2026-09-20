@@ -10,8 +10,10 @@ vi.mock('../../../../src/functions/shared/notifications/service.js', () => ({
   markAllAsRead: vi.fn(),
 }));
 
+import { MarkOneNotificationPathParams, type NotificationResponse } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/shared/notifications/handler.js';
-import { ValidationError, NotFoundError } from '../../../../src/functions/shared/errors.js';
+import { NotFoundError } from '../../../../src/functions/shared/errors.js';
 import {
   listNotifications,
   markOneAsRead,
@@ -59,7 +61,7 @@ function buildApiGwEvent(
   } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer;
 }
 
-const mockNotification = {
+const mockNotification: NotificationResponse = {
   notification_id: '2025-01-01T00:00:00.000Z#raw-id-1',
   recipient_sub: 'caller-sub-123',
   type: 'INFO',
@@ -132,7 +134,7 @@ describe('GET /{role}/notifications — list', () => {
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: {}, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(200);
     expect(listNotifications).toHaveBeenCalledWith('local-sub-999');
@@ -225,7 +227,9 @@ describe('PATCH /{role}/notifications/{notificationId} — mark one read', () =>
     expect(markOneAsRead).not.toHaveBeenCalled();
     expect(markAllAsRead).not.toHaveBeenCalled();
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'notificationId path parameter is required' });
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(MarkOneNotificationPathParams, { notificationId: '' }),
+    });
   });
 
   it('returns 500 when markOneAsRead throws an unexpected error', async () => {
@@ -274,7 +278,7 @@ describe('Role-prefix tampering — confirms no role/group check exists at this 
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: { sub: 'caller-sub-123', 'cognito:groups': 'Employee' }, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);
@@ -297,7 +301,7 @@ describe('Role-prefix tampering — confirms no role/group check exists at this 
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: {}, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);

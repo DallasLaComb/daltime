@@ -36,6 +36,16 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      # @daltime/contracts is a file:vendor/contracts dependency; the vendored copy
+      # must exist before `npm ci` in backend/ (see backend/scripts/sync-contracts.mjs).
+      - name: Install contract dependencies
+        run: npm ci
+        working-directory: contracts
+
+      - name: Build and vendor contracts into the backend
+        run: node scripts/sync-contracts.mjs
+        working-directory: backend
+
       - name: Install backend dependencies
         run: npm ci
         working-directory: backend

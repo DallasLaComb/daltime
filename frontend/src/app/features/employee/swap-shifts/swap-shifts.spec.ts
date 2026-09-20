@@ -25,7 +25,7 @@ import { of, throwError, Subject } from 'rxjs';
 import { SwapShiftsComponent } from './swap-shifts';
 import { SwapShiftsService } from './swap-shifts.service';
 import { APP_TEST_PROVIDERS } from '../../../../test-setup';
-import type { SwapShift, SwapShiftsResponse } from '../../../core/models/swap-shift.model';
+import type { SwapShift, SwapShiftsResponse } from './swap-shifts.service';
 import type { Shift } from '../../../core/models/shift.model';
 
 // ─── Randomised pools ─────────────────────────────────────────────────────────

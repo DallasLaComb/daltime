@@ -1,22 +1,28 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { CreateOrgAdminLocationBody, UpdateOrgAdminLocationBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import { ok, created, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { getLocations, createLocation, updateLocation, removeLocation } from './service.js';
+import type { OrgAdminLocationListResponse, OrgAdminLocationResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<{ name?: string; address?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createLocation(callerSub, parsed.data));
+  const body = parseWithContract(CreateOrgAdminLocationBody, parsed.data);
+  return created<OrgAdminLocationResponse>(await createLocation(callerSub, body));
 }
 
 async function handlePut(callerSub: string, locationId: string, rawBody: string | undefined) {
-  const parsed = parseBody<{ name?: string; address?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateLocation(callerSub, locationId, parsed.data));
+  const body = parseWithContract(UpdateOrgAdminLocationBody, parsed.data);
+  return ok<OrgAdminLocationResponse>(await updateLocation(callerSub, locationId, body));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const locationId = event.pathParameters?.['locationId'];
 
@@ -30,7 +36,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await getLocations(callerSub));
+    if (method === 'GET') return ok<OrgAdminLocationListResponse>(await getLocations(callerSub));
     if (method === 'POST') return await handlePost(callerSub, event.body);
     if (method === 'PUT' && locationId) return await handlePut(callerSub, locationId, event.body);
     if (method === 'DELETE' && locationId) {
@@ -42,3 +48,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'org-admin locations handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

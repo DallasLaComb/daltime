@@ -14,16 +14,16 @@ function corsHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': requestOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Impersonate-User',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   };
 }
 
-export function ok(data: unknown): APIGatewayProxyResultV2 {
+export function ok<T = unknown>(data: T): APIGatewayProxyResultV2 {
   return { statusCode: 200, headers: corsHeaders(), body: JSON.stringify(data) };
 }
 
-export function created(data: unknown): APIGatewayProxyResultV2 {
+export function created<T = unknown>(data: T): APIGatewayProxyResultV2 {
   return { statusCode: 201, headers: corsHeaders(), body: JSON.stringify(data) };
 }
 

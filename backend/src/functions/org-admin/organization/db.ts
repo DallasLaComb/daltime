@@ -1,4 +1,5 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
+import type { Organization } from '../../shared/models/web-admin/organization.model.js';
 import {
   docClient,
   TABLE_NAME,
@@ -19,7 +20,7 @@ export async function getOrganization(orgId: string) {
       Key: { PK: `ORG#${orgId}`, SK: 'METADATA' },
     }),
   );
-  return result.Item ?? null;
+  return (result.Item as Organization | undefined) ?? null;
 }
 
 export async function updateOrganization(

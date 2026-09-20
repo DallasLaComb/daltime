@@ -1,49 +1,65 @@
 # Blueprint: Web Admin Impersonation
 
-Web admins need to navigate the app _as_ any other user (OrgAdmin, Manager, Employee) to debug issues and verify what those users see. The web-admin's own JWT is always used for network calls and is what API Gateway authenticates — only the _identity the downstream business logic sees_ is substituted. The frontend uses an `ImpersonationInterceptor` to rewrite outbound role-prefixed URLs through these proxy endpoints; that interceptor is fully generic and required no change for this mechanism.
+Web admins need to navigate the app _as_ any other user (OrgAdmin, Manager, Employee) to debug issues and verify what those users see. The web-admin's own JWT is always what API Gateway authenticates — only the _identity the business logic sees_ is substituted, and only for reads.
+
+Two separate pieces:
+
+| Piece | Where | Job |
+| --- | --- | --- |
+| **Picker** | this Lambda (`web-admin/impersonate`) | list who can be impersonated, describe one user |
+| **Acting as a user** | `withImpersonation` in `shared/impersonation.ts`, wrapped around every role handler | resolve `X-Impersonate-User` and hand the real handler the target's identity |
+
+This file covers both. History: until phase 3 of the redesign (`contracts/checklist.md` §11), acting as a user meant rewriting the URL into a `/web-admin/impersonate/{userId}/{proxy+}` catch-all that re-dispatched in-process through a route registry. That catch-all, the registry and the event synthesizer are gone.
 
 ---
 
-## How the generic dispatch works (plain language)
+## Acting as a user — the `X-Impersonate-User` header
 
-Historically, every real feature route (e.g. `manager/shifts`, `org-admin/notifications`) needed a second, hand-written copy registered here — both a matching `if`/regex case in this handler and a matching event in `infra/template.yaml`. That hand-maintained whitelist chronically lagged behind real feature growth: entire route groups went unreachable through impersonation for months at a time.
+The frontend's `impersonationInterceptor` adds `X-Impersonate-User: <userId>` to every request for a role route (`/org-admin/…`, `/manager/…`, `/employee/…`) while a web-admin is viewing as someone. **The URL is not changed** — the request lands on the real, documented, typed route, so `contracts/openapi.json` describes it (`ImpersonationHeader` in `contracts/src/schemas/common.ts`).
 
-The proxy now works like this instead:
+Every employee / manager / org-admin / notifications Lambda exports `withImpersonation(handler)`. With **no header** it is a pure pass-through. With the header, it checks in this order and stops at the first failure:
 
-1. A single catch-all API Gateway route, `/web-admin/impersonate/{userId}/{proxy+}`, accepts GET/POST/PUT/PATCH/DELETE for any path shape under it.
-2. The handler strips the `/impersonate/{userId}/` prefix to get the "real" sub-path (e.g. `manager/shifts/abc123`).
-3. It confirms `{userId}` resolves to a real user (fail-closed — no widening of who can be impersonated).
-4. A route registry (`route-registry.ts`) matches that sub-path against a table of API-Gateway-style patterns (e.g. `manager/shifts/{shiftId}`) — the same pattern syntax already used in `infra/template.yaml`. The first match wins and identifies which real Lambda handler module owns that route.
-5. The handler **dynamically imports the real handler module and calls it in-process**, passing a cloned copy of the original event with the impersonated `userId` substituted for the Web-Admin's own resolved Cognito sub in the JWT claims, and the path/pathParameters rewritten to look exactly like a direct call to the real route.
-6. The real handler runs completely unmodified — it cannot tell the difference between a direct call and an impersonated one. Its own authz/data-scoping logic (which always derives the caller from `getCallerSub(event)`) operates on the impersonated user's identity.
+| # | Check | Failure |
+| --- | --- | --- |
+| 1 | Caller is a provisioned, **ACTIVE WebAdmin** — Cognito group **and** `USER#<sub>/METADATA` record (`requireWebAdminWithLookup`) | `403`. A non-WebAdmin who sends the header is rejected, never silently ignored. Nothing else about the request is revealed. |
+| 2 | Method is `GET` (**read-only**) | `403 "Impersonation sessions are read-only"` — before the target is looked up |
+| 3 | Header is a valid id (`[A-Za-z0-9_-]{1,128}`) | `400`. The id becomes part of a DynamoDB key, and a comma means the header was sent twice. |
+| 4 | Route is a role route; the role is its first path segment | `400 "not supported on this route"` (e.g. `/web-admin/notifications`) |
+| 5 | Target is a **real member of that role** (`isRoleMember`) | `404 "Impersonated user not found"` — e.g. an Employee id sent to `/manager/shifts` |
 
-**Net effect:** adding a new real feature route only ever requires ONE new entry in `route-registry.ts` (the path pattern + which handler module owns it) — never a second copy of the route's HTTP-method/path registration, and never any change to `infra/template.yaml`'s `ImpersonateFunction` events.
+On success it logs one structured audit line (`{"audit":"impersonation","actor_web_admin_id":…,"target_user_id":…,"role":…,"method":…,"path":…}`) and calls the real handler with an event whose claims are:
 
----
+- `sub` = the **target**, `cognito:groups` = the route's role — so `getCallerSub` / `getCallerGroups` (and every service built on them) need no special-casing;
+- `act_sub`, `act_web_admin_id` = the **actor**, as flattened RFC 8693 `act` claims (API Gateway coerces every JWT claim to a primitive, so the nested `act: { sub }` form cannot be represented). The actor is written last, so a client-supplied `act_*` claim can never win;
+- the impersonation header removed, so nothing downstream can resolve it a second time.
 
-## Routes
+**Fail-safe if a handler is left unwrapped:** the header is ignored and the WebAdmin acts as themselves, so the handler's own role check returns 403. It cannot widen access.
 
-| Method                    | Path                                        | Auth         | Description                                           |
-| ------------------------- | ------------------------------------------- | ------------ | ----------------------------------------------------- |
-| GET                       | `/web-admin/impersonate/users?orgId=&role=` | WebAdmin JWT | List users available to impersonate                   |
-| GET                       | `/web-admin/impersonate/{userId}/context`   | WebAdmin JWT | Fetch a user's profile + resolved role                |
-| GET/POST/PUT/PATCH/DELETE | `/web-admin/impersonate/{userId}/{proxy+}`  | WebAdmin JWT | Generic dispatch to the real role handler (see above) |
-| OPTIONS                   | `/web-admin/impersonate`                    | NONE         | CORS preflight                                        |
-| OPTIONS                   | `/web-admin/impersonate/{userId}`           | NONE         | CORS preflight                                        |
-| OPTIONS                   | `/web-admin/impersonate/{userId}/{proxy+}`  | NONE         | CORS preflight                                        |
-
-Query params for `GET /users`:
-
-- `orgId` (required) — restrict to a single organisation
-- `role` (required) — `OrgAdmin` | `Manager` | `Employee`
-
-The generic proxy's query params, request body, and response shape are **identical** to the real (non-impersonated) route it forwards to — there is no separate contract to document per route. See `bruno/web-admin/impersonate/generic-proxy.bru` for examples and the current list of route families reachable this way.
+**Role is verified, not trusted.** The old proxy derived the role from the URL and only checked that the user existed. `isRoleMember` reads the user's reverse-lookup record for `org_id`, then requires the role's primary record (`ORG#<org>` / `USER#|MANAGER#|EMPLOYEE#<id>`) to exist — DynamoDB only, so role Lambdas need no Cognito permissions.
 
 ---
 
-## DynamoDB Key Patterns Used (read-only, for `/users` and `/context`)
+## The picker — routes
 
-Listing users by org + role uses the primary record key structure:
+| Method  | Path                                        | Auth         | Description                            |
+| ------- | ------------------------------------------- | ------------ | -------------------------------------- |
+| GET     | `/web-admin/impersonate/users?orgId=&role=` | WebAdmin JWT | List users available to impersonate    |
+| GET     | `/web-admin/impersonate/{userId}/context`   | WebAdmin JWT | Fetch a user's profile + resolved role |
+| OPTIONS | `/web-admin/impersonate`                    | NONE         | CORS preflight                         |
+| OPTIONS | `/web-admin/impersonate/{userId}`           | NONE         | CORS preflight                         |
+| OPTIONS | `/web-admin/impersonate/users`, `…/{userId}/context` | NONE | CORS preflight                    |
+
+Any other method/path on this Lambda returns `400 "Unhandled route"`. There is no way to act as a user through it.
+
+Query params for `GET /users`: `orgId` (required), `role` (required: `OrgAdmin` | `Manager` | `Employee`). Both validated by `ImpersonateUsersQueryParams`; the path param of `/context` by `ImpersonateContextPathParams`.
+
+Try it: `bruno/web-admin/impersonate/` (`list-impersonatable-users`, `get-impersonate-context`, `view-as-user`).
+
+---
+
+## DynamoDB Key Patterns
+
+Listing users by org + role uses the primary record:
 
 | Role     | PK            | SK prefix   |
 | -------- | ------------- | ----------- |
@@ -51,19 +67,14 @@ Listing users by org + role uses the primary record key structure:
 | Manager  | `ORG#<orgId>` | `MANAGER#`  |
 | Employee | `ORG#<orgId>` | `EMPLOYEE#` |
 
-Fetching a single user's context, and the existence check the generic dispatcher runs before forwarding any proxied request, both use the reverse-lookup record:
+A single user's context, the WebAdmin lookup, and step 5 above use the reverse-lookup record:
 
 ```
 PK = USER#<userId>
 SK = METADATA
 ```
 
-This record exists for all three role types and contains at minimum:
-`user_id` / `manager_id` / `employee_id`, `org_id`, `email`, `first_name` / `name`, `last_name`, `status`.
-
-Role is resolved by calling Cognito `AdminListGroupsForUser` on the user's Cognito sub.
-
-The generic dispatch itself issues **no new DynamoDB calls** of its own — once it forwards to a real handler, all data access is whatever that real handler's own service/db layer already does, unchanged.
+The picker resolves a user's role with Cognito `AdminListGroupsForUser`; `withImpersonation` deliberately does **not** (DynamoDB only).
 
 ---
 
@@ -71,132 +82,40 @@ The generic dispatch itself issues **no new DynamoDB calls** of its own — once
 
 ### GET /web-admin/impersonate/users?orgId=&role=
 
-Response `200`:
-
 ```json
-[
-  {
-    "user_id": "abc-123",
-    "display_name": "Jane Smith",
-    "email": "jane@example.com",
-    "status": "CONFIRMED",
-    "org_id": "org-456"
-  }
-]
+[{ "user_id": "abc-123", "display_name": "Jane Smith", "email": "jane@example.com", "status": "CONFIRMED", "org_id": "org-456" }]
 ```
 
 ### GET /web-admin/impersonate/{userId}/context
 
-Response `200`:
-
 ```json
-{
-  "user_id": "abc-123",
-  "role": "Employee",
-  "display_name": "Jane Smith",
-  "email": "jane@example.com",
-  "org_id": "org-456",
-  "status": "CONFIRMED"
-}
+{ "user_id": "abc-123", "role": "Employee", "display_name": "Jane Smith", "email": "jane@example.com", "org_id": "org-456", "status": "CONFIRMED" }
 ```
 
-Errors:
+Errors: `404` user not found (or has no recognised role), `400` userId missing.
 
-- `404` — user not found in DynamoDB
-- `400` — userId missing
+### An impersonated request
 
-### GET/POST/PUT/PATCH/DELETE /web-admin/impersonate/{userId}/{proxy+}
-
-Response: identical to the real route it forwards to. See `route-registry.ts` for the current table of `{role}/...` patterns and which real handler module owns each; see `bruno/web-admin/impersonate/generic-proxy.bru` for representative examples.
+Request and response are **identical** to the real route — `GET /manager/shifts?month=2026-07` with the extra header returns exactly what that manager would see.
 
 ---
 
-## Authorization Pattern (Updated)
+## Authorization
 
-The impersonate handler now uses the data-driven `requireWebAdminWithLookup` guard (the same function used by the organizations, org-admins, and employees web-admin handlers) instead of the lightweight `requireWebAdmin` Cognito-group-only check.
+The picker uses the data-driven `requireWebAdminWithLookup` guard (Cognito WebAdmin group **and** an ACTIVE `USER#<sub>/METADATA` record). Disabling a WebAdmin in DynamoDB takes effect immediately, without revoking their Cognito token. `withImpersonation` uses the same guard as its first check.
 
-This means two layers of authorization are enforced before any impersonation is permitted:
+## IAM
 
-1. **Cognito group check** — the caller must be a member of the WebAdmin Cognito group.
-2. **DynamoDB record check** — the caller's `USER#<sub>/METADATA` item must exist in DynamoDB with `status = ACTIVE`. A Cognito group membership alone is no longer sufficient; a provisioned, non-disabled WebAdmin record is required.
-
-If either check fails, the handler returns `403 Forbidden` immediately — the impersonated user's identity is never resolved and no sub-handler is invoked.
-
-**Synthesized event isolation:** The returned `WebAdminCaller` (which includes `web_admin_id`) is available in the handler for future audit logging. It is intentionally NOT threaded into synthesized events passed to real role handlers. Synthesized events carry only the impersonated user's `sub` in the JWT claims, so every downstream handler operates entirely on the impersonated user's identity — the web admin's identity is invisible to them.
-
----
-
-## IAM / Cognito Permissions Required
-
-```
-cognito-idp:AdminGetUser
-cognito-idp:AdminListGroupsForUser
-dynamodb:GetItem
-dynamodb:PutItem
-dynamodb:UpdateItem
-dynamodb:DeleteItem
-dynamodb:Query
-```
-
-The `ImpersonateFunction` already carries `DynamoDBCrudPolicy` on the single `DalTimeTable` and the Cognito group-lookup permissions above. No additional IAM is required for in-process dispatch: every real handler module it dynamically imports talks to the same single table and the same Cognito user pool the `ImpersonateFunction` is already permissioned for. (If a future dispatch redesign moves to `lambda:InvokeFunction` against separate Lambda ARNs instead, that would need its own `lambda:InvokeFunction` resource-scoped policy — not needed today.)
-
----
+`ImpersonateFunction` needs `DynamoDBCrudPolicy` plus `cognito-idp:AdminGetUser` and `cognito-idp:AdminListGroupsForUser` (the picker's role lookup). Role Lambdas need nothing new: `withImpersonation` performs only `dynamodb:GetItem` on the single table, which every Lambda already has.
 
 ## Error Handling
 
-- `ValidationError` → 400
-- `NotFoundError` → 404
-- Impersonated `{userId}` does not resolve to a real user → 404 (`"Impersonated user not found"`), forwarding never happens
-- `{role}/...` sub-path does not match any registered route → 400 (`"Unhandled proxy route: <method> <path>"`), never a 500
-- All other unhandled errors → 500 with logged stack trace (server-side only — response body never leaks internals)
+`ValidationError` → 400, `NotFoundError` → 404, `ForbiddenError` → 403; everything else → 500 with a logged stack trace and a generic body that never leaks internals. Rejections from `withImpersonation` carry CORS headers so the browser can read them.
 
 ---
 
-## SAM Local Auth Limitation and Local-Dev Fallback Pattern
+## SAM Local
 
-### Why SAM local doesn't populate `requestContext.authorizer`
+SAM local does not support HTTP API JWT authorizers: it logs `"Linking authorizer skipped"`, so `event.requestContext.authorizer` is `undefined` in local invocations. `getCallerSub` / `getCallerGroups` therefore fall back to decoding the `Authorization: Bearer <token>` header with `decodeLocalJwtPayload` (`shared/auth.ts`, no signature check). `withImpersonation` reuses that fallback to obtain the caller's claims, so impersonation works locally too. This path is structurally unreachable in deployed environments, where API Gateway always populates the authorizer before the Lambda runs.
 
-SAM local does not support HTTP API JWT authorizers. When `sam local start-api` starts the local server it logs `"Linking authorizer skipped"` for every route that has an `Auth` property in `infra/template.yaml`. This means `event.requestContext.authorizer` is `undefined` in every Lambda invocation when running locally — reading `.authorizer.jwt.claims` directly (as the pre-fix code did) crashes with `TypeError: Cannot read properties of undefined (reading 'jwt')`.
-
-### `AWS_SAM_LOCAL` — the reliable local-only signal
-
-`sam local start-api` automatically sets `AWS_SAM_LOCAL=true` in every Lambda's environment. This variable is never set by the AWS Lambda runtime in deployed environments (dev/qa/prod) and is not defined in `infra/template.yaml`'s `Environment.Variables`. It is a clean, explicitly named signal that leaves zero ambiguity about when local-dev code paths are active.
-
-### The null guard and header-decode fallback
-
-`synthesize-event.ts` now guards the `requestContext.authorizer` access via `resolveCallerClaims()`:
-
-1. **Deployed path (normal):** when `requestContext.authorizer.jwt.claims` is present (API Gateway always populates it before the Lambda runs in dev/qa/prod), claims are read directly from there. This path is unchanged from the pre-fix behavior.
-
-2. **SAM-local fallback path:** when `requestContext.authorizer` is absent, the function decodes the `Authorization: Bearer <token>` header from the event using the shared `decodeLocalJwtPayload` helper (see below). No signature verification is performed — this is safe because the fallback path is structurally unreachable in deployed environments where API Gateway's JWT authorizer always populates the authorizer object.
-
-3. **Missing/malformed header in SAM local:** if the header is absent or not a valid JWT, `synthesizeImpersonatedEvent` throws a descriptive `Error` with a clear message rather than crashing silently. The 500 response body never leaks stack traces to the caller.
-
-### The shared helper — `decodeLocalJwtPayload` in `shared/auth.ts`
-
-The fallback decode logic lives in `backend/src/functions/shared/auth.ts` as an exported function named `decodeLocalJwtPayload`:
-
-```ts
-export function decodeLocalJwtPayload(authorizationHeader: string): Record<string, unknown> | null;
-```
-
-**When to use it:** any future web-admin Lambda handler that needs to identify the caller during SAM-local development (i.e. when `requestContext.authorizer` may be absent) should import and call this function rather than re-implementing the decode logic inline. The name makes its local-only purpose unambiguous.
-
-**How to use it:**
-
-```ts
-import { decodeLocalJwtPayload } from '../../shared/auth.js';
-
-// Inside your handler or a helper:
-const claims =
-  event.requestContext?.authorizer?.jwt?.claims ??
-  decodeLocalJwtPayload(event.headers?.['authorization'] ?? event.headers?.['Authorization'] ?? '');
-```
-
-**What it does:** strips the `Bearer ` prefix, base64url-decodes the JWT payload segment, and JSON-parses it. Returns `null` on any parse failure rather than throwing.
-
-**What it does NOT do:** verify the JWT signature. It is safe to call in SAM local because real tokens issued by Cognito are still valid bearer tokens — they just don't go through the API Gateway JWT authorizer locally. In deployed environments, the JWT authorizer has already verified the signature before this Lambda runs, so re-verifying would be redundant. Never call this function in a deployed environment to make an authorization decision from unverified claims.
-
-### Confirming `infra/template.yaml` and `backend/env.local.json` are unchanged
-
-No changes to `infra/template.yaml` or `backend/env.local.json` are required for this fix. The `ImpersonateFunction` route's `Auth` property (JWT authorizer) remains intact and unchanged — the fix is purely in the Lambda handler code, not in the infrastructure configuration. The JWT authorizer continues to run in all deployed environments exactly as before.
+Any handler that must identify the caller locally should call `decodeLocalJwtPayload` rather than re-implementing it; its name makes the local-only purpose explicit.

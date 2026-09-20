@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import type {
+  NotificationRecord,
+  NotificationResponse,
+  NotificationType,
+} from '@daltime/contracts';
 import { stripKeys } from '../dynamo.js';
 import { NotFoundError, ValidationError } from '../errors.js';
-import type {
-  Notification,
-  NotificationType,
-  PublicNotification,
-} from '../models/notifications/notification.model.js';
 import * as db from './db.js';
 
 /**
@@ -17,7 +17,7 @@ export async function createNotification(
   recipientSub: string,
   type: NotificationType,
   message: string,
-): Promise<PublicNotification> {
+): Promise<NotificationResponse> {
   if (!recipientSub) throw new ValidationError('recipientSub is required');
   if (!message || !message.trim()) throw new ValidationError('message is required');
 
@@ -25,7 +25,7 @@ export async function createNotification(
   const created_at = new Date().toISOString();
   const notification_id = `${created_at}#${rawId}`;
 
-  const record: Notification = {
+  const record: NotificationRecord = {
     PK: `USER#${recipientSub}`,
     SK: `NOTIFICATION#${notification_id}`,
     notification_id,
@@ -44,7 +44,7 @@ export async function createNotification(
 }
 
 /** List the caller's own notifications, newest first. */
-export async function listNotifications(callerSub: string): Promise<PublicNotification[]> {
+export async function listNotifications(callerSub: string): Promise<NotificationResponse[]> {
   const items = await db.queryNotificationsByUser(callerSub);
   return items.map(stripKeys);
 }
@@ -65,7 +65,7 @@ function toSortKey(notificationId: string): string {
 export async function markOneAsRead(
   callerSub: string,
   notificationId: string,
-): Promise<PublicNotification> {
+): Promise<NotificationResponse> {
   if (!notificationId) throw new ValidationError('notificationId is required');
 
   const sk = toSortKey(notificationId);

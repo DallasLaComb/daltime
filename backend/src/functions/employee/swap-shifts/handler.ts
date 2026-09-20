@@ -1,5 +1,7 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { PostSwapShiftBody, SwapShiftPathParams } from '@daltime/contracts';
 import { getCallerSub, getCallerGroups } from '../../shared/auth.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   ok,
   created,
@@ -10,6 +12,8 @@ import {
 } from '../../shared/response.js';
 import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
 import { listSwapShifts, postSwapShift, claimSwapShift, cancelSwapShift } from './service.js';
+import type { SwapShiftListing, SwapShiftsListResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 /**
  * Lambda handler for all /employee/swap-shifts routes:
@@ -25,7 +29,7 @@ import { listSwapShifts, postSwapShift, claimSwapShift, cancelSwapShift } from '
  * the token signature but does NOT check group membership — that is done here
  * before any routing logic.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   setRequestOrigin(event.headers?.['origin']);
 
   const method = event.requestContext.http.method;
@@ -48,7 +52,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (method === 'GET') {
       // GET /employee/swap-shifts — list available swaps + own posted swaps.
       const result = await listSwapShifts(callerSub);
-      return ok(result);
+      return ok<SwapShiftsListResponse>(result);
     }
 
     if (method === 'POST') {
@@ -57,16 +61,25 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       const claimMatch = rawPath.match(/^\/employee\/swap-shifts\/([^/]+)\/claim$/);
       if (claimMatch) {
         // POST /employee/swap-shifts/{swapId}/claim
-        const swapId = claimMatch[1];
-        const result = await claimSwapShift(callerSub, swapId ?? '');
-        return ok(result);
+        //
+        // The swapId comes out of the raw path, so it is validated against the
+        // same schema that documents this route in contracts/openapi.json
+        // before it can reach a DynamoDB key expression.
+        const { swapId } = parseWithContract(SwapShiftPathParams, { swapId: claimMatch[1] });
+        const result = await claimSwapShift(callerSub, swapId);
+        return ok<SwapShiftListing>(result);
       }
 
       // POST /employee/swap-shifts — post a shift for swap.
+      //
+      // PostSwapShiftBody is the schema that generates this route's requestBody
+      // in the contract, so a body the published spec calls invalid is rejected
+      // with a 400 here rather than reaching the service.
       const parsed = parseBody<Record<string, unknown>>(event.body);
       if (!parsed.ok) return parsed.response;
-      const result = await postSwapShift(callerSub, parsed.data);
-      return created(result);
+      const body = parseWithContract(PostSwapShiftBody, parsed.data);
+      const result = await postSwapShift(callerSub, body);
+      return created<SwapShiftListing>(result);
     }
 
     if (method === 'DELETE') {
@@ -82,3 +95,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'employee swap-shifts handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

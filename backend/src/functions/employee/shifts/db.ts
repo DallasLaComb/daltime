@@ -1,6 +1,6 @@
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
-import type { Shift } from '../../shared/models/manager/shift.model.js';
+import type { ShiftRecord } from '@daltime/contracts';
 
 /**
  * Fetch the USER#<userId>/METADATA record to resolve the caller's org_id and
@@ -26,7 +26,7 @@ async function queryShiftsByEmployee(
   employeeId: string,
   dateFilter: string,
   dateFilterValues: Record<string, string>,
-): Promise<Shift[]> {
+): Promise<ShiftRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -42,7 +42,7 @@ async function queryShiftsByEmployee(
       },
     }),
   );
-  return (result.Items ?? []) as Shift[];
+  return (result.Items ?? []) as ShiftRecord[];
 }
 
 /**
@@ -54,7 +54,7 @@ export async function listShiftsByEmployeeMonth(
   orgId: string,
   employeeId: string,
   month: string,
-): Promise<Shift[]> {
+): Promise<ShiftRecord[]> {
   return queryShiftsByEmployee(orgId, employeeId, 'begins_with(#date, :month)', {
     ':month': month,
   });
@@ -68,7 +68,7 @@ export async function listShiftsByEmployeeDate(
   orgId: string,
   employeeId: string,
   date: string,
-): Promise<Shift[]> {
+): Promise<ShiftRecord[]> {
   return queryShiftsByEmployee(orgId, employeeId, '#date = :date', { ':date': date });
 }
 
@@ -83,7 +83,7 @@ export async function listShiftsByEmployeeWeek(
   employeeId: string,
   weekStart: string,
   weekEnd: string,
-): Promise<Shift[]> {
+): Promise<ShiftRecord[]> {
   return queryShiftsByEmployee(orgId, employeeId, '#date >= :weekStart AND #date <= :weekEnd', {
     ':weekStart': weekStart,
     ':weekEnd': weekEnd,

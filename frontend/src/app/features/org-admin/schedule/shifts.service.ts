@@ -1,15 +1,18 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type { Shift } from '../../../core/models/shift.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ */
+export type OrgAdminShift = ApiSchema<'OrgAdminShiftResponse'>;
 
 @Injectable({ providedIn: 'root' })
 export class OrgAdminShiftsService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/org-admin/shifts`;
+  private readonly api = inject(ApiClient);
 
-  list(month: string): Observable<Shift[]> {
-    return this.http.get<Shift[]>(this.baseUrl, { params: { month } });
+  list(month: string): Observable<OrgAdminShift[]> {
+    return this.api.get('/org-admin/shifts', { query: { month } });
   }
 }

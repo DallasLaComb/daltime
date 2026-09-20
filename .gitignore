@@ -162,3 +162,7 @@ robot/.venv/
 # Seed / dev credentials (contains emails, subs, passwords)
 docs/seed-users.md
 backend/scripts/seed-dev.mjs
+
+# Built copy of @daltime/contracts, mirrored into the SAM CodeUri by
+# backend/scripts/sync-contracts.mjs. Source of truth is contracts/.
+backend/vendor/

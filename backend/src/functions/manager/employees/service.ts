@@ -2,28 +2,17 @@ import type { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-iden
 import { stripKeys, buildEmployeeRecord } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
-import { ValidationError, NotFoundError, ForbiddenError } from '../../shared/errors.js';
-import { validateCreateUserBody } from '../../shared/validation.js';
+import {
+  CreateManagerEmployeeBody,
+  UpdateManagerEmployeeBody,
+} from '@daltime/contracts';
+import { NotFoundError, ForbiddenError } from '../../shared/errors.js';
 import {
   enrichWithCognitoStatus,
   createCognitoEmployee,
   adminDisableUser,
   adminEnableUser,
 } from '../../shared/cognito.js';
-
-interface CreateEmployeeBody {
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  temp_password: string;
-}
-
-interface UpdateEmployeeBody {
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-}
 
 async function resolveCallerManager(sub: string): Promise<{ org_id: string; manager_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -44,11 +33,9 @@ export async function listEmployees(
 
 export async function createEmployee(
   callerSub: string,
-  body: CreateEmployeeBody,
+  body: CreateManagerEmployeeBody,
   cognitoClient: CognitoIdentityProviderClient,
 ) {
-  validateCreateUserBody(body);
-
   const { org_id, manager_id } = await resolveCallerManager(callerSub);
 
   const employeeSub = await createCognitoEmployee(
@@ -78,20 +65,9 @@ export async function createEmployee(
 export async function updateEmployee(
   callerSub: string,
   employeeId: string,
-  body: UpdateEmployeeBody,
+  body: UpdateManagerEmployeeBody,
   _cognitoClient: CognitoIdentityProviderClient,
 ) {
-  const hasFields =
-    body.first_name !== undefined || body.last_name !== undefined || body.phone !== undefined;
-  if (!hasFields) throw new ValidationError('At least one field must be provided');
-
-  if (body.first_name !== undefined && !body.first_name.trim()) {
-    throw new ValidationError('first_name cannot be empty');
-  }
-  if (body.last_name !== undefined && !body.last_name.trim()) {
-    throw new ValidationError('last_name cannot be empty');
-  }
-
   const { org_id, manager_id } = await resolveCallerManager(callerSub);
 
   const employee = await db.getEmployee(org_id, employeeId);

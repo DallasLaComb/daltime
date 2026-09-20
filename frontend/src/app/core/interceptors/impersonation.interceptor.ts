@@ -4,19 +4,26 @@ import { environment } from '../../../environments/environment';
 import { ImpersonationService } from '../services/impersonation.service';
 
 /**
- * When the web-admin is impersonating another user, this interceptor rewrites
- * role-prefixed API URLs so they are routed through the web-admin proxy:
+ * While a web-admin is viewing the app as another user, this interceptor adds
+ * `X-Impersonate-User: {userId}` to every request for a role route:
  *
- *   /org-admin/...  →  /web-admin/impersonate/{userId}/org-admin/...
- *   /manager/...    →  /web-admin/impersonate/{userId}/manager/...
- *   /employee/...   →  /web-admin/impersonate/{userId}/employee/...
+ *   GET /manager/shifts   +  X-Impersonate-User: {userId}
  *
- * This keeps existing components and services unchanged — they call their
- * normal endpoints and the interceptor transparently rewrites the path.
+ * The URL is NOT rewritten, so the call hits the real, documented, typed route and each
+ * role Lambda resolves the header itself (`withImpersonation`, backend `shared/impersonation.ts`):
+ * it must come from an ACTIVE WebAdmin, is read-only, and the target must really hold that role.
+ * The header name and its contract live in `ImpersonationHeader` (contracts/src/schemas/common.ts).
  *
- * Registered AFTER authInterceptor so both the Authorization header and
- * the rewritten URL are present on the same request.
+ * Existing components and services are unchanged — they call their normal endpoints and the
+ * interceptor transparently adds the header. Requests outside the role prefixes (the picker
+ * under `/web-admin/impersonate/...`, the web-admin's own routes) are left alone.
+ *
+ * Registered AFTER authInterceptor so both the Authorization header and this one are present
+ * on the same request.
  */
+
+/** Must match the `x-impersonate-user` header declared by `ImpersonationHeader` in the contract. */
+const IMPERSONATE_HEADER = 'X-Impersonate-User';
 
 const ROLE_PREFIXES = ['/org-admin/', '/manager/', '/employee/'] as const;
 
@@ -33,12 +40,9 @@ export const impersonationInterceptor: HttpInterceptorFn = (req, next) => {
 
   const path = req.url.slice(environment.api.baseUrl.length); // e.g. "/manager/shifts-needed"
 
-  const matchedPrefix = ROLE_PREFIXES.find((prefix) => path.startsWith(prefix));
-  if (!matchedPrefix) {
+  if (!ROLE_PREFIXES.some((prefix) => path.startsWith(prefix))) {
     return next(req);
   }
 
-  const proxyUrl = `${environment.api.baseUrl}/web-admin/impersonate/${viewingAs.userId}${path}`;
-
-  return next(req.clone({ url: proxyUrl }));
+  return next(req.clone({ setHeaders: { [IMPERSONATE_HEADER]: viewingAs.userId } }));
 };

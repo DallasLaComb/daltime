@@ -18,9 +18,11 @@ vi.mock('../../../../src/functions/employee/available-shifts/service.js', () => 
   listAvailableShifts: vi.fn(),
 }));
 
+import { AvailableShiftsQueryParams } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/employee/available-shifts/handler.js';
 import { listAvailableShifts } from '../../../../src/functions/employee/available-shifts/service.js';
-import { ValidationError, ForbiddenError } from '../../../../src/functions/shared/errors.js';
+import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 
 // ─── Event factory ────────────────────────────────────────────────────────────
 
@@ -147,7 +149,7 @@ const mockShifts = [
 
 describe('GET /employee/available-shifts — happy path', () => {
   it('returns 200 with available shift array', async () => {
-    vi.mocked(listAvailableShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listAvailableShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listAvailableShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { date: '2025-06-15' }),
@@ -173,30 +175,20 @@ describe('GET /employee/available-shifts — happy path', () => {
 // ─── Validation errors ────────────────────────────────────────────────────────
 
 describe('GET /employee/available-shifts — validation errors', () => {
-  it('returns 400 when date param is missing', async () => {
-    vi.mocked(listAvailableShifts).mockRejectedValue(
-      new ValidationError('"date" query param is required (YYYY-MM-DD)'),
-    );
-
+  it.each([
+    ['date param is missing', {}],
+    ['date format is invalid', { date: '15-06-2025' }],
+    ['date is not a real calendar day', { date: '2025-13-45' }],
+  ])('returns 400 from the contract when %s, without reaching the service', async (_, query) => {
     const result = (await handler(
-      buildEvent('GET', 'Employee', 'sub-emp', {}),
+      buildEvent('GET', 'Employee', 'sub-emp', query),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    const body = parsedBody(result) as { error: string };
-    expect(body.error).toMatch(/date/i);
-  });
-
-  it('returns 400 when date format is invalid', async () => {
-    vi.mocked(listAvailableShifts).mockRejectedValue(
-      new ValidationError('date must be in YYYY-MM-DD format'),
-    );
-
-    const result = (await handler(
-      buildEvent('GET', 'Employee', 'sub-emp', { date: '15-06-2025' }),
-    )) as APIGatewayProxyStructuredResultV2;
-
-    expect(result.statusCode).toBe(400);
+    expect(listAvailableShifts).not.toHaveBeenCalled();
+    expect(parsedBody(result)).toEqual({
+      error: contractErrorMessage(AvailableShiftsQueryParams, query),
+    });
   });
 });
 

@@ -15,6 +15,7 @@ import * as db from './db.js';
 const MAX_DRAFTS = 10;
 
 import { ValidationError, ForbiddenError } from '../../shared/errors.js';
+import type { ManagerScheduleDraftsResponse } from '@daltime/contracts';
 
 const DAY_NAMES: DayOfWeek[] = [
   'sunday',
@@ -335,7 +336,7 @@ export async function getScheduleMetaForCaller(
 export async function getDraftSummary(
   callerSub: string,
   rawMonth: string | undefined,
-): Promise<{ drafts: unknown[] }> {
+): Promise<ManagerScheduleDraftsResponse> {
   const month = parseMonth(rawMonth);
   const { manager_id } = await resolveCallerOrg(callerSub);
   const drafts = await db.listDraftShiftsByManager(manager_id, month);

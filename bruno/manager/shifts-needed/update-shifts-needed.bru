@@ -1,0 +1,17 @@
+meta {
+  name: Update Manager Shift Need
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/manager/shifts-needed/{{shift_id}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "employee_count": 3
+  }
+}

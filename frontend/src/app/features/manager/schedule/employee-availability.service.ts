@@ -1,35 +1,32 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { forkJoin, from, of, type Observable } from 'rxjs';
 import { catchError, map, mergeMap, toArray } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment';
-import type {
-  EmployeeAvailabilityResponse,
-  EmployeeAvailabilityOverridesResponse,
-} from '../../../core/models/employee-availability.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+export type ManagerEmployeeAvailability = ApiSchema<'ManagerEmployeeAvailabilityResponse'>;
+export type ManagerEmployeeAvailabilityOverrides = ApiSchema<
+  'ManagerEmployeeAvailabilityOverridesResponse'
+>;
 
 export interface EmployeeAvailabilityBundle {
   employeeId: string;
-  availability: EmployeeAvailabilityResponse | null;
-  overrides: EmployeeAvailabilityOverridesResponse | null;
+  availability: ManagerEmployeeAvailability | null;
+  overrides: ManagerEmployeeAvailabilityOverrides | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ManagerEmployeeAvailabilityService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/employees`;
+  private readonly api = inject(ApiClient);
 
-  getAvailability(employeeId: string): Observable<EmployeeAvailabilityResponse | null> {
-    return this.http
-      .get<EmployeeAvailabilityResponse>(`${this.baseUrl}/${employeeId}/availability`)
+  getAvailability(employeeId: string): Observable<ManagerEmployeeAvailability | null> {
+    return this.api
+      .get('/manager/employees/{employeeId}/availability', { params: { employeeId } })
       .pipe(catchError(() => of(null)));
   }
 
-  getOverrides(employeeId: string): Observable<EmployeeAvailabilityOverridesResponse | null> {
-    return this.http
-      .get<EmployeeAvailabilityOverridesResponse>(
-        `${this.baseUrl}/${employeeId}/availability/overrides`,
-      )
+  getOverrides(employeeId: string): Observable<ManagerEmployeeAvailabilityOverrides | null> {
+    return this.api
+      .get('/manager/employees/{employeeId}/availability/overrides', { params: { employeeId } })
       .pipe(catchError(() => of(null)));
   }
 

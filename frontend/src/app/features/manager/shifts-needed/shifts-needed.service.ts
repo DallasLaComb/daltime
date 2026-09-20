@@ -1,31 +1,34 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  CreateShiftBody,
-  ShiftNeeded,
-  UpdateShiftBody,
-} from '../../../core/models/manager-shift-needed.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type ManagerShiftNeeded = ApiSchema<'ManagerShiftNeededResponse'>;
+export type CreateManagerShiftNeededBody = ApiSchema<'CreateManagerShiftNeededBody'>;
+export type UpdateManagerShiftNeededBody = ApiSchema<'UpdateManagerShiftNeededBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class ManagerShiftsNeededService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/shifts-needed`;
+  private readonly api = inject(ApiClient);
 
-  list(month: string): Observable<ShiftNeeded[]> {
-    return this.http.get<ShiftNeeded[]>(this.baseUrl, { params: { month } });
+  list(month: string): Observable<ManagerShiftNeeded[]> {
+    return this.api.get('/manager/shifts-needed', { query: { month } });
   }
 
-  create(body: CreateShiftBody): Observable<ShiftNeeded> {
-    return this.http.post<ShiftNeeded>(this.baseUrl, body);
+  create(body: CreateManagerShiftNeededBody): Observable<ManagerShiftNeeded> {
+    return this.api.post('/manager/shifts-needed', body);
   }
 
-  update(shiftId: string, body: UpdateShiftBody): Observable<ShiftNeeded> {
-    return this.http.put<ShiftNeeded>(`${this.baseUrl}/${shiftId}`, body);
+  update(shiftId: string, body: UpdateManagerShiftNeededBody): Observable<ManagerShiftNeeded> {
+    return this.api.put('/manager/shifts-needed/{shiftId}', body, { params: { shiftId } });
   }
 
   remove(shiftId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${shiftId}`);
+    return this.api.delete('/manager/shifts-needed/{shiftId}', { params: { shiftId } });
   }
 }

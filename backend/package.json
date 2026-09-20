@@ -4,13 +4,17 @@
   "description": "DalTime scheduling application backend - AWS Lambda functions",
   "type": "module",
   "scripts": {
+    "contracts:build": "node scripts/sync-contracts.mjs",
+    "pretest": "npm run contracts:build",
+    "prebuild": "npm run contracts:build",
     "test": "vitest run --project unit",
     "test:ci": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
     "build": "PATH=\"$PATH:$(pwd)/node_modules/.bin\" sam build --template-file ../infra/template.yaml",
-    "start": "PATH=\"$PATH:$(pwd)/node_modules/.bin\" sam build --template-file ../infra/template.yaml && sam local start-api --template-file .aws-sam/build/template.yaml --port 47200 --profile daltime-dev --env-vars env.local.json",
+    "start": "npm run contracts:build && PATH=\"$PATH:$(pwd)/node_modules/.bin\" sam build --template-file ../infra/template.yaml && sam local start-api --template-file .aws-sam/build/template.yaml --port 47200 --profile daltime-dev --env-vars env.local.json",
     "deploy": "sam deploy --guided",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "typecheck:tests": "tsc -p tsconfig.test.json"
   },
   "prettier": {
     "printWidth": 100,
@@ -25,6 +29,7 @@
   "author": "Dallas LaComb",
   "license": "ISC",
   "dependencies": {
+    "@daltime/contracts": "file:vendor/contracts",
     "@aws-sdk/client-cognito-identity-provider": "^3.1024.0",
     "@aws-sdk/client-dynamodb": "^3.995.0",
     "@aws-sdk/lib-dynamodb": "^3.995.0"

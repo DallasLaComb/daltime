@@ -7,7 +7,7 @@ import {
   setEntityStatus,
   getOrgEntityRecord,
 } from '../../shared/dynamo.js';
-import type { Manager } from '../../shared/models/org-admin/manager.model.js';
+import type { ManagerRecord } from '@daltime/contracts';
 
 /** Resolve the caller's org_id and user_id from the reverse-lookup record. */
 export async function getCallerLookup(
@@ -17,7 +17,7 @@ export async function getCallerLookup(
 }
 
 /** List all managers for a given org by querying PK = ORG#<orgId>, SK begins_with MANAGER#. */
-export async function listManagersByOrg(orgId: string): Promise<Manager[]> {
+export async function listManagersByOrg(orgId: string): Promise<ManagerRecord[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -28,12 +28,12 @@ export async function listManagersByOrg(orgId: string): Promise<Manager[]> {
       },
     }),
   );
-  return (result.Items ?? []) as Manager[];
+  return (result.Items ?? []) as ManagerRecord[];
 }
 
 /** Get a single manager by org + managerId. */
-export async function getManager(orgId: string, managerId: string): Promise<Manager | null> {
-  return getOrgEntityRecord<Manager>(orgId, 'MANAGER', managerId);
+export async function getManager(orgId: string, managerId: string): Promise<ManagerRecord | null> {
+  return getOrgEntityRecord<ManagerRecord>(orgId, 'MANAGER', managerId);
 }
 
 /** Fetch the reverse-lookup record for a manager. */
@@ -44,8 +44,8 @@ export async function getManagerReverseLookup(
 }
 
 /** Write both the primary record and the reverse-lookup record. */
-export async function createManager(manager: Manager): Promise<void> {
-  const primary: Manager = {
+export async function createManager(manager: ManagerRecord): Promise<void> {
+  const primary: ManagerRecord = {
     ...manager,
     GSI1PK: 'MANAGER',
     GSI1SK: manager.created_at,
@@ -75,8 +75,8 @@ export async function updateManager(
   managerId: string,
   fields: { first_name?: string; last_name?: string; phone?: string },
   updatedAt: string,
-): Promise<Manager | null> {
-  return updateOrgAndMetadataRecord<Manager>(
+): Promise<ManagerRecord | null> {
+  return updateOrgAndMetadataRecord<ManagerRecord>(
     { PK: `ORG#${orgId}`, SK: `MANAGER#${managerId}` },
     managerId,
     fields,

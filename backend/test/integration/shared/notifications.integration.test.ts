@@ -1,3 +1,4 @@
+import type { NotificationRecord } from '@daltime/contracts';
 /**
  * Integration test for the notifications vertical slice (issue #209).
  *
@@ -37,12 +38,11 @@ import {
   markOneAsRead,
   markAllAsRead,
 } from '../../../src/functions/shared/notifications/service.js';
-import type { Notification } from '../../../src/functions/shared/models/notifications/notification.model.js';
 
 const ddbMock = mockClient(docClient as unknown as DynamoDBDocumentClient);
 
 /** In-memory fake table keyed by `${PK}|${SK}`, enforcing real DynamoDB key semantics. */
-let fakeTable: Map<string, Notification>;
+let fakeTable: Map<string, NotificationRecord>;
 
 function tableKey(pk: string, sk: string): string {
   return `${pk}|${sk}`;
@@ -53,7 +53,7 @@ beforeEach(() => {
   ddbMock.reset();
 
   ddbMock.on(PutCommand).callsFake((input) => {
-    const item = input.Item as Notification;
+    const item = input.Item as NotificationRecord;
     fakeTable.set(tableKey(item.PK, item.SK), item);
     return {};
   });

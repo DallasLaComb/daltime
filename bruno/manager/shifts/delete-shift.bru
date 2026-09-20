@@ -1,0 +1,11 @@
+meta {
+  name: Delete Manager Shift
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{base_url}}/manager/shifts/{{shift_id}}
+  body: none
+  auth: none
+}

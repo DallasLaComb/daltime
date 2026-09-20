@@ -1,0 +1,11 @@
+meta {
+  name: Disable Employee
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{base_url}}/manager/employees/{{employee_id}}
+  body: none
+  auth: none
+}

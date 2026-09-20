@@ -19,8 +19,9 @@ vi.mock('../../../../src/functions/shared/auth.js', () => ({
   setRequestOrigin: vi.fn(),
 }));
 
+import { CreateOrganizationBody } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/web-admin/organizations/handler.js';
-import { ValidationError } from '../../../../src/functions/shared/errors.js';
 import {
   listOrganizations,
   getOrganization,
@@ -201,8 +202,7 @@ describe('POST /organizations — create', () => {
     expect(body(result)).toEqual({ error: 'Invalid JSON body' });
   });
 
-  it('returns 400 when service throws ValidationError for missing name', async () => {
-    vi.mocked(createOrganization).mockRejectedValue(new ValidationError('name is required'));
+  it('returns 400 when the contract rejects a missing name', async () => {
     const event = buildApiGwEvent({
       method: 'POST',
       routeKey: 'POST /organizations',
@@ -210,11 +210,13 @@ describe('POST /organizations — create', () => {
     });
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'name is required' });
+    expect(createOrganization).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(CreateOrganizationBody, { address: '123 Main St' }),
+    });
   });
 
-  it('returns 400 when service throws ValidationError for missing address', async () => {
-    vi.mocked(createOrganization).mockRejectedValue(new ValidationError('address is required'));
+  it('returns 400 when the contract rejects a missing address', async () => {
     const event = buildApiGwEvent({
       method: 'POST',
       routeKey: 'POST /organizations',
@@ -222,7 +224,10 @@ describe('POST /organizations — create', () => {
     });
     const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'address is required' });
+    expect(createOrganization).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(CreateOrganizationBody, { name: 'Acme Corp' }),
+    });
   });
 
   it('returns 500 when service throws an unexpected error', async () => {

@@ -1,5 +1,8 @@
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ok, setRequestOrigin } from '../response.js';
+import type { HealthResponse } from '@daltime/contracts';
+
+const HEALTHY: HealthResponse = { status: 'ok' };
 
 /**
  * Health check handler — returns {"status":"ok"} with HTTP 200.
@@ -26,10 +29,10 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       return ok('');
     }
 
-    return ok({ status: 'ok' });
+    return ok<HealthResponse>(HEALTHY);
   } catch {
     // Safety net: if something unexpected goes wrong, still return a shaped
     // 200 so the heartbeat does not appear to fail due to a Lambda error.
-    return ok({ status: 'ok' });
+    return ok<HealthResponse>(HEALTHY);
   }
 };

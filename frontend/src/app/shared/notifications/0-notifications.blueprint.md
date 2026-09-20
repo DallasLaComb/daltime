@@ -90,7 +90,7 @@ This means:
 - A Manager sees `GET /manager/notifications`.
 - A Web-Admin NOT impersonating sees `GET /web-admin/notifications`.
 - A Web-Admin impersonating an Employee sees `GET /employee/notifications`, which
-  `impersonationInterceptor` transparently rewrites to the impersonation proxy URL.
+  `impersonationInterceptor` transparently adds the `X-Impersonate-User` header (the URL is unchanged).
 
 No notifications-specific impersonation code exists — the pattern is inherited from the
 interceptor and the effectiveRole pattern already established by the navbar.

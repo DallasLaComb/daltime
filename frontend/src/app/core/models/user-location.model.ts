@@ -1,9 +1,4 @@
-export interface UserLocationResponse {
-  user_id: string;
-  user_type: 'MANAGER' | 'EMPLOYEE';
-  location_id: string;
-  location_name: string;
-  org_id: string;
-  assigned_by: string;
-  assigned_at: string;
-}
+import type { ApiSchema } from '../api/api-client';
+
+/** Wire shapes come from the generated contract (`contracts/openapi.json`); do not hand-edit. */
+export type UserLocationResponse = ApiSchema<'UserLocationResponse'>;

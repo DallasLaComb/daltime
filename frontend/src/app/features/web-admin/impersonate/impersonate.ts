@@ -118,7 +118,7 @@ export class ImpersonateComponent {
     this.starting.set(true);
     this.startError.set(null);
 
-    this.impersonateService.getContext(userId).subscribe({
+    this.impersonateService.getContextAndStartSession(userId).subscribe({
       next: (ctx) => {
         this.impersonationService.startImpersonation(ctx);
         void this.router.navigate([ROLE_DASHBOARD_MAP[ctx.role]]);

@@ -1,95 +1,75 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import { ok, badRequest, notFound, setRequestOrigin } from '../../shared/response.js';
+import {
+  ImpersonateUsersQueryParams,
+  ImpersonateContextPathParams,
+  ImpersonateSessionPathParams,
+  StartImpersonationSessionBody,
+} from '@daltime/contracts';
+import type {
+  ImpersonateContextResponse,
+  ImpersonateUserListResponse,
+  ImpersonateSessionResponse,
+} from '@daltime/contracts';
+import { ok, created, noContent, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listImpersonatableUsers, getUserContext } from './service.js';
-import { resolveProxyRoute } from './route-registry.js';
-import { synthesizeImpersonatedEvent } from './synthesize-event.js';
-import { getUserReverseLookup } from './db.js';
+import { createSession, deleteSession, isRoleMember } from './db.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
 /** Handles GET /web-admin/impersonate/users?orgId=&role= — lists impersonatable users. */
 async function handleListUsers(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
-  const orgId = event.queryStringParameters?.['orgId'];
-  const role = event.queryStringParameters?.['role'];
-  if (!orgId) return badRequest('orgId query parameter is required');
-  if (!role) return badRequest('role query parameter is required');
-  return ok(await listImpersonatableUsers(orgId, role));
+  const { orgId, role } = parseWithContract(
+    ImpersonateUsersQueryParams,
+    event.queryStringParameters ?? {},
+  );
+  return ok<ImpersonateUserListResponse>(await listImpersonatableUsers(orgId, role));
 }
 
 /** Handles GET /web-admin/impersonate/{userId}/context — fetches a user's profile + role. */
-async function handleGetContext(userId: string) {
-  return ok(await getUserContext(userId, cognitoClient));
+async function handleGetContext(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  const { userId } = parseWithContract(ImpersonateContextPathParams, event.pathParameters ?? {});
+  return ok<ImpersonateContextResponse>(await getUserContext(userId, cognitoClient));
 }
 
-/**
- * Derive the Cognito group name (role) for the impersonated user from the
- * route sub-path. The `afterUserId` path always starts with the role segment
- * (e.g. `manager/shifts/abc123`). We capitalize the first letter to produce
- * the Cognito group convention (e.g. `Manager`, `Employee`, `OrgAdmin`).
- *
- * This avoids a round-trip to Cognito — the role is already encoded in the
- * path the caller supplied, and it is validated implicitly by resolveProxyRoute
- * (which rejects unrecognised role prefixes with a 400). Providing the
- * correct cognito:groups claim in the synthesized event ensures downstream
- * handlers that call getCallerGroups see the impersonated user's role, not
- * the WebAdmin's.
- */
-function deriveRoleFromPath(afterUserId: string): string {
-  const firstSegment = afterUserId.split('/')[0] ?? '';
-  // Convert kebab-case like "org-admin" to "OrgAdmin", and plain segments
-  // like "manager" to "Manager", matching Cognito group name conventions.
-  return firstSegment
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-}
-
-/**
- * Generic dispatcher: resolves the real role handler + path params for an
- * arbitrary "{role}/..." sub-path and invokes it in-process with the
- * impersonated userId substituted for the caller's own identity.
- *
- * This single function is what replaces the old per-route whitelist
- * (routeOrgAdmin/routeManager/routeEmployee and their *Proxy service
- * functions): any current or future org-admin/manager/employee route is
- * reachable here as soon as it has an entry in route-registry.ts, with zero
- * new code in this handler.
- */
-async function dispatchToRealHandler(
-  event: APIGatewayProxyEventV2WithJWTAuthorizer,
-  userId: string,
-  afterUserId: string,
-) {
-  // Fail closed: the impersonated userId must resolve to a real user before
-  // we forward any request on their behalf — this preserves the existing
-  // authorization boundary (no widening of who can be impersonated).
-  const targetUser = await getUserReverseLookup(userId);
-  if (!targetUser) return notFound('Impersonated user not found');
-
-  const resolved = resolveProxyRoute(afterUserId);
-  if (!resolved) {
-    return badRequest(`Unhandled proxy route: ${event.requestContext.http.method} ${afterUserId}`);
+/** Handles POST /web-admin/impersonate/sessions — start a time-bound impersonation session. */
+async function handleStartSession(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  const actor = await requireWebAdminWithLookup(event);
+  const parsed = parseBody<Record<string, unknown>>(event.body ?? undefined);
+  if (!parsed.ok) return parsed.response;
+  const { target_user_id, role } = parseWithContract(StartImpersonationSessionBody, parsed.data);
+  if (!(await isRoleMember(target_user_id, role))) {
+    return badRequest('Target user not found for the requested role');
   }
-
-  const { route, pathParams } = resolved;
-  const realHandler = await route.loadHandler();
-  // Derive the impersonated user's Cognito group from the route path prefix
-  // (e.g. "manager/shifts" → "Manager") so the synthesized event carries the
-  // correct cognito:groups claim, not the WebAdmin's group.
-  const impersonatedUserRole = deriveRoleFromPath(afterUserId);
-  const syntheticEvent = synthesizeImpersonatedEvent(
-    event,
-    userId,
-    afterUserId,
-    pathParams,
-    impersonatedUserRole,
-  );
-  return realHandler(syntheticEvent);
+  const session = await createSession(actor, target_user_id, role);
+  return created<ImpersonateSessionResponse>({
+    session_id: session.session_id,
+    target_user_id: session.target_user_id,
+    role: session.role,
+    expires_at: session.expires_at,
+  });
 }
 
+/** Handles DELETE /web-admin/impersonate/sessions/{sessionId} — end an impersonation session. */
+async function handleEndSession(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  const actor = await requireWebAdminWithLookup(event);
+  // Validate the path param format; we key only by actor_sub so the actor ends their own session.
+  parseWithContract(ImpersonateSessionPathParams, event.pathParameters ?? {});
+  await deleteSession(actor.sub);
+  return noContent();
+}
+
+/**
+ * The impersonation PICKER: lists who a WebAdmin may view as, and describes one user.
+ *
+ * Acting as a user is NOT done here. The frontend adds `X-Impersonate-User: <userId>` to the
+ * ordinary role request (`GET /manager/shifts`, …) and each role Lambda resolves it itself in
+ * `withImpersonation` (shared/impersonation.ts) — so impersonated calls land on real, documented
+ * routes instead of a `{proxy+}` catch-all this Lambda used to re-dispatch in-process.
+ */
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const rawPath = event.rawPath;
@@ -102,36 +82,22 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   setRequestOrigin(event.headers?.['origin']);
 
   try {
-    // Fail closed: only a provisioned, ACTIVE WebAdmin may request
-    // impersonation. This check runs against the *caller's own* JWT claims
-    // AND a DynamoDB record lookup — a Cognito group membership alone is no
-    // longer sufficient. The synthesized events passed to real role handlers
-    // below carry the *impersonated* user's sub, not the web admin's sub or
-    // web_admin_id, so the downstream handlers cannot see the web admin's
-    // identity at all. The caller's web_admin_id is available here for
-    // audit logging if needed in the future.
-    // Throws ForbiddenError (→ 403) if the caller is not in the WebAdmin
-    // Cognito group, has no provisioned DynamoDB record, or is DISABLED.
-    // The returned caller includes web_admin_id for future audit logging;
-    // it is NOT threaded into synthesized sub-handler events because those
-    // events represent the impersonated user's identity, not the WebAdmin's.
-    await requireWebAdminWithLookup(event);
-
     if (method === 'GET' && rawPath.endsWith('/impersonate/users')) {
+      await requireWebAdminWithLookup(event);
       return await handleListUsers(event);
     }
     if (method === 'GET' && rawPath.endsWith('/context')) {
-      const userId = event.pathParameters?.['userId'];
-      if (!userId) return badRequest('userId path parameter is required');
-      return await handleGetContext(userId);
+      await requireWebAdminWithLookup(event);
+      return await handleGetContext(event);
+    }
+    if (method === 'POST' && rawPath.endsWith('/impersonate/sessions')) {
+      return await handleStartSession(event);
+    }
+    if (method === 'DELETE' && rawPath.includes('/impersonate/sessions/')) {
+      return await handleEndSession(event);
     }
 
-    const userId = event.pathParameters?.['userId'];
-    if (!userId) return badRequest('userId path parameter is required');
-
-    const afterUserId = rawPath.split(`/impersonate/${userId}/`)[1] ?? '';
-
-    return await dispatchToRealHandler(event, userId, afterUserId);
+    return badRequest(`Unhandled route: ${method} ${rawPath}`);
   } catch (err) {
     return mapHandlerError(err, 'web-admin impersonate handler');
   }

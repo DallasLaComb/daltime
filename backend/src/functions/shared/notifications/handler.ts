@@ -1,10 +1,14 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { MarkOneNotificationPathParams } from '@daltime/contracts';
 import { getCallerSub } from '../auth.js';
 import { ok, badRequest, setRequestOrigin } from '../response.js';
 import { mapHandlerError } from '../errors.js';
+import { parseWithContract } from '../contract-validation.js';
 import { listNotifications, markOneAsRead, markAllAsRead } from './service.js';
+import type { MarkAllNotificationsReadResponse, NotificationListResponse, NotificationResponse } from '@daltime/contracts';
+import { withImpersonation } from '../impersonation.js';
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const notificationId = event.pathParameters?.notificationId;
 
@@ -18,15 +22,18 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const callerSub = getCallerSub(event);
 
   try {
-    if (method === 'GET') return ok(await listNotifications(callerSub));
+    if (method === 'GET') return ok<NotificationListResponse>(await listNotifications(callerSub));
 
     if (method === 'PATCH') {
       if (notificationId !== undefined) {
-        if (!notificationId) return badRequest('notificationId path parameter is required');
-        return ok(await markOneAsRead(callerSub, notificationId));
+        const { notificationId: validatedId } = parseWithContract(
+          MarkOneNotificationPathParams,
+          { notificationId },
+        );
+        return ok<NotificationResponse>(await markOneAsRead(callerSub, validatedId));
       }
       const markedCount = await markAllAsRead(callerSub);
-      return ok({ success: true, marked_count: markedCount });
+      return ok<MarkAllNotificationsReadResponse>({ success: true, marked_count: markedCount });
     }
 
     return badRequest(`Unhandled route: ${method} ${event.rawPath}`);
@@ -34,3 +41,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'shared notifications handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

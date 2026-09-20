@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { SwapShiftsService } from './swap-shifts.service';
-import type { SwapShift } from '../../../core/models/swap-shift.model';
+import { SwapShiftsService, type SwapShift } from './swap-shifts.service';
 import type { Shift } from '../../../core/models/shift.model';
 import {
   ButtonComponent,

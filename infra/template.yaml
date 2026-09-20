@@ -468,6 +468,7 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
+          - X-Impersonate-User
         AllowMethods:
           - GET
           - POST
@@ -1123,6 +1124,8 @@ Resources:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ImpersonateFunction'
       RetentionInDays: 1
 
+  # The impersonation PICKER only (list users, describe one). Acting as a user is done by each
+  # role Lambda itself via the X-Impersonate-User header (shared/impersonation.ts).
   ImpersonateFunction:
     Type: AWS::Serverless::Function
     DependsOn: ImpersonateFunctionLogGroup
@@ -1177,45 +1180,30 @@ Resources:
             ApiId: !Ref DalTimeHttpApi
             Auth:
               Authorizer: NONE
-        # Generic catch-all: every "{role}/..." route under impersonate is
-        # resolved in-process by route-registry.ts, so this single set of
-        # method-specific events (HttpApi requires one event per method) is
-        # the *only* registration a new real feature route ever needs on the
-        # impersonate side — no per-route entries above this point.
-        ProxyAllGet:
+        StartImpersonateSession:
           Type: HttpApi
           Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: GET
-            ApiId: !Ref DalTimeHttpApi
-        ProxyAllPost:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Path: /web-admin/impersonate/sessions
             Method: POST
             ApiId: !Ref DalTimeHttpApi
-        ProxyAllPut:
+        EndImpersonateSession:
           Type: HttpApi
           Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: PUT
-            ApiId: !Ref DalTimeHttpApi
-        ProxyAllPatch:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
-            Method: PATCH
-            ApiId: !Ref DalTimeHttpApi
-        ProxyAllDelete:
-          Type: HttpApi
-          Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Path: /web-admin/impersonate/sessions/{sessionId}
             Method: DELETE
             ApiId: !Ref DalTimeHttpApi
-        OptionsProxyAll:
+        OptionsImpersonateSessions:
           Type: HttpApi
           Properties:
-            Path: /web-admin/impersonate/{userId}/{proxy+}
+            Path: /web-admin/impersonate/sessions
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsImpersonateSessionById:
+          Type: HttpApi
+          Properties:
+            Path: /web-admin/impersonate/sessions/{sessionId}
             Method: OPTIONS
             ApiId: !Ref DalTimeHttpApi
             Auth:

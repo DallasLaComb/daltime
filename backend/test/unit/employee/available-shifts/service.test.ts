@@ -18,19 +18,21 @@ vi.mock('../../../../src/functions/employee/available-shifts/db.js', () => ({
   listAvailableShifts: vi.fn(),
 }));
 
+import type { Shift } from '../../../../src/functions/shared/models/manager/shift.model.js';
 import { listAvailableShifts } from '../../../../src/functions/employee/available-shifts/service.js';
 import * as db from '../../../../src/functions/employee/available-shifts/db.js';
 
 const CALLER_LOOKUP = { org_id: 'org-sunset', employee_id: 'emp-123' };
 
 /** A raw DynamoDB shift item with all key fields present. */
-const RAW_SHIFT = {
+const RAW_SHIFT: Shift = {
   PK: 'ORG#org-sunset',
   SK: 'SHIFT#shift-99',
   GSI1PK: 'SHIFT',
   GSI1SK: '2025-06-15T09:00:00.000Z',
   shift_id: 'shift-99',
   org_id: 'org-sunset',
+  manager_id: 'mgr-1',
   employee_id: 'emp-other',
   employee_name: 'Jane Doe',
   location_id: 'loc-1',

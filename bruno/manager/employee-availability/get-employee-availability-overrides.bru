@@ -1,0 +1,11 @@
+meta {
+  name: Get Employee Availability Overrides
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/manager/employees/{{employee_id}}/availability/overrides
+  body: none
+  auth: none
+}

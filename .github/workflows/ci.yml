@@ -14,6 +14,57 @@ permissions:
 # Frontend and backend jobs run in parallel for faster feedback.
 # Both must pass for the workflow to succeed and trigger CD.
 jobs:
+  # ── Contract Drift Check ──
+  # Regenerates contracts/openapi.json from the Zod schemas and the frontend's
+  # generated types from that spec, then fails if either differs from what is
+  # committed. This is what makes the contract the single source of truth: a
+  # schema change that was not regenerated, or a generated file edited by hand,
+  # breaks the build here rather than silently drifting from the other side.
+  contracts:
+    name: Contract drift check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install contract dependencies
+        run: npm ci
+        working-directory: contracts
+
+      - name: Regenerate openapi.json
+        run: npm run generate
+        working-directory: contracts
+
+      # Only the generator's own dependency is needed to regenerate the frontend
+      # types, so this skips the full Angular install.
+      - name: Install openapi-typescript
+        run: npm ci --omit=optional --ignore-scripts
+        working-directory: frontend
+
+      - name: Regenerate frontend types
+        run: npm run contracts:types
+        working-directory: frontend
+
+      # Routes are declared only in infra/template.yaml. This fails if a route ships with
+      # no contract operation, or an operation is documented for a route that does not exist.
+      - name: Check template routes match the contract
+        run: npm run check:routes
+        working-directory: contracts
+
+      - name: Fail if generated output drifted from the committed files
+        run: |
+          if ! git diff --exit-code -- contracts/openapi.json frontend/src/app/core/generated/; then
+            echo "::error::Generated contract output is out of date."
+            echo "Run 'npm run generate' in contracts/ and 'npm run contracts:types' in frontend/, then commit the result."
+            exit 1
+          fi
+
   # ── Frontend Tests ──
   # Runs Angular unit tests via Vitest (configured in angular.json with @angular/build:unit-test)
   frontend:
@@ -48,6 +99,12 @@ jobs:
         run: npm audit --audit-level=high
         working-directory: frontend
         continue-on-error: true
+
+      # Includes the ban on injecting HttpClient outside core/api/api-client.ts, which keeps
+      # every API call typed from contracts/openapi.json.
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
 
       - name: Run tests
         run: npm test
@@ -88,6 +145,18 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      # The backend depends on @daltime/contracts as `file:vendor/contracts` — a
+      # built copy mirrored into the SAM CodeUri, because SAM's esbuild builder
+      # copies only backend/ to a scratch dir and cannot resolve a path outside
+      # it. The vendored copy must therefore exist *before* `npm ci` runs.
+      - name: Install contract dependencies
+        run: npm ci
+        working-directory: contracts
+
+      - name: Build and vendor contracts into the backend
+        run: node scripts/sync-contracts.mjs
+        working-directory: backend
+
       # Clean install from lockfile — ensures reproducible builds
       - name: Install dependencies
         run: npm ci
@@ -99,6 +168,21 @@ jobs:
       # function. Keep this a hard gate — prod deps must stay clean.
       - name: npm audit
         run: npm audit --audit-level=high --omit=dev
+        working-directory: backend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: backend
+
+      # Handlers and services must fit the contract types (vendored above).
+      - name: Type-check source
+        run: npx tsc --noEmit
+        working-directory: backend
+
+      # Same for test fixtures. vitest strips types without checking them, so this is the only
+      # thing that notices a fixture drifting from the contract.
+      - name: Type-check tests
+        run: npm run typecheck:tests
         working-directory: backend
 
       - name: Run tests

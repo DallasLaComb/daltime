@@ -18,7 +18,7 @@ export async function listOrganizations() {
       ExpressionAttributeValues: { ':pk': 'ORG' },
     }),
   );
-  return result.Items ?? [];
+  return (result.Items ?? []) as Organization[];
 }
 
 /** Fetch a single organization by its org_id (base table GetItem). */
@@ -29,7 +29,7 @@ export async function getOrganizationById(orgId: string) {
       Key: { PK: `ORG#${orgId}`, SK: 'METADATA' },
     }),
   );
-  return result.Item ?? null;
+  return (result.Item as Organization | undefined) ?? null;
 }
 
 /**
@@ -55,7 +55,7 @@ export async function updateOrganization(
   orgId: string,
   fields: { name: string; address: string; updated_at: string },
   webAdminId: string,
-): Promise<Record<string, unknown>> {
+): Promise<Organization> {
   const result = await docClient.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
@@ -72,7 +72,7 @@ export async function updateOrganization(
       ReturnValues: 'ALL_NEW',
     }),
   );
-  return result.Attributes as Record<string, unknown>;
+  return result.Attributes as Organization;
 }
 
 /**

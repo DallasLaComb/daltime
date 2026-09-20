@@ -38,7 +38,10 @@ import { NotificationsPageComponent } from './notifications-page';
 import { NotificationsService } from './notifications.service';
 import { AuthService } from '../../core/auth/auth';
 import { ImpersonationService } from '../../core/services/impersonation.service';
-import type { PublicNotification, MarkAllReadResponse } from '../../core/models/notification.model';
+import type {
+  NotificationResponse,
+  MarkAllNotificationsReadResponse,
+} from './notifications.service';
 import type { UserRole } from '../../core/auth/user-role.model';
 
 // ---------------------------------------------------------------------------
@@ -72,8 +75,8 @@ function randomIso(): string {
   return new Date(base + offset).toISOString();
 }
 
-/** Minimal valid PublicNotification. Overrides applied last. */
-function makeNotification(overrides: Partial<PublicNotification> = {}): PublicNotification {
+/** Minimal valid NotificationResponse. Overrides applied last. */
+function makeNotification(overrides: Partial<NotificationResponse> = {}): NotificationResponse {
   const createdAt = randomIso();
   return {
     notification_id: `${createdAt}#${randomUuid()}`,
@@ -89,8 +92,8 @@ function makeNotification(overrides: Partial<PublicNotification> = {}): PublicNo
 /** Generate a pool of N notifications for randomised scenario coverage. */
 function generatePool(
   count: number,
-  overrides: Partial<PublicNotification> = {},
-): PublicNotification[] {
+  overrides: Partial<NotificationResponse> = {},
+): NotificationResponse[] {
   return Array.from({ length: count }, () => makeNotification(overrides));
 }
 
@@ -116,9 +119,9 @@ interface ImpersonationStubs {
 function buildStubs(options: {
   role?: UserRole;
   impersonationRole?: Extract<UserRole, 'OrgAdmin' | 'Manager' | 'Employee'> | null;
-  listResult?: PublicNotification[] | 'error';
-  markOneResult?: PublicNotification | 'error';
-  markAllResult?: MarkAllReadResponse | 'error';
+  listResult?: NotificationResponse[] | 'error';
+  markOneResult?: NotificationResponse | 'error';
+  markAllResult?: MarkAllNotificationsReadResponse | 'error';
 }): { svc: ServiceStubs; auth: AuthStubs; imp: ImpersonationStubs } {
   const {
     role = 'Manager',
@@ -131,19 +134,19 @@ function buildStubs(options: {
   const listSpy = vi.fn(() =>
     listResult === 'error'
       ? throwError(() => new HttpErrorResponse({ status: 500 }))
-      : of(listResult as PublicNotification[]),
+      : of(listResult as NotificationResponse[]),
   );
 
   const markOneSpy = vi.fn(() =>
     markOneResult === 'error'
       ? throwError(() => new HttpErrorResponse({ status: 500 }))
-      : of(markOneResult as PublicNotification),
+      : of(markOneResult as NotificationResponse),
   );
 
   const markAllSpy = vi.fn(() =>
     markAllResult === 'error'
       ? throwError(() => new HttpErrorResponse({ status: 500 }))
-      : of(markAllResult as MarkAllReadResponse),
+      : of(markAllResult as MarkAllNotificationsReadResponse),
   );
 
   const roleSignalSpy = vi.fn(() => role);
@@ -451,13 +454,13 @@ describe('NotificationsPageComponent', () => {
   describe('markOneAsRead()', () => {
     it('calls the service markOneAsRead with the correct role and notification_id', () => {
       const n = makeNotification({ read: false });
-      const updated: PublicNotification = { ...n, read: true };
+      const updated: NotificationResponse = { ...n, read: true };
       const stubs = buildStubs({ listResult: [n], markOneResult: updated, role: 'Employee' });
       setupTestBed(stubs);
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
+        markOneAsRead(n: NotificationResponse): void;
       };
       comp.markOneAsRead(n);
 
@@ -467,9 +470,9 @@ describe('NotificationsPageComponent', () => {
     it('applies an optimistic update (marks read immediately) before the service call resolves', () => {
       const n = makeNotification({ read: false });
       // Use a never-completing observable so optimistic state is visible
-      type ObsSubscriber = { next: (v: PublicNotification) => void; complete: () => void };
-      let resolveSubject: ((v: PublicNotification) => void) | undefined;
-      const delayed = new Observable<PublicNotification>((obs: ObsSubscriber) => {
+      type ObsSubscriber = { next: (v: NotificationResponse) => void; complete: () => void };
+      let resolveSubject: ((v: NotificationResponse) => void) | undefined;
+      const delayed = new Observable<NotificationResponse>((obs: ObsSubscriber) => {
         resolveSubject = (v) => {
           obs.next(v);
           obs.complete();
@@ -482,8 +485,8 @@ describe('NotificationsPageComponent', () => {
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
-        notifications(): PublicNotification[];
+        markOneAsRead(n: NotificationResponse): void;
+        notifications(): NotificationResponse[];
       };
       comp.markOneAsRead(n);
       fixture.detectChanges();
@@ -506,8 +509,8 @@ describe('NotificationsPageComponent', () => {
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
-        notifications(): PublicNotification[];
+        markOneAsRead(n: NotificationResponse): void;
+        notifications(): NotificationResponse[];
         error(): string | null;
       };
       comp.markOneAsRead(n);
@@ -525,7 +528,7 @@ describe('NotificationsPageComponent', () => {
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
+        markOneAsRead(n: NotificationResponse): void;
         error(): string | null;
       };
       comp.markOneAsRead(n);
@@ -540,7 +543,7 @@ describe('NotificationsPageComponent', () => {
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
+        markOneAsRead(n: NotificationResponse): void;
       };
       comp.markOneAsRead(n);
 
@@ -550,7 +553,7 @@ describe('NotificationsPageComponent', () => {
 
     it('reconciles with the server response on success (replaces optimistic with canonical)', () => {
       const n = makeNotification({ read: false });
-      const serverResponse: PublicNotification = {
+      const serverResponse: NotificationResponse = {
         ...n,
         read: true,
         message: 'Server-canonical message',
@@ -560,8 +563,8 @@ describe('NotificationsPageComponent', () => {
 
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
-        markOneAsRead(n: PublicNotification): void;
-        notifications(): PublicNotification[];
+        markOneAsRead(n: NotificationResponse): void;
+        notifications(): NotificationResponse[];
       };
       comp.markOneAsRead(n);
       fixture.detectChanges();
@@ -606,7 +609,7 @@ describe('NotificationsPageComponent', () => {
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
         markAllAsRead(): void;
-        notifications(): PublicNotification[];
+        notifications(): NotificationResponse[];
         unreadCount(): number;
       };
       comp.markAllAsRead();
@@ -624,7 +627,7 @@ describe('NotificationsPageComponent', () => {
       const fixture = createComponent();
       const comp = fixture.componentInstance as unknown as {
         markAllAsRead(): void;
-        notifications(): PublicNotification[];
+        notifications(): NotificationResponse[];
         error(): string | null;
       };
       comp.markAllAsRead();

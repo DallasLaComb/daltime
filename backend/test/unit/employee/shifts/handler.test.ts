@@ -18,6 +18,8 @@ vi.mock('../../../../src/functions/employee/shifts/service.js', () => ({
   listMyShifts: vi.fn(),
 }));
 
+import { ShiftsQueryParams } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/employee/shifts/handler.js';
 import { listMyShifts } from '../../../../src/functions/employee/shifts/service.js';
 import { ValidationError, ForbiddenError } from '../../../../src/functions/shared/errors.js';
@@ -137,7 +139,7 @@ const mockShifts = [
 
 describe('GET /employee/shifts — ?month param', () => {
   it('returns 200 with shift array when month param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { month: '2025-06' }),
@@ -166,7 +168,7 @@ describe('GET /employee/shifts — ?month param', () => {
 
 describe('GET /employee/shifts — ?date param', () => {
   it('returns 200 with shift array when date param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { date: '2025-06-15' }),
@@ -183,7 +185,7 @@ describe('GET /employee/shifts — ?date param', () => {
 
 describe('GET /employee/shifts — ?week param', () => {
   it('returns 200 with shift array when week param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { week: '2025-06-09' }),
@@ -253,42 +255,42 @@ describe('GET /employee/shifts — validation errors', () => {
     expect(result.statusCode).toBe(400);
   });
 
-  it('returns 400 when service throws ValidationError (multiple params supplied)', async () => {
-    vi.mocked(listMyShifts).mockRejectedValue(
-      new ValidationError(
-        'Only one of "month", "date", or "week" query params may be provided at a time',
-      ),
-    );
+  it('returns 400 when the contract rejects multiple params (exactly-one rule)', async () => {
+    const query = { month: '2025-06', date: '2025-06-15', week: '2025-06-09' };
 
     const result = (await handler(
-      buildEvent('GET', 'Employee', 'sub-emp', { date: '2025-06-15', month: '2025-06' }),
+      buildEvent('GET', 'Employee', 'sub-emp', query),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    // The contract's exactly-one rule is enforced in the handler; the service is never reached.
+    expect(result.statusCode).toBe(400);
+    expect(listMyShifts).not.toHaveBeenCalled();
+    expect(parsedBody(result)).toEqual({
+      error: contractErrorMessage(ShiftsQueryParams, query),
+    });
+  });
+
+  it('returns 400 when the contract rejects a request with none of the params', async () => {
+    const result = (await handler(
+      buildEvent('GET', 'Employee', 'sub-emp', {}),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
-    const body = parsedBody(result) as { error: string };
-    expect(body.error).toMatch(/only one/i);
+    expect(listMyShifts).not.toHaveBeenCalled();
+    expect(parsedBody(result)).toEqual({ error: contractErrorMessage(ShiftsQueryParams, {}) });
   });
 
-  it('passes all three params to service and lets service enforce the exactly-one rule', async () => {
-    vi.mocked(listMyShifts).mockRejectedValue(
-      new ValidationError(
-        'Only one of "month", "date", or "week" query params may be provided at a time',
-      ),
-    );
+  it('rejects a malformed date per the contract before reaching the service', async () => {
+    const query = { date: '2025-13-45' };
 
-    // Handler passes what it receives; service is the single source of validation truth.
-    await handler(
-      buildEvent('GET', 'Employee', 'sub-emp', {
-        month: '2025-06',
-        date: '2025-06-15',
-        week: '2025-06-09',
-      }),
-    );
+    const result = (await handler(
+      buildEvent('GET', 'Employee', 'sub-emp', query),
+    )) as APIGatewayProxyStructuredResultV2;
 
-    expect(listMyShifts).toHaveBeenCalledWith('sub-emp', {
-      month: '2025-06',
-      date: '2025-06-15',
-      week: '2025-06-09',
+    expect(result.statusCode).toBe(400);
+    expect(listMyShifts).not.toHaveBeenCalled();
+    expect(parsedBody(result)).toEqual({
+      error: contractErrorMessage(ShiftsQueryParams, query),
     });
   });
 });

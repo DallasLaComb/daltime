@@ -200,12 +200,7 @@ describe('Role enforcement — all routes require Employee group', () => {
   it('returns 403 for claim when caller is OrgAdmin', async () => {
     const swapId = pickRandom(SWAP_ID_POOL);
     const result = (await handler(
-      buildEvent(
-        'POST',
-        'OrgAdmin',
-        'sub-admin',
-        `/employee/swap-shifts/${swapId}/claim`,
-      ),
+      buildEvent('POST', 'OrgAdmin', 'sub-admin', `/employee/swap-shifts/${swapId}/claim`),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(403);
@@ -241,7 +236,12 @@ describe('GET /employee/swap-shifts', () => {
   it('returns 200 with { available, mine } shape on happy path', async () => {
     const orgId = pickRandom(ORG_POOL);
     const swapA = { ...SWAP_OPEN, org_id: orgId, swap_id: pickRandom(SWAP_ID_POOL) };
-    const swapB = { ...SWAP_OPEN, org_id: orgId, swap_id: pickRandom(SWAP_ID_POOL), status: 'claimed' as const };
+    const swapB = {
+      ...SWAP_OPEN,
+      org_id: orgId,
+      swap_id: pickRandom(SWAP_ID_POOL),
+      status: 'claimed' as const,
+    };
     vi.mocked(listSwapShifts).mockResolvedValue({ available: [swapA], mine: [swapB] });
 
     const result = (await handler(
@@ -310,7 +310,9 @@ describe('POST /employee/swap-shifts — post a shift', () => {
     vi.mocked(postSwapShift).mockRejectedValue(new NotFoundError('Shift not found'));
 
     const result = (await handler(
-      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', { shift_id: 'ghost-shift' }),
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: 'ghost-shift',
+      }),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(404);
@@ -322,7 +324,9 @@ describe('POST /employee/swap-shifts — post a shift', () => {
     );
 
     const result = (await handler(
-      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', { shift_id: pickRandom(SHIFT_ID_POOL) }),
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: pickRandom(SHIFT_ID_POOL),
+      }),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(403);
@@ -334,7 +338,9 @@ describe('POST /employee/swap-shifts — post a shift', () => {
     );
 
     const result = (await handler(
-      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', { shift_id: pickRandom(SHIFT_ID_POOL) }),
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: pickRandom(SHIFT_ID_POOL),
+      }),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
@@ -346,7 +352,9 @@ describe('POST /employee/swap-shifts — post a shift', () => {
     );
 
     const result = (await handler(
-      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', { shift_id: pickRandom(SHIFT_ID_POOL) }),
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: pickRandom(SHIFT_ID_POOL),
+      }),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(409);
@@ -379,7 +387,9 @@ describe('POST /employee/swap-shifts — post a shift', () => {
     );
 
     const result = (await handler(
-      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', { shift_id: pickRandom(SHIFT_ID_POOL) }),
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: pickRandom(SHIFT_ID_POOL),
+      }),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
@@ -478,7 +488,13 @@ describe('POST /employee/swap-shifts/{swapId}/claim — claim a listing', () => 
 
   it('routes /claim correctly — distinguishes claim path from plain POST', async () => {
     const swapId = pickRandom(SWAP_ID_POOL);
-    vi.mocked(claimSwapShift).mockResolvedValue({ ...SWAP_OPEN, swap_id: swapId, status: 'claimed' as const, claimed_by_employee_id: 'emp-999', claimed_by_employee_name: 'Bob' });
+    vi.mocked(claimSwapShift).mockResolvedValue({
+      ...SWAP_OPEN,
+      swap_id: swapId,
+      status: 'claimed' as const,
+      claimed_by_employee_id: 'emp-999',
+      claimed_by_employee_name: 'Bob',
+    });
 
     await handler(
       buildEvent('POST', 'Employee', 'sub-emp', `/employee/swap-shifts/${swapId}/claim`),
@@ -578,5 +594,98 @@ describe('Unhandled methods', () => {
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(400);
+  });
+});
+
+// ─── Contract request validation ──────────────────────────────────────────────
+
+/**
+ * The handler validates POST bodies and the claim route's swapId against the
+ * same schemas that generate this route's entry in contracts/openapi.json, so
+ * a request the published spec calls invalid never reaches the service.
+ */
+describe('Contract validation — POST /employee/swap-shifts body', () => {
+  it('returns 400 and does not call the service when shift_id is missing', async () => {
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {}),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(400);
+    expect(postSwapShift).not.toHaveBeenCalled();
+    const body = parsedBody(result) as { error: string };
+    expect(body.error).toMatch(/shift_id/i);
+  });
+
+  it('returns 400 and does not call the service when shift_id holds injection characters', async () => {
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: '<script>alert(1)</script>',
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(400);
+    expect(postSwapShift).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when shift_id exceeds 128 characters', async () => {
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: 'a'.repeat(129),
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(400);
+    expect(postSwapShift).not.toHaveBeenCalled();
+  });
+
+  it('forwards a trimmed shift_id to the service', async () => {
+    const shiftId = pickRandom(SHIFT_ID_POOL);
+    vi.mocked(postSwapShift).mockResolvedValue({ ...SWAP_OPEN, shift_id: shiftId });
+
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: `  ${shiftId}  `,
+      }),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(201);
+    expect(postSwapShift).toHaveBeenCalledWith('sub-emp', { shift_id: shiftId });
+  });
+
+  it('drops unknown body keys rather than forwarding them', async () => {
+    const shiftId = pickRandom(SHIFT_ID_POOL);
+    vi.mocked(postSwapShift).mockResolvedValue({ ...SWAP_OPEN, shift_id: shiftId });
+
+    await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts', {
+        shift_id: shiftId,
+        status: 'claimed',
+      }),
+    );
+
+    expect(postSwapShift).toHaveBeenCalledWith('sub-emp', { shift_id: shiftId });
+  });
+});
+
+describe('Contract validation — claim route swapId', () => {
+  it('returns 400 and does not call the service for a malformed swapId', async () => {
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', '/employee/swap-shifts/swap%20id!/claim'),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(400);
+    expect(claimSwapShift).not.toHaveBeenCalled();
+  });
+
+  it('still routes a well-formed swapId through to the service', async () => {
+    const swapId = pickRandom(SWAP_ID_POOL);
+    vi.mocked(claimSwapShift).mockResolvedValue({ ...SWAP_OPEN, swap_id: swapId });
+
+    const result = (await handler(
+      buildEvent('POST', 'Employee', 'sub-emp', `/employee/swap-shifts/${swapId}/claim`),
+    )) as APIGatewayProxyStructuredResultV2;
+
+    expect(result.statusCode).toBe(200);
+    expect(claimSwapShift).toHaveBeenCalledWith('sub-emp', swapId);
   });
 });

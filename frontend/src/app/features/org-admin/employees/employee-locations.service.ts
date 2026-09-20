@@ -1,28 +1,33 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type { UserLocationResponse } from '../../../core/models/user-location.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ */
+export type UserLocationResponse = ApiSchema<'UserLocationResponse'>;
+export type AssignUserLocationBody = ApiSchema<'AssignUserLocationBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class EmployeeLocationsService {
-  private readonly http = inject(HttpClient);
-
-  private baseUrl(employeeId: string): string {
-    return `${environment.api.baseUrl}/org-admin/employees/${employeeId}/locations`;
-  }
+  private readonly api = inject(ApiClient);
 
   getAll(employeeId: string): Observable<UserLocationResponse[]> {
-    return this.http.get<UserLocationResponse[]>(this.baseUrl(employeeId));
+    return this.api.get('/org-admin/employees/{employeeId}/locations', { params: { employeeId } });
   }
 
   assign(employeeId: string, locationId: string): Observable<UserLocationResponse> {
-    return this.http.post<UserLocationResponse>(this.baseUrl(employeeId), {
-      location_id: locationId,
-    });
+    return this.api.post(
+      '/org-admin/employees/{employeeId}/locations',
+      { location_id: locationId },
+      { params: { employeeId } },
+    );
   }
 
   remove(employeeId: string, locationId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl(employeeId)}/${locationId}`);
+    return this.api.delete('/org-admin/employees/{employeeId}/locations/{locationId}', {
+      params: { employeeId, locationId },
+    });
   }
 }

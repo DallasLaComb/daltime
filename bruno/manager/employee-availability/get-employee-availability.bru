@@ -1,0 +1,11 @@
+meta {
+  name: Get Employee Availability
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/manager/employees/{{employee_id}}/availability
+  body: none
+  auth: none
+}

@@ -1,5 +1,6 @@
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { CreateManagerEmployeeBody, UpdateManagerEmployeeBody } from '@daltime/contracts';
 import { getCallerSub } from '../../shared/auth.js';
 import {
   ok,
@@ -10,6 +11,7 @@ import {
   parseBody,
 } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import {
   listEmployees,
   createEmployee,
@@ -19,31 +21,28 @@ import {
   getEmployeeAvailabilityForManager,
   getEmployeeAvailabilityOverridesForManager,
 } from './service.js';
+import type { ManagerEmployeeAvailabilityOverridesResponse, ManagerEmployeeAvailabilityResponse, ManagerEmployeeListResponse, ManagerEmployeeResponse } from '@daltime/contracts';
+import { withImpersonation } from '../../shared/impersonation.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
 async function handleGet(callerSub: string, path: string, employeeId: string | undefined) {
   if (path.endsWith('/availability/overrides')) {
     if (!employeeId) return badRequest('employeeId path parameter is required');
-    return ok(await getEmployeeAvailabilityOverridesForManager(callerSub, employeeId));
+    return ok<ManagerEmployeeAvailabilityOverridesResponse>(await getEmployeeAvailabilityOverridesForManager(callerSub, employeeId));
   }
   if (path.endsWith('/availability')) {
     if (!employeeId) return badRequest('employeeId path parameter is required');
-    return ok(await getEmployeeAvailabilityForManager(callerSub, employeeId));
+    return ok<ManagerEmployeeAvailabilityResponse>(await getEmployeeAvailabilityForManager(callerSub, employeeId));
   }
-  return ok(await listEmployees(callerSub, cognitoClient));
+  return ok<ManagerEmployeeListResponse>(await listEmployees(callerSub, cognitoClient));
 }
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
-  const parsed = parseBody<{
-    email: string;
-    first_name: string;
-    last_name: string;
-    phone?: string;
-    temp_password: string;
-  }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return created(await createEmployee(callerSub, parsed.data, cognitoClient));
+  const body = parseWithContract(CreateManagerEmployeeBody, parsed.data);
+  return created<ManagerEmployeeResponse>(await createEmployee(callerSub, body, cognitoClient));
 }
 
 async function handlePut(
@@ -52,12 +51,13 @@ async function handlePut(
   rawBody: string | undefined,
 ) {
   if (!employeeId) return badRequest('employeeId path parameter is required');
-  const parsed = parseBody<{ first_name?: string; last_name?: string; phone?: string }>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateEmployee(callerSub, employeeId, parsed.data, cognitoClient));
+  const body = parseWithContract(UpdateManagerEmployeeBody, parsed.data);
+  return ok<ManagerEmployeeResponse>(await updateEmployee(callerSub, employeeId, body, cognitoClient));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const employeeId = event.pathParameters?.employeeId;
 
@@ -89,3 +89,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'manager employees handler');
   }
 };
+
+/** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
+export const handler = withImpersonation(handleRequest);

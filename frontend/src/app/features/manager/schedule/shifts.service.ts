@@ -1,27 +1,34 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type { Shift, CreateShiftBody, UpdateShiftBody } from '../../../core/models/shift.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ * A field renamed in the contract breaks this file at compile time instead of
+ * at runtime in the browser.
+ */
+export type ManagerShift = ApiSchema<'ManagerShiftResponse'>;
+export type CreateManagerShiftBody = ApiSchema<'CreateManagerShiftBody'>;
+export type UpdateManagerShiftBody = ApiSchema<'UpdateManagerShiftBody'>;
 
 @Injectable({ providedIn: 'root' })
 export class ManagerShiftsService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/manager/shifts`;
+  private readonly api = inject(ApiClient);
 
-  list(month: string): Observable<Shift[]> {
-    return this.http.get<Shift[]>(this.baseUrl, { params: { month } });
+  list(month: string): Observable<ManagerShift[]> {
+    return this.api.get('/manager/shifts', { query: { month } });
   }
 
-  create(body: CreateShiftBody): Observable<Shift> {
-    return this.http.post<Shift>(this.baseUrl, body);
+  create(body: CreateManagerShiftBody): Observable<ManagerShift> {
+    return this.api.post('/manager/shifts', body);
   }
 
-  update(shiftId: string, body: UpdateShiftBody): Observable<Shift> {
-    return this.http.put<Shift>(`${this.baseUrl}/${shiftId}`, body);
+  update(shiftId: string, body: UpdateManagerShiftBody): Observable<ManagerShift> {
+    return this.api.put('/manager/shifts/{shiftId}', body, { params: { shiftId } });
   }
 
   remove(shiftId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${shiftId}`);
+    return this.api.delete('/manager/shifts/{shiftId}', { params: { shiftId } });
   }
 }

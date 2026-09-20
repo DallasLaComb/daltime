@@ -1,6 +1,6 @@
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME, getMetadataRecord } from '../../shared/dynamo.js';
-import type { EmployeeAvailabilityOverrides } from '../../shared/models/employee/availability.model.js';
+import type { EmployeeAvailabilityOverridesRecord } from '@daltime/contracts';
 
 export async function getCallerLookup(
   employeeId: string,
@@ -10,18 +10,18 @@ export async function getCallerLookup(
 
 export async function getAvailabilityOverrides(
   employeeId: string,
-): Promise<EmployeeAvailabilityOverrides | null> {
+): Promise<EmployeeAvailabilityOverridesRecord | null> {
   const result = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: { PK: `USER#${employeeId}`, SK: 'AVAILABILITY_OVERRIDES' },
     }),
   );
-  return (result.Item as EmployeeAvailabilityOverrides) ?? null;
+  return (result.Item as EmployeeAvailabilityOverridesRecord) ?? null;
 }
 
 export async function upsertAvailabilityOverrides(
-  record: EmployeeAvailabilityOverrides,
+  record: EmployeeAvailabilityOverridesRecord,
 ): Promise<void> {
   await docClient.send(
     new PutCommand({

@@ -1,0 +1,37 @@
+meta {
+  name: Impersonate - View a role route as a user (X-Impersonate-User)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/manager/shifts?month=2026-07
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{web_admin_token}}
+}
+
+headers {
+  X-Impersonate-User: {{user_id}}
+}
+
+docs {
+  Acting as a user is a header on the ORDINARY role route — there is no impersonate-prefixed
+  path. Authenticate as a WebAdmin (web_admin_token) and set `X-Impersonate-User` to the target's
+  Cognito sub; the response is exactly what `GET /manager/shifts` returns for that manager.
+
+  Every employee / manager / org-admin route accepts the header (see `ImpersonationHeader` in
+  contracts/src/schemas/common.ts). Resolved by `withImpersonation` in each role Lambda
+  (backend/src/functions/shared/impersonation.ts).
+
+  Errors, in the order they are checked:
+    403 - caller is not a provisioned, ACTIVE WebAdmin (also for any other role sending the header)
+    403 - any method other than GET — impersonation sessions are read-only
+    400 - `X-Impersonate-User` is not a valid id
+    400 - the route is not a role route (e.g. /web-admin/..., /health)
+    404 - the id is not a member of the role this route serves
+          (e.g. an Employee id sent to /manager/shifts)
+}

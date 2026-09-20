@@ -13,11 +13,13 @@
 
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { UpdateWebAdminProfileBody } from '@daltime/contracts';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin, parseBody } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
+import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
-import type { UpdateProfileRequest } from './model.js';
+import type { WebAdminProfileResponse } from '@daltime/contracts';
 
 /** Shared Cognito client — initialised once per Lambda cold start. */
 const cognitoClient = new CognitoIdentityProviderClient({});
@@ -27,9 +29,10 @@ const cognitoClient = new CognitoIdentityProviderClient({});
  * service layer. Returns the full updated profile on success.
  */
 async function handlePut(rawBody: string | undefined, sub: string) {
-  const parsed = parseBody<UpdateProfileRequest>(rawBody);
+  const parsed = parseBody<Record<string, unknown>>(rawBody);
   if (!parsed.ok) return parsed.response;
-  return ok(await updateProfile(sub, parsed.data));
+  const body = parseWithContract(UpdateWebAdminProfileBody, parsed.data);
+  return ok<WebAdminProfileResponse>(await updateProfile(sub, body));
 }
 
 /**
@@ -55,7 +58,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const caller = await requireWebAdminWithLookup(event);
 
     if (method === 'GET') {
-      return ok(await getProfile(caller.sub, cognitoClient));
+      return ok<WebAdminProfileResponse>(await getProfile(caller.sub, cognitoClient));
     }
 
     if (method === 'PUT') {

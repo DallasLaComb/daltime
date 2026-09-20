@@ -16,6 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { SwapShiftRecord } from '@daltime/contracts';
 
 // ─── Mock db and notification modules before service import ───────────────────
 
@@ -152,29 +153,8 @@ function makeEmployeeRecord(orgId: string, employeeId: string, managerId: string
   };
 }
 
-interface MockSwap {
-  PK: string;
-  SK: string;
-  GSI1PK: string;
-  GSI1SK: string;
-  swap_id: string;
-  org_id: string;
-  shift_id: string;
-  posted_by_employee_id: string;
-  posted_by_employee_name: string;
-  manager_id: string;
-  status: string;
-  claimed_by_employee_id: string | null;
-  claimed_by_employee_name: string | null;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  location_id: string;
-  location_name: string;
-  created_at: string;
-  updated_at: string;
-}
+/** A stored swap record; typed from the contract so fixtures cannot drift from the real shape. */
+type MockSwap = SwapShiftRecord;
 
 function makeSwap(orgId: string, posterEmpId: string, overrides: Partial<MockSwap> = {}): MockSwap {
   const swapId = pick(SWAP_ID_POOL);
@@ -196,7 +176,7 @@ function makeSwap(orgId: string, posterEmpId: string, overrides: Partial<MockSwa
     date: '2026-09-15',
     start_time: '14:00',
     end_time: '22:00',
-    type: 'evening',
+    type: 'night',
     location_id: 'loc-2',
     location_name: 'North Branch',
     created_at: now,

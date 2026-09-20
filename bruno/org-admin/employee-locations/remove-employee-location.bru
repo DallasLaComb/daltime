@@ -1,0 +1,11 @@
+meta {
+  name: Remove Employee Location
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{base_url}}/org-admin/employees/{{employee_id}}/locations/{{location_id}}
+  body: none
+  auth: none
+}

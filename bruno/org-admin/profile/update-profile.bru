@@ -1,0 +1,17 @@
+meta {
+  name: Update Org-Admin Profile
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/org-admin/profile
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Alex Morgan"
+  }
+}

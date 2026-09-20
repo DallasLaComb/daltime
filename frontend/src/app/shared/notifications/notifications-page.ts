@@ -7,7 +7,7 @@ import {
 } from '@common-daltime';
 import { AuthService } from '../../core/auth/auth';
 import { ImpersonationService } from '../../core/services/impersonation.service';
-import type { PublicNotification } from '../../core/models/notification.model';
+import type { NotificationResponse } from './notifications.service';
 import type { UserRole } from '../../core/auth/user-role.model';
 import { NotificationsService } from './notifications.service';
 import { formatNotificationTimestamp, getNotificationDisplay } from './notification-display.util';
@@ -19,8 +19,8 @@ import { formatNotificationTimestamp, getNotificationDisplay } from './notificat
  * Role resolution mirrors the navbar's effectiveRole() pattern: when a
  * Web-Admin is impersonating another user, ImpersonationService.viewingAs()
  * is set and its role is used, so the page automatically calls the impersonated
- * role's /notifications endpoint. The impersonation interceptor then rewrites
- * that request transparently — no notifications-specific impersonation code
+ * role's /notifications endpoint. The impersonation interceptor then adds the
+ * `X-Impersonate-User` header transparently — no notifications-specific impersonation code
  * is needed here.
  */
 @Component({
@@ -45,7 +45,7 @@ export class NotificationsPageComponent {
       (this.impersonationService.viewingAs()?.role ?? this.authService.roleSignal()) as UserRole,
   );
 
-  protected readonly notifications = signal<PublicNotification[]>([]);
+  protected readonly notifications = signal<NotificationResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly markingAll = signal(false);
@@ -93,7 +93,7 @@ export class NotificationsPageComponent {
    * waiting on a refetch. On failure, rolls back the optimistic change so the
    * UI never shows a read-state the server didn't actually persist.
    */
-  protected markOneAsRead(notification: PublicNotification): void {
+  protected markOneAsRead(notification: NotificationResponse): void {
     if (notification.read) return;
 
     // Optimistic update.
@@ -149,7 +149,7 @@ export class NotificationsPageComponent {
   }
 
   /** trackBy function for @for loop — required for OnPush change detection performance. */
-  protected trackByNotificationId(_: number, n: PublicNotification): string {
+  protected trackByNotificationId(_: number, n: NotificationResponse): string {
     return n.notification_id;
   }
 }

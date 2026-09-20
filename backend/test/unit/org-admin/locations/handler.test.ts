@@ -12,6 +12,8 @@ vi.mock('../../../../src/functions/org-admin/locations/service.js', () => ({
 }));
 
 import { handler } from '../../../../src/functions/org-admin/locations/handler.js';
+import { UpdateOrgAdminLocationBody } from '@daltime/contracts';
+import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../../../src/functions/shared/errors.js';
 import {
   getLocations,
@@ -124,7 +126,7 @@ describe('POST /org-admin/locations — create', () => {
   const validBody = JSON.stringify({ name: 'Main Office', address: '123 Main St' });
 
   it('returns 201 with the created location', async () => {
-    vi.mocked(createLocation).mockResolvedValue(mockLocation);
+    vi.mocked(createLocation).mockResolvedValue(mockLocation as Awaited<ReturnType<typeof createLocation>>);
     const result = (await handler(
       buildApiGwEvent({ method: 'POST', routeKey: 'POST /org-admin/locations', body: validBody }),
     )) as APIGatewayProxyStructuredResultV2;
@@ -246,9 +248,6 @@ describe('PUT /org-admin/locations/{locationId} — update', () => {
   });
 
   it('returns 400 when body has no recognized fields', async () => {
-    vi.mocked(updateLocation).mockRejectedValue(
-      new ValidationError('At least one field must be provided'),
-    );
     const result = (await handler(
       buildApiGwEvent({
         method: 'PUT',
@@ -258,11 +257,13 @@ describe('PUT /org-admin/locations/{locationId} — update', () => {
       }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'At least one field must be provided' });
+    expect(updateLocation).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(UpdateOrgAdminLocationBody, {}),
+    });
   });
 
   it('returns 400 when name is empty', async () => {
-    vi.mocked(updateLocation).mockRejectedValue(new ValidationError('name cannot be empty'));
     const result = (await handler(
       buildApiGwEvent({
         method: 'PUT',
@@ -272,7 +273,10 @@ describe('PUT /org-admin/locations/{locationId} — update', () => {
       }),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(400);
-    expect(body(result)).toEqual({ error: 'name cannot be empty' });
+    expect(updateLocation).not.toHaveBeenCalled();
+    expect(body(result)).toEqual({
+      error: contractErrorMessage(UpdateOrgAdminLocationBody, { name: '   ' }),
+    });
   });
 
   it('returns 404 when location is not found', async () => {

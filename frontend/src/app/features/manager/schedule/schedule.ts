@@ -12,7 +12,6 @@ import type { ShiftNeeded } from '../../../core/models/manager-shift-needed.mode
 import type {
   DayAvailability,
   DayOfWeek,
-  WeeklySchedule,
 } from '../../../core/models/employee-availability.model';
 import { toDateKey, toMonthKey, buildViewLabel } from '../../../core/utils/schedule.utils';
 import { ScheduleBaseComponent } from '../../../core/utils/schedule-base';
@@ -64,7 +63,7 @@ function toMins(time: string): number {
 
 function effectiveDayAvail(
   date: string,
-  schedule: WeeklySchedule | null | undefined,
+  schedule: Record<string, DayAvailability> | null | undefined,
   overrides: Record<string, DayAvailability> | null | undefined,
 ): DayAvailability | null {
   if (overrides?.[date]) return overrides[date];

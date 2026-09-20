@@ -1,0 +1,21 @@
+meta {
+  name: Create Employee
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/manager/employees
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "<email>",
+    "first_name": "John",
+    "last_name": "Smith",
+    "phone": "555-123-4567",
+    "temp_password": "<password>"
+  }
+}
