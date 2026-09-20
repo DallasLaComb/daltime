@@ -9,7 +9,7 @@ describe('smoke', () => {
     expect(res.status).toBe(200);
   }, 15_000);
 
-  it('can authenticate as robot-dev@daltime.com', async () => {
+  it('robot-dev@daltime.com can authenticate via Cognito', async () => {
     const token = await getCognitoToken('robot-dev@daltime.com');
     expect(token.length).toBeGreaterThan(0);
   }, 15_000);
