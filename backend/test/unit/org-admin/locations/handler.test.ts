@@ -126,7 +126,7 @@ describe('POST /org-admin/locations — create', () => {
   const validBody = JSON.stringify({ name: 'Main Office', address: '123 Main St' });
 
   it('returns 201 with the created location', async () => {
-    vi.mocked(createLocation).mockResolvedValue(mockLocation);
+    vi.mocked(createLocation).mockResolvedValue(mockLocation as Awaited<ReturnType<typeof createLocation>>);
     const result = (await handler(
       buildApiGwEvent({ method: 'POST', routeKey: 'POST /org-admin/locations', body: validBody }),
     )) as APIGatewayProxyStructuredResultV2;

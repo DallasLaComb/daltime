@@ -97,7 +97,12 @@ describe('PUT /employee/availability/overrides — contract validation', () => {
     const overrides = {
       '2026-05-27': { available: true, slots: [{ from: '09:00', to: '17:00' }], max_shifts: 1 },
     };
-    vi.mocked(upsertAvailabilityOverrides).mockResolvedValue({ overrides });
+    vi.mocked(upsertAvailabilityOverrides).mockResolvedValue({
+      employee_id: 'emp-sub-aaa',
+      org_id: 'org-sunset',
+      overrides,
+      updated_at: '2026-02-23T18:04:11.000Z',
+    });
 
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ overrides })),
@@ -108,7 +113,7 @@ describe('PUT /employee/availability/overrides — contract validation', () => {
   });
 
   it('accepts an empty override map — clearing every override is a valid save', async () => {
-    vi.mocked(upsertAvailabilityOverrides).mockResolvedValue({ overrides: {} });
+    vi.mocked(upsertAvailabilityOverrides).mockResolvedValue({ overrides: {} } as Awaited<ReturnType<typeof upsertAvailabilityOverrides>>);
 
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ overrides: {} })),

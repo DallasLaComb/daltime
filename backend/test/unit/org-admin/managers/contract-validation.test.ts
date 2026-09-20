@@ -153,7 +153,7 @@ describe('org-admin managers handler — contract-validated bodies', () => {
   });
 
   it('hands the service the trimmed body on a valid POST', async () => {
-    vi.mocked(createManager).mockResolvedValue({ manager_id: 'mgr-1' });
+    vi.mocked(createManager).mockResolvedValue({ manager_id: 'mgr-1' } as Awaited<ReturnType<typeof createManager>>);
 
     const result = (await handler(
       buildEvent(
@@ -190,7 +190,7 @@ describe('org-admin managers handler — contract-validated bodies', () => {
   });
 
   it('strips employee_count from a PUT so the counter cannot be forged', async () => {
-    vi.mocked(updateManager).mockResolvedValue({ manager_id: 'mgr-1' });
+    vi.mocked(updateManager).mockResolvedValue({ manager_id: 'mgr-1' } as Awaited<ReturnType<typeof updateManager>>);
 
     await handler(
       buildEvent('PUT', JSON.stringify({ first_name: 'Johnny', employee_count: 9999 }), {

@@ -262,10 +262,14 @@ Delete only when this returns zero (or alias every importer in the same PR).
   against `openapi.json` in both directions. Intentional gaps go in `ALLOWED_UNDOCUMENTED` with a
   reason; a stale allowance also fails. Currently only the 5 impersonation `{proxy+}` routes
   (remove with impersonation phase 3).
-- [x] **Backend test type-check (ratchet)** — `backend/tsconfig.test.json` +
-  `npm run typecheck:tests`, in CI. 98 pre-existing fixture errors are recorded in
-  `backend/scripts/test-types-baseline.json`; new errors fail, the baseline may only shrink
-  (`npm run typecheck:tests -- --update` after fixing some). Burn it down opportunistically.
+- [x] **Backend test type-check** — `backend/tsconfig.test.json` + `npm run typecheck:tests`
+  (plain strict `tsc`), in CI. vitest strips types without checking them, so this is the only
+  thing that catches a test fixture drifting from the contract. It started at 98 errors, which
+  were all fixed (a temporary ratchet was used, then removed): fixtures are now typed from the
+  contract (`Shift`, `SwapShiftRecord`, `NotificationResponse`, …), and the few deliberately
+  partial mock returns are asserted to the service's real return type. Two fixtures were
+  genuinely wrong, not just loose (`type: 'evening'` is not a `ShiftType`; a dummy-data
+  fixture used `status: 'ACTIVE'` where Cognito status is required).
 - [x] **Lint in CI + ban on HttpClient outside the client** — `frontend/eslint.config.js`
   restricts importing `HttpClient` (interceptors, `provideHttpClient`, `HttpErrorResponse` stay
   allowed; `api-client.ts` and specs exempt). Lint now runs in CI for both packages (it never did
@@ -385,7 +389,8 @@ When the user says `ok start step N`:
 - [ ] Listed frontend services use `ApiClient` (zero raw `HttpClient` for migrated routes)
 - [ ] Bruno requests added under `bruno/`
 - [ ] Obsolete hand-written types deleted in the same commit (only when §7.7 shows zero importers)
-- [ ] Relevant tests pass
+- [ ] Relevant tests pass **and are updated for the change** — fixtures typed from the contract,
+      `npm run typecheck:tests` (backend) clean, not just green under vitest
 - [ ] Step tracker in §10.1 updated
 - [ ] Work committed to the named branch
 
@@ -470,7 +475,8 @@ phases 1–2 are proven. Do **not** combine phases.
 
 ### 11.4 Definition of done per phase
 
-- [ ] Behaviour change is covered by new/updated backend and frontend tests
+- [ ] Behaviour change is covered by new/updated backend and frontend tests, and existing tests /
+      fixtures are updated to match (backend `npm run typecheck:tests` clean)
 - [ ] `node contracts/scripts/contracts-sync.mjs` is green (backend + frontend typecheck and build)
 - [ ] No raw `HttpClient` reintroduced; `ApiClient` still drives all role calls
 - [ ] `contracts/checklist.md` §11.1 updated with status + short SHA

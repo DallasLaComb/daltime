@@ -8,6 +8,7 @@
  *      + check:routes (every infra/template.yaml route ↔ an openapi.json operation)
  *   2. backend:   sync-contracts   (built package → backend/vendor/contracts)
  *   3. backend:   tsc --noEmit     (catches handlers broken by a shape change)
+ *      + typecheck:tests        (catches test fixtures broken by it — vitest never checks types)
  *   4. frontend:  contracts:types  (openapi.json → core/generated/api.d.ts)
  *   5. frontend:  ng build         (catches components/services broken by it)
  *
@@ -32,6 +33,7 @@ const steps = [
   { label: 'contracts: template routes match openapi.json', dir: 'contracts', cmd: [npm, ['run', 'check:routes']] },
   { label: 'backend: sync vendored contracts', dir: 'backend', cmd: [npm, ['run', 'contracts:build']] },
   { label: 'backend: typecheck (tsc --noEmit)', dir: 'backend', cmd: ['npx', ['tsc', '--noEmit']] },
+  { label: 'backend: typecheck tests (fixtures vs contract types)', dir: 'backend', cmd: [npm, ['run', 'typecheck:tests']] },
   { label: 'frontend: generate api.d.ts', dir: 'frontend', cmd: [npm, ['run', 'contracts:types']] },
   { label: 'frontend: typecheck (ng build)', dir: 'frontend', cmd: ['npx', ['ng', 'build']] },
 ];

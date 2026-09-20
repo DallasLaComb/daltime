@@ -81,7 +81,7 @@ const mockManager = {
   phone: '555-1234',
   org_id: 'org-123',
   org_admin_id: 'orgadmin-sub-123',
-  status: 'FORCE_CHANGE_PASSWORD',
+  status: 'FORCE_CHANGE_PASSWORD' as const,
   employee_count: 0,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',

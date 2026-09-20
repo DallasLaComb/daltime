@@ -193,7 +193,7 @@ describe('org-admin employees handler — contract-validated bodies', () => {
   });
 
   it('hands the service the trimmed body on a valid POST', async () => {
-    vi.mocked(createEmployee).mockResolvedValue({ employee_id: 'emp-1' });
+    vi.mocked(createEmployee).mockResolvedValue({ employee_id: 'emp-1' } as Awaited<ReturnType<typeof createEmployee>>);
 
     const result = (await handler(
       buildEvent(
@@ -230,7 +230,7 @@ describe('org-admin employees handler — contract-validated bodies', () => {
   });
 
   it('lets a PUT clearing the manager assignment through', async () => {
-    vi.mocked(updateEmployee).mockResolvedValue({ employee_id: 'emp-1', manager_id: '' });
+    vi.mocked(updateEmployee).mockResolvedValue({ employee_id: 'emp-1', manager_id: '' } as Awaited<ReturnType<typeof updateEmployee>>);
 
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ manager_id: '' }), { employeeId: 'emp-1' }),
@@ -246,7 +246,7 @@ describe('org-admin employees handler — contract-validated bodies', () => {
   });
 
   it('strips an unknown PUT field so it cannot reach the update expression', async () => {
-    vi.mocked(updateEmployee).mockResolvedValue({ employee_id: 'emp-1' });
+    vi.mocked(updateEmployee).mockResolvedValue({ employee_id: 'emp-1' } as Awaited<ReturnType<typeof updateEmployee>>);
 
     await handler(
       buildEvent('PUT', JSON.stringify({ first_name: 'Janet', org_id: 'other-org' }), {

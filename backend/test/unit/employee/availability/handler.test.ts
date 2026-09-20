@@ -19,6 +19,7 @@ vi.mock('../../../../src/functions/employee/availability/service.js', () => ({
   upsertAvailability: vi.fn(),
 }));
 
+import type { WeeklySchedule } from '@daltime/contracts';
 import { handler } from '../../../../src/functions/employee/availability/handler.js';
 import {
   getAvailability,
@@ -37,8 +38,8 @@ const DAYS = [
 ] as const;
 
 /** A full week the contract accepts — every day present, as the service requires. */
-function fullSchedule(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  const schedule: Record<string, unknown> = {};
+function fullSchedule(overrides: Partial<WeeklySchedule> = {}): WeeklySchedule {
+  const schedule = {} as WeeklySchedule;
   for (const day of DAYS) schedule[day] = { available: false };
   return { ...schedule, ...overrides };
 }
@@ -114,7 +115,7 @@ describe('PUT /employee/availability — contract validation', () => {
     const schedule = fullSchedule({
       monday: { available: true, slots: [{ from: '09:00', to: '17:00' }], max_shifts: 1 },
     });
-    vi.mocked(upsertAvailability).mockResolvedValue({ schedule });
+    vi.mocked(upsertAvailability).mockResolvedValue({ schedule } as Awaited<ReturnType<typeof upsertAvailability>>);
 
     const result = (await handler(
       buildEvent('PUT', JSON.stringify({ schedule })),

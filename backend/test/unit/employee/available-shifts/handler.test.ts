@@ -149,7 +149,7 @@ const mockShifts = [
 
 describe('GET /employee/available-shifts — happy path', () => {
   it('returns 200 with available shift array', async () => {
-    vi.mocked(listAvailableShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listAvailableShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listAvailableShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { date: '2025-06-15' }),

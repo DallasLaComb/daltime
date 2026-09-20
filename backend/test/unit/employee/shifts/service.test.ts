@@ -16,19 +16,24 @@ vi.mock('../../../../src/functions/employee/shifts/db.js', () => ({
   listShiftsByEmployeeWeek: vi.fn(),
 }));
 
+import type { Shift } from '../../../../src/functions/shared/models/manager/shift.model.js';
 import { listMyShifts } from '../../../../src/functions/employee/shifts/service.js';
 import * as db from '../../../../src/functions/employee/shifts/db.js';
 
 const CALLER_LOOKUP = { org_id: 'org-sunset', employee_id: 'emp-123' };
 
-const SHIFT_A = {
+const SHIFT_A: Shift = {
   PK: 'ORG#org-sunset',
   SK: 'SHIFT#shift-1',
   GSI1PK: 'SHIFT',
   GSI1SK: '2025-06-15T09:00:00.000Z',
   shift_id: 'shift-1',
   org_id: 'org-sunset',
+  manager_id: 'mgr-1',
   employee_id: 'emp-123',
+  employee_name: 'Emma Employee',
+  location_id: 'loc-1',
+  location_name: 'Main Floor',
   date: '2025-06-15',
   start_time: '09:00',
   end_time: '17:00',

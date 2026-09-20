@@ -139,7 +139,7 @@ const mockShifts = [
 
 describe('GET /employee/shifts — ?month param', () => {
   it('returns 200 with shift array when month param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { month: '2025-06' }),
@@ -168,7 +168,7 @@ describe('GET /employee/shifts — ?month param', () => {
 
 describe('GET /employee/shifts — ?date param', () => {
   it('returns 200 with shift array when date param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { date: '2025-06-15' }),
@@ -185,7 +185,7 @@ describe('GET /employee/shifts — ?date param', () => {
 
 describe('GET /employee/shifts — ?week param', () => {
   it('returns 200 with shift array when week param is valid', async () => {
-    vi.mocked(listMyShifts).mockResolvedValue(mockShifts);
+    vi.mocked(listMyShifts).mockResolvedValue(mockShifts as Awaited<ReturnType<typeof listMyShifts>>);
 
     const result = (await handler(
       buildEvent('GET', 'Employee', 'sub-emp', { week: '2025-06-09' }),

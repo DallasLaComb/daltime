@@ -239,7 +239,7 @@ describe('PUT /manager/profile — Manager caller', () => {
   it('returns 200 with the updated profile', async () => {
     const sub = nextSub();
     const updated = { first_name: 'Morgana', last_name: 'Manager' };
-    vi.mocked(updateProfile).mockResolvedValue(updated);
+    vi.mocked(updateProfile).mockResolvedValue(updated as Awaited<ReturnType<typeof updateProfile>>);
 
     const result = (await handler(
       buildEvent('PUT', 'Manager', sub, JSON.stringify({ first_name: 'Morgana' })),

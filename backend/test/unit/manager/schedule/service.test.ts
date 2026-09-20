@@ -32,6 +32,8 @@ vi.mock('../../../../src/functions/manager/employees/db.js', () => ({
   listEmployeesByManager: vi.fn(),
 }));
 
+import type { ShiftNeeded } from '../../../../src/functions/shared/models/manager/shift-needed.model.js';
+import type { Employee } from '../../../../src/functions/shared/models/org-admin/employee.model.js';
 import { generateDraftSchedule } from '../../../../src/functions/manager/schedule/service.js';
 import * as db from '../../../../src/functions/manager/schedule/db.js';
 import * as shiftsNeededDb from '../../../../src/functions/manager/shifts-needed/db.js';
@@ -42,7 +44,10 @@ import * as employeesDb from '../../../../src/functions/manager/employees/db.js'
 /** Minimal caller metadata returned by getCallerLookup. */
 const CALLER = { org_id: 'org-1', manager_id: 'mgr-1' };
 
-/** A shift-needed slot requiring one employee. */
+/**
+ * A shift-needed slot requiring one employee. Only the fields the scheduler reads are
+ * populated, so the fixture is asserted (not built) as the full stored record.
+ */
 const SLOT = {
   date: '2026-07-01',
   location_id: 'loc-1',
@@ -50,16 +55,16 @@ const SLOT = {
   start_time: '09:00',
   end_time: '17:00',
   employee_count: 1,
-};
+} as ShiftNeeded;
 
-/** A minimal employee record. */
+/** A minimal employee record (fields the scheduler reads only; see SLOT). */
 const EMPLOYEE = {
   employee_id: 'emp-1',
   first_name: 'Alice',
   last_name: 'Smith',
   manager_id: 'mgr-1',
   org_id: 'org-1',
-};
+} as Employee;
 
 /** Weekly availability that covers the wednesday 2026-07-01 slot (09:00-17:00). */
 const WEEKLY_AVAIL = {
@@ -319,7 +324,7 @@ describe('generateDraftSchedule — mixed outcome: some slots filled, some not',
     const twoPersonSlot = { ...SLOT_POOL[1], employee_count: 2 };
 
     vi.mocked(db.listAllShiftsByManager).mockResolvedValue([]);
-    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([SLOT, twoPersonSlot]);
+    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([SLOT, twoPersonSlot] as ShiftNeeded[]);
     vi.mocked(employeesDb.listEmployeesByManager).mockResolvedValue([EMPLOYEE]);
     // Employee has broad availability covering Wed and Thu
     vi.mocked(db.getEmployeeAvailability).mockResolvedValue({ schedule: WEEKLY_AVAIL_BROAD });
@@ -345,7 +350,7 @@ describe('generateDraftSchedule — mixed outcome: some slots filled, some not',
     const twoPersonSlot = { ...SLOT_POOL[1], employee_count: 2 };
 
     vi.mocked(db.listAllShiftsByManager).mockResolvedValue([]);
-    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([twoPersonSlot]);
+    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([twoPersonSlot] as ShiftNeeded[]);
     vi.mocked(employeesDb.listEmployeesByManager).mockResolvedValue([EMPLOYEE]);
     vi.mocked(db.getEmployeeAvailability).mockResolvedValue({ schedule: WEEKLY_AVAIL_BROAD });
 
@@ -424,7 +429,7 @@ describe('generateDraftSchedule — max_shifts cap produces draft_failed', () =>
     ];
 
     vi.mocked(db.listAllShiftsByManager).mockResolvedValue([]);
-    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue(slots);
+    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue(slots as ShiftNeeded[]);
     vi.mocked(employeesDb.listEmployeesByManager).mockResolvedValue([EMPLOYEE]);
     vi.mocked(db.getEmployeeAvailability).mockResolvedValue({
       schedule: {
@@ -460,7 +465,7 @@ describe('generateDraftSchedule — randomised slot selection', () => {
     const slot = SLOT_POOL[seed % SLOT_POOL.length];
 
     vi.mocked(db.listAllShiftsByManager).mockResolvedValue([]);
-    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([slot]);
+    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([slot] as ShiftNeeded[]);
     vi.mocked(employeesDb.listEmployeesByManager).mockResolvedValue([EMPLOYEE]);
     vi.mocked(db.getEmployeeAvailability).mockResolvedValue({ schedule: WEEKLY_AVAIL_BROAD });
 
@@ -489,7 +494,7 @@ describe('generateDraftSchedule — randomised slot selection', () => {
     const slot = SLOT_POOL[seed % SLOT_POOL.length];
 
     vi.mocked(db.listAllShiftsByManager).mockResolvedValue([]);
-    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([slot]);
+    vi.mocked(shiftsNeededDb.listShifts).mockResolvedValue([slot] as ShiftNeeded[]);
     vi.mocked(employeesDb.listEmployeesByManager).mockResolvedValue([EMPLOYEE]);
     vi.mocked(db.getEmployeeAvailability).mockResolvedValue(null); // no availability
 

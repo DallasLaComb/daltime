@@ -180,9 +180,8 @@ jobs:
         working-directory: backend
 
       # Same for test fixtures. vitest strips types without checking them, so this is the only
-      # thing that notices a fixture drifting from the contract. Ratcheted against
-      # scripts/test-types-baseline.json: new errors fail, the baseline can only shrink.
-      - name: Type-check tests (ratchet)
+      # thing that notices a fixture drifting from the contract.
+      - name: Type-check tests
         run: npm run typecheck:tests
         working-directory: backend
 

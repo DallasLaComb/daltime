@@ -10,7 +10,7 @@ vi.mock('../../../../src/functions/shared/notifications/service.js', () => ({
   markAllAsRead: vi.fn(),
 }));
 
-import { MarkOneNotificationPathParams } from '@daltime/contracts';
+import { MarkOneNotificationPathParams, type NotificationResponse } from '@daltime/contracts';
 import { contractErrorMessage } from '../../helpers/contract-error.js';
 import { handler } from '../../../../src/functions/shared/notifications/handler.js';
 import { NotFoundError } from '../../../../src/functions/shared/errors.js';
@@ -61,7 +61,7 @@ function buildApiGwEvent(
   } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer;
 }
 
-const mockNotification = {
+const mockNotification: NotificationResponse = {
   notification_id: '2025-01-01T00:00:00.000Z#raw-id-1',
   recipient_sub: 'caller-sub-123',
   type: 'INFO',
@@ -134,7 +134,7 @@ describe('GET /{role}/notifications — list', () => {
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: {}, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
     expect(result.statusCode).toBe(200);
     expect(listNotifications).toHaveBeenCalledWith('local-sub-999');
@@ -278,7 +278,7 @@ describe('Role-prefix tampering — confirms no role/group check exists at this 
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: { sub: 'caller-sub-123', 'cognito:groups': 'Employee' }, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);
@@ -301,7 +301,7 @@ describe('Role-prefix tampering — confirms no role/group check exists at this 
           ...buildApiGwEvent().requestContext,
           authorizer: { jwt: { claims: {}, scopes: null } },
         },
-      } as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
+      } as unknown as Partial<APIGatewayProxyEventV2WithJWTAuthorizer>),
     )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);
