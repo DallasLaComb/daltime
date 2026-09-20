@@ -1,14 +1,16 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import type { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import type {
-  WebAdminProfileResponse,
-  UpdateWebAdminProfileBody,
-} from '../../../core/models/web-admin-profile.model';
+import { ApiClient, type ApiSchema } from '../../../core/api/api-client';
 import type { ProfileData, UpdateProfileData } from '@common-daltime';
 import type { IProfileService } from '../../../core/utils/profile-base';
+
+/**
+ * Request/response types come from `contracts/openapi.json` via the generated
+ * `core/generated/api.d.ts` — the same schemas the backend validates against.
+ */
+export type WebAdminProfileResponse = ApiSchema<'WebAdminProfileResponse'>;
+export type UpdateWebAdminProfileBody = ApiSchema<'UpdateWebAdminProfileBody'>;
 
 /**
  * Maps a WebAdminProfileResponse from the backend to the shared ProfileData shape
@@ -27,15 +29,14 @@ function toProfileData(r: WebAdminProfileResponse): ProfileData {
 
 @Injectable({ providedIn: 'root' })
 export class WebAdminProfileService implements IProfileService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.api.baseUrl}/web-admin/profile`;
+  private readonly api = inject(ApiClient);
 
   /**
    * Fetches the authenticated web-admin's profile from the backend and
    * maps it to the ProfileData shape expected by ProfileComponentBase.
    */
   get(): Observable<ProfileData> {
-    return this.http.get<WebAdminProfileResponse>(this.baseUrl).pipe(map(toProfileData));
+    return this.api.get('/web-admin/profile').pipe(map(toProfileData));
   }
 
   /**
@@ -48,8 +49,8 @@ export class WebAdminProfileService implements IProfileService {
       first_name: body.first_name,
       last_name: body.last_name,
     };
-    return this.http
-      .put<WebAdminProfileResponse>(this.baseUrl, requestBody)
+    return this.api
+      .put('/web-admin/profile', requestBody)
       .pipe(map(toProfileData));
   }
 }

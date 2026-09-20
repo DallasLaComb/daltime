@@ -800,6 +800,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/web-admin/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the calling web-admin's profile
+         * @description Backs the web-admin profile screen (frontend/src/app/features/web-admin/profile). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.
+         */
+        get: operations["getWebAdminProfile"];
+        /**
+         * Update the calling web-admin's profile
+         * @description Saves edits made on the web-admin profile screen. Only first_name and last_name are mutable — email and status are owned by Cognito or the deployment that created the web-admin.
+         */
+        put: operations["updateWebAdminProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1216,6 +1240,11 @@ export interface components {
         /** @description The location to assign to the manager/employee. */
         AssignUserLocationBody: {
             location_id: string;
+        };
+        /** @description Partial update of the calling web-admin’s name. */
+        UpdateWebAdminProfileBody: {
+            first_name?: string;
+            last_name?: string;
         };
         /** @description The calling employee's date-specific availability overrides. Empty object when none exist yet. */
         EmployeeAvailabilityOverridesResponse: {
@@ -1833,6 +1862,32 @@ export interface components {
          * @enum {string}
          */
         UserLocationType: "MANAGER" | "EMPLOYEE";
+        /** @description The calling web-admin's own profile, enriched with their live Cognito status. */
+        WebAdminProfileResponse: {
+            /** @description WADMIN#<uuid> — stable audit identifier. */
+            web_admin_id: string;
+            /** @description Cognito sub; mirrors the PK suffix. */
+            sub: string;
+            /** Format: email */
+            email: string;
+            first_name: string;
+            last_name: string;
+            /** @constant */
+            entity_type: "WEB_ADMIN";
+            status: components["schemas"]["UserStatus"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description Absent on records created before updated_at was tracked.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at?: string;
+        };
         /** @description Confirms the API Gateway route and Lambda runtime are reachable. */
         HealthResponse: {
             /** @constant */
@@ -5043,6 +5098,113 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getWebAdminProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calling web-admin's profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminProfileResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateWebAdminProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWebAdminProfileBody"];
+            };
+        };
+        responses: {
+            /** @description The updated profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAdminProfileResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Caller lacks the required role, or their organization could not be resolved. */
             403: {

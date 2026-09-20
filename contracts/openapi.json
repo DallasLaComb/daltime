@@ -5302,6 +5302,157 @@
         }
       }
     },
+    "/web-admin/profile": {
+      "get": {
+        "operationId": "getWebAdminProfile",
+        "summary": "Get the calling web-admin's profile",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Backs the web-admin profile screen (frontend/src/app/features/web-admin/profile). Resolves the caller from their JWT sub alone, so the client never supplies an identifier.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/profile/handler.ts",
+          "backend/src/functions/web-admin/profile/service.ts",
+          "backend/src/functions/web-admin/profile/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Fetches the web-admin record; status is then enriched from Cognito."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling web-admin's profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminProfileResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateWebAdminProfile",
+        "summary": "Update the calling web-admin's profile",
+        "tags": [
+          "web-admin"
+        ],
+        "description": "Saves edits made on the web-admin profile screen. Only first_name and last_name are mutable — email and status are owned by Cognito or the deployment that created the web-admin.",
+        "x-implementation-path": [
+          "backend/src/functions/web-admin/profile/handler.ts",
+          "backend/src/functions/web-admin/profile/service.ts",
+          "backend/src/functions/web-admin/profile/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Fetches the current web-admin record (fail-closed gate already ran)."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Sets the supplied name fields plus updated_at; ALL_NEW becomes the response."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWebAdminProfileBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAdminProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",
@@ -6584,6 +6735,22 @@
           "location_id"
         ],
         "description": "The location to assign to the manager/employee."
+      },
+      "UpdateWebAdminProfileBody": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "description": "Partial update of the calling web-admin’s name."
       },
       "EmployeeAvailabilityOverridesResponse": {
         "type": "object",
@@ -7996,6 +8163,63 @@
           "EMPLOYEE"
         ],
         "description": "Kind of user a location is assigned to."
+      },
+      "WebAdminProfileResponse": {
+        "type": "object",
+        "properties": {
+          "web_admin_id": {
+            "type": "string",
+            "description": "WADMIN#<uuid> — stable audit identifier."
+          },
+          "sub": {
+            "type": "string",
+            "description": "Cognito sub; mirrors the PK suffix."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string",
+            "const": "WEB_ADMIN"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "description": "Absent on records created before updated_at was tracked.",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "web_admin_id",
+          "sub",
+          "email",
+          "first_name",
+          "last_name",
+          "entity_type",
+          "status",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "The calling web-admin's own profile, enriched with their live Cognito status."
       },
       "HealthResponse": {
         "type": "object",

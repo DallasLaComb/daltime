@@ -6,4 +6,4 @@
  * Owned by the web-admin slice work — the root `src/index.ts` re-exports this file, so
  * nothing outside this directory needs editing to add a slice.
  */
-export {};
+export * from './profile.js';
