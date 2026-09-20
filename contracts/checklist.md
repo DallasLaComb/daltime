@@ -291,22 +291,10 @@ Delete only when this returns zero (or alias every importer in the same PR).
   one route table so impersonation cannot drift from the real routes.
 - **Decision pending — standardize `ErrorResponse`/`errorResponses` on every op** during Wave 3
   (infra exists in `contracts/src/schemas/common.ts`; adopt as you create each domain).
-- **Impersonation redesign — researched 2026-09-20, phase 1 shipped.** Industry consensus
-  (Curity/OAuth RFC 8693, Ory middleware, Pigment production writeup): keep both identities
-  (actor + subject), enforce read-only, time-bound the session, and centralize in middleware.
-  Phase 1 (shipped) closed the two correctness gaps without changing the transport:
-  `synthesize-event.ts` now carries the acting WebAdmin as flattened `act_sub` /
-  `act_web_admin_id` claims, and `handler.ts` rejects any non-GET with `403`. Remaining phases
-  (not started; security-sensitive, touch auth on every role Lambda):
-  1. Move from URL-rewriting + `{proxy+}` + `route-registry.ts` to an `X-Impersonate-User`
-     request header resolved centrally in `shared/auth.ts` — this restores API Gateway
-     per-route auth/WAF/metrics and puts impersonated calls back on typed, documented paths.
-     Then delete `route-registry.ts`, the `{proxy+}` template events, and `synthesize-event.ts`.
-  2. Add a reusable `ImpersonationHeader` schema in `contracts/src/schemas/common.ts` and apply
-     it to role operations via a `withImpersonation(op)` helper, so the header is part of the
-     contract and `ApiClient` sees the truth.
-  3. North star: app-issued, short-lived impersonation token (Pigment/RFC 8693) — Cognito cannot
-     mint a JWT with another user's `sub`, so this needs a custom authorizer. Not attempted.
+- **Impersonation redesign — researched 2026-09-20, phase 1 shipped.** Full phased plan and
+  tracker live in **§11**. Industry consensus (Curity/OAuth RFC 8693, Ory middleware, Pigment
+  production writeup): keep both identities (actor + subject), enforce read-only, time-bound
+  the session, and centralize in middleware.
 
 ## 10. Agent execution protocol — stepped mode
 
@@ -371,3 +359,84 @@ When the user says `ok start step N`:
 - Do not hand-edit derived files (`openapi.json`, `backend/vendor/contracts`, `frontend/src/app/core/generated/api.d.ts`).
 - For the `{proxy+}` routes in **step 17**, pause and ask the user whether to enumerate subpaths explicitly or keep the proxy undocumented; do not silently decide.
 - If a step proves too large (e.g., step 10), the agent may pause and ask to split it before continuing.
+
+---
+
+## 11. Impersonation redesign — phased plan
+
+**Background.** The contract migration (steps 1–17) is done, but it surfaced a structural
+problem: impersonation is the one feature that cannot be typed. `impersonation.interceptor.ts`
+rewrites `/manager/...` into `/web-admin/impersonate/{userId}/{proxy+}`, and
+`route-registry.ts` re-dispatches to the real role handler. That means the wire path differs
+from every documented path, the `{proxy+}` catch-all is invisible to API Gateway per-route
+auth/WAF/metrics and to `openapi.json`, and the registry duplicates routing knowledge that
+already lives in `infra/template.yaml` (drift risk).
+
+**Research conclusion (2026-09-20).** Three independent sources agree on the shape of a safe,
+maintainable impersonation feature:
+
+| Source | Core idea |
+|---|---|
+| Curity / OAuth **RFC 8693** | Prefer *delegation* over *impersonation*: keep the authenticated actor as `sub` and put the target in `act_as` / `act`. Always carry actor+target in the token for audit. |
+| **Ory** middleware guide | Authenticate the real caller, detect an impersonation instruction (header/param), authorize it, substitute the effective subject, and **forward the original subject in a header** (`X-Original-Subject-ID`). App code stays unaware. |
+| **Pigment** (production writeup) | Separate, **time-bounded** impersonation token; dual identity in the token; **read-only enforced in middleware**; a build-time linter forces every endpoint to declare read-only behaviour. |
+
+**Target architecture.** Adopt the Ory header model: the frontend attaches
+`X-Impersonate-User: <userId>` to normal role requests (no path rewriting); `shared/auth.ts`
+becomes the single chokepoint that verifies the caller is an ACTIVE WebAdmin, resolves the
+target's real role, substitutes the effective identity, enforces read-only, and exposes the
+actor. Every impersonated call then lands on a **real, documented, typed route**.
+
+**Guiding constraint.** Impersonation touches authentication on every role Lambda, so each
+phase ships independently, behind its own branch and tests. Phase 3 is only attempted once
+phases 1–2 are proven. Do **not** combine phases.
+
+### 11.1 Phase tracker
+
+| Phase | Goal | Status | Branch | Commit | Notes |
+|---|---|---|---|---|---|
+| 1 | **Actor + read-only on the existing proxy** | ✅ done | `impersonation/phase1-actor-readonly` | `717e693` | `synthesize-event.ts` carries actor as flattened RFC 8693 `act_sub` / `act_web_admin_id` claims (flattened because API Gateway coerces every JWT claim to a primitive); `handler.ts` rejects any non-GET with `403 "Impersonation sessions are read-only"` before resolving the target. Tests added; blueprint updated. No transport change — this is the safety floor. |
+| 2 | **Contract the impersonation header (no behaviour change)** | ⬜ pending | `contracts/impersonation-header` | — | Add reusable `ImpersonationHeader` schema in `contracts/src/schemas/common.ts`; add a `withImpersonation(op)` helper in the registry so role ops declare the optional header once. Wire the frontend interceptor to *also* send the header (still rewriting for now) so both transports run in parallel. Regenerate; sync green. This phase is purely additive and low-risk. |
+| 3 | **Cut over to header dispatch; delete the proxy** | ⬜ pending | `impersonation/header-dispatch` | — | Frontend interceptor stops rewriting paths and only sets the header. `shared/auth.ts` gains an async `resolveCaller(event)` that all role handlers/factories use in place of `getCallerSub`: it authenticates the WebAdmin, resolves the target's role, enforces read-only, and returns `{ effectiveSub, effectiveGroups, actor }`. Delete `route-registry.ts`, `synthesize-event.ts`, and the `{proxy+}` template events; keep `GET /web-admin/impersonate/users` + `/context` as the picker. **Security-sensitive:** requires a full auth-path test pass and a staged rollback plan. |
+| 4 | **Time-bound sessions + audit log (north star)** | ⬜ pending | `impersonation/session-token` | — | App-issued, short-lived impersonation token (Pigment / RFC 8693). Cognito cannot mint a JWT with another user's `sub`, so this needs a custom Lambda authorizer or an app-signed token. Adds expiry + session audit records. Largest phase; only after 1–3 are stable. |
+
+### 11.2 Phase 2 detail (smallest next step)
+
+1. In `contracts/src/schemas/common.ts`:
+   ```ts
+   export const ImpersonationHeader = z.object({
+     'x-impersonate-user': z.string().optional().meta({
+       description:
+         'WebAdmin-only. Act as this user for this request; honored only for an ACTIVE WebAdmin, ' +
+         'read-only (non-GET rejected). The actor is recorded server-side.',
+     }),
+   }).meta({ id: 'ImpersonationHeader' });
+   ```
+2. In `contracts/src/registry.ts`, add a `withImpersonation(operation)` helper (or a
+   `registerRoleOperation` wrapper) that merges `requestParams: { header: ImpersonationHeader }`
+   so it is declared once, not copy-pasted across ~60 ops.
+3. Apply to employee/manager/org-admin role operations (skip web-admin and `shared/health`).
+4. Frontend: extend `impersonation.interceptor.ts` to clone the request with the header set,
+   while leaving the existing URL rewrite in place (parallel run).
+5. Run `node contracts/scripts/contracts-sync.mjs`; it must be green. Verify generated
+   `api.d.ts` includes the header parameter.
+
+### 11.3 Phase 3 detail (cutover — do only when ready)
+
+- Introduce `resolveCaller(event)` in `backend/src/functions/shared/auth.ts`; migrate
+  `getCallerSub` call sites in handlers and `handler-factories.ts` to it.
+- The read-only and actor logic currently in `web-admin/impersonate/*` moves into that helper;
+  `handler.ts` shrinks to the picker routes (`/users`, `/context`).
+- Remove from `infra/template.yaml`: `ProxyAllGet/Post/Put/Patch/Delete` and `OptionsProxyAll`.
+- Delete `route-registry.ts`, `synthesize-event.ts`, and their tests; add tests for
+  `resolveCaller` (actor resolution, read-only rejection, role derivation without URL prefix).
+- **Rollback:** keep the deletion in the same commit so reverting restores the proxy atomically.
+
+### 11.4 Definition of done per phase
+
+- [ ] Behaviour change is covered by new/updated backend and frontend tests
+- [ ] `node contracts/scripts/contracts-sync.mjs` is green (backend + frontend typecheck and build)
+- [ ] No raw `HttpClient` reintroduced; `ApiClient` still drives all role calls
+- [ ] `contracts/checklist.md` §11.1 updated with status + short SHA
+- [ ] Work committed to the named branch; no push/PR unless asked
+- [ ] For phase 3: rollback path exercised or clearly documented
