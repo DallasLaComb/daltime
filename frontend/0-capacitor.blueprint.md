@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–3 complete; Phase 4 (iOS environments) is next..**
+Status: **Approved for phased implementation — Phases 1–4 complete; Phase 5 (persistent token storage) is next.**
 
 ---
 
@@ -270,7 +270,7 @@ reaches an older native shell it can't run on.
 | 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ✅ (Android origin only; iOS via CapacitorHttp — see notes) |
 | 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
 | 3 | Environment support: Android flavors, config switching, build scripts | No | ✅ |
-| 4 | iOS environment targets/schemes | Yes — verify in Xcode | ⬜ |
+| 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
 | 5 | Persistent token storage (auth refactor) | No (tests are automated) | ⬜ |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
 | 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
@@ -537,7 +537,44 @@ shows the right ID per scheme (if Xcode is installed; otherwise report not verif
 **Human gate:** open in Xcode 26+, run each scheme on a simulator; confirm they install side by
 side. (Signing/provisioning is not needed until phase 10.)
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** (2026-09-20, branch `feature/capacitor`; staged, not committed)
+
+- **Mechanism:** one target, three schemes, extra **build configurations** (no duplicated targets, so `cap sync`,
+  SPM and the `CapApp-SPM` package are untouched). `project.pbxproj` gained 8 `XCBuildConfiguration` blocks
+  (`Debug Dev`, `Release Dev`, `Debug QA`, `Release QA` at project *and* target level) and the two
+  `XCConfigurationList`s reference them. Existing `Debug`/`Release` = prod. Copies were made programmatically from the
+  existing blocks, so everything except the values below is identical to prod.
+- **Per-env values (target-level build settings):** `PRODUCT_BUNDLE_IDENTIFIER` (`com.daltime.app.dev` / `.qa` /
+  `com.daltime.app`) and a new `APP_DISPLAY_NAME` (`DalTime Dev` / `DalTime QA` / `DalTime`). `App/Info.plist`
+  `CFBundleDisplayName` changed from the literal `DalTime` to `$(APP_DISPLAY_NAME)`.
+- **Schemes** (shared, `App.xcodeproj/xcshareddata/xcschemes/`): `App Dev` → Debug Dev / Release Dev, `App QA` →
+  Debug QA / Release QA, `App` → Debug / Release (run/test/analyze use Debug*, profile/archive use Release*).
+  Note: the shared scheme dir did not exist before, so `App` is now an explicit shared scheme too.
+- **Mapping:**
+
+  | Env | Scheme | Bundle ID | Display name |
+  | --- | --- | --- | --- |
+  | dev | `App Dev` | `com.daltime.app.dev` | DalTime Dev |
+  | qa | `App QA` | `com.daltime.app.qa` | DalTime QA |
+  | prod (`main`) | `App` | `com.daltime.app` | DalTime |
+
+- `mobile:build:<env>` already ran `cap sync ios` (pulled forward in phase 3); `mobile-build.mjs` now also prints which
+  scheme/bundle ID to pick in Xcode. Xcode does **not** pick the scheme automatically — select it in the scheme menu
+  after `mobile:ios:<env>` opens the project.
+- **Pre-existing uncommitted change kept:** `DEVELOPMENT_TEAM = N6MGLJF4HC` (user's Xcode signing, from the first device
+  run) was in the working tree; the new configurations carry it too so all three schemes sign for a device.
+- **Verification (all real runs):** `xcodebuild -list` shows configs Debug/Release/Debug Dev/Release Dev/Debug QA/
+  Release QA and schemes `App`, `App Dev`, `App QA`, `CapApp-SPM`. `-showBuildSettings` per scheme gives the right
+  `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME`, `CONFIGURATION`. Simulator builds of all three **BUILD SUCCEEDED**;
+  built `Info.plist`s show the right ID + display name; all three installed **side by side** on the iPhone 18 Pro
+  simulator (`simctl listapps`). `npm run test:scripts` 8/8 pass. (Web build/lint/test not re-run — no `src` changes.)
+- **Caveat (same as Android):** every scheme packages whatever bundle the last `cap sync` copied into
+  `ios/App/App/public`. Run `npm run mobile:ios:<env>` for the environment you are about to run.
+- **Not done / for later:** signing/provisioning per bundle ID (phase 10); app icon differences per env (optional polish,
+  phase 6). App IDs `.dev`/`.qa` must be registered in the Apple Developer portal before a device run of those
+  schemes — Xcode's automatic signing usually creates them on first run.
+- **Human gate (optional):** `npm run mobile:ios:dev` → in Xcode pick `App Dev` and run on a device/simulator; repeat for
+  `App QA`; confirm both icons appear next to each other on the home screen.
 
 ---
 
@@ -762,3 +799,4 @@ plan, and why.)_
 - Phase 2: lint-staged is not configured anywhere in the repo (CLAUDE.md assumes it). Decide whether to add it or update CLAUDE.md; does not block the mobile work.
 - Phase 2: `cap run ios` cannot open the simulator on Xcode 27 (Simulator.app path); use `xcrun simctl` or Xcode. Revisit if a newer Capacitor fixes it.
 - Phase 2: the built app has placeholder API/Cognito values until phase 3, so a simulator run cannot log in yet.
+- Phase 4: implemented with extra build configurations + shared schemes (not duplicated targets); `Info.plist` display name now comes from `APP_DISPLAY_NAME`. Physical-device runs of `.dev`/`.qa` need those App IDs registered (Xcode automatic signing normally does this).

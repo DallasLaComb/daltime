@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { ENVIRONMENTS, frontendDir } from './mobile-env.mjs';
 
 const PLATFORMS = ['ios', 'android'];
+const IOS_BUNDLE_IDS = { dev: 'com.daltime.app.dev', qa: 'com.daltime.app.qa', main: 'com.daltime.app' };
 const args = process.argv.slice(2);
 const open = args.includes('--open');
 const [env, platformArg = 'all'] = args.filter((a) => !a.startsWith('--'));
@@ -51,6 +52,10 @@ for (const platform of platforms) {
 if (open) step(`Open ${platforms[0]}`, 'npx', ['cap', 'open', platforms[0]], { NODE_ENV: env });
 
 console.log(`\n✓ ${env} ready for: ${platforms.join(', ')}`);
+if (platforms.includes('ios')) {
+  const scheme = { dev: 'App Dev', qa: 'App QA', main: 'App' }[env];
+  console.log(`  iOS: select the "${scheme}" scheme in Xcode (bundle ID ${IOS_BUNDLE_IDS[env]}).`);
+}
 if (platforms.includes('android')) {
   const flavor = env === 'main' ? 'prod' : env;
   console.log(`  Android: select build variant "${flavor}Debug" in Android Studio (or ./gradlew assemble${flavor[0].toUpperCase()}${flavor.slice(1)}Debug).`);
