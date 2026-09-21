@@ -9,11 +9,11 @@
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 class="text-2xl font-bold text-gray-900">Schedule</h2>
-          <p class="text-sm text-gray-500">Org-wide shift overview</p>
+          <p class="hidden text-sm text-gray-500 sm:block">Org-wide shift overview</p>
         </div>
         <div class="flex flex-col gap-2 sm:items-end">
           <fieldset
-            class="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 self-start sm:self-auto"
+            class="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 sm:self-auto"
           >
             <legend class="sr-only">Calendar view</legend>
             <app-schedule-view-toggle
@@ -22,7 +22,7 @@
               (viewModeChange)="setViewMode($any($event))"
             />
           </fieldset>
-          <div class="flex items-center gap-2 self-start sm:self-auto">
+          <div class="flex items-center gap-2 sm:self-auto">
             <app-button
               variant="secondary"
               size="sm"
@@ -65,227 +65,240 @@
       (statusChipsChange)="setStatusFilter($event)"
     />
 
-    <!-- ═══ MONTHLY VIEW ══════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'month') {
-      <div class="overflow-x-auto rounded-xl">
-        <div
-          class="min-w-[490px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-        >
-          <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-            @for (day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track day) {
-              <div
-                class="py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
-              >
-                {{ day }}
-              </div>
-            }
-          </div>
-          <div class="divide-y divide-gray-200">
-            @for (week of calendarWeeks(); track $index) {
-              <div class="grid grid-cols-7 divide-x divide-gray-200">
-                @for (day of week; track $index) {
-                  <div
-                    [class]="
-                      day === null
-                        ? 'min-h-[110px] bg-gray-50 p-1.5'
-                        : isTodayDay(day)
-                          ? 'min-h-[110px] bg-blue-50/40 p-1.5'
-                          : 'min-h-[110px] bg-white p-1.5'
-                    "
-                  >
-                    @if (day !== null) {
-                      <div class="mb-1 flex justify-end">
-                        @if (isTodayDay(day)) {
-                          <span
-                            class="flex h-6 w-6 items-center justify-center rounded-full bg-dt-primary text-xs font-bold text-white"
-                            >{{ day }}</span
-                          >
-                        } @else {
-                          <span class="text-xs font-semibold text-gray-400">{{ day }}</span>
-                        }
-                      </div>
-                      <div class="space-y-0.5">
-                        @for (shift of shiftsForDay(day); track shift.shift_id) {
-                          <div
-                            [class]="
-                              'rounded px-1.5 py-0.5 text-[10px] leading-tight ' +
-                              shiftStyles[shift.type]
-                            "
-                            [title]="
-                              employeeName(shift.employee_id) +
-                              ' · ' +
-                              shift.start_time +
-                              ' – ' +
-                              shift.end_time
-                            "
-                          >
-                            <span class="block font-semibold">{{
-                              shortName(shift.employee_id)
-                            }}</span>
-                            <span class="block opacity-70"
-                              >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }} ·
-                              {{ shortLocation(shift.location_id) }}</span
-                            >
-                          </div>
-                        }
-                        @if (shiftsForDay(day).length === 0 && hasActiveFilters()) {
-                          <p class="text-[10px] italic text-gray-300">No shifts</p>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- ═══ WEEKLY VIEW ════════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'week') {
-      <div class="overflow-x-auto rounded-xl">
-        <div
-          class="min-w-[560px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-        >
-          <div
-            class="grid grid-cols-7 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50"
-          >
-            @for (date of weekDays(); track date.getTime()) {
-              <div class="flex flex-col items-center py-3">
-                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{
-                  dayAbbrev(date)
-                }}</span>
-                @if (isToday(date)) {
-                  <span
-                    class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-dt-primary text-sm font-bold text-white"
-                    >{{ date.getDate() }}</span
-                  >
-                } @else {
-                  <span class="mt-1 text-sm font-semibold text-gray-700">{{ date.getDate() }}</span>
-                }
-              </div>
-            }
-          </div>
-          <div class="grid grid-cols-7 divide-x divide-gray-200">
-            @for (date of weekDays(); track date.getTime()) {
-              <div
-                [class]="
-                  isToday(date) ? 'min-h-[320px] bg-blue-50/30 p-2' : 'min-h-[320px] bg-white p-2'
-                "
-              >
-                <div class="space-y-1">
-                  @for (shift of shiftsForDate(date); track shift.shift_id) {
-                    <div
-                      [class]="
-                        'rounded px-1.5 py-1 text-[11px] leading-tight ' + shiftStyles[shift.type]
-                      "
-                      [title]="
-                        employeeName(shift.employee_id) +
-                        ' · ' +
-                        shift.start_time +
-                        ' – ' +
-                        shift.end_time
-                      "
-                    >
-                      <span class="block font-semibold">{{ shortName(shift.employee_id) }}</span>
-                      <span class="block opacity-70"
-                        >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }}</span
-                      >
-                      <span class="block opacity-60">{{ shortLocation(shift.location_id) }}</span>
-                    </div>
-                  }
-                  @if (shiftsForDate(date).length === 0) {
-                    <p class="mt-2 text-center text-[11px] italic text-gray-300">
-                      {{ hasActiveFilters() ? 'No matches' : 'No shifts' }}
-                    </p>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- ═══ DAILY VIEW ═════════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'day') {
-      <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div
-          [class]="
-            isToday(currentDate())
-              ? 'border-b border-gray-200 bg-blue-50/40 px-5 py-4'
-              : 'border-b border-gray-200 bg-gray-50 px-5 py-4'
-          "
-        >
-          <div class="flex items-center gap-3">
-            @if (isToday(currentDate())) {
-              <span
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-dt-primary text-lg font-bold text-white shadow"
-                >{{ currentDate().getDate() }}</span
-              >
-            } @else {
-              <span
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200"
-                >{{ currentDate().getDate() }}</span
-              >
-            }
+    <!-- Swiping left/right moves to the next/previous period on phones. -->
+    <div appSwipeNav data-testid="swipe-area" (swipedPrev)="swipePrev()" (swipedNext)="swipeNext()">
+      <!-- ═══ MONTHLY VIEW ══════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'month' && viewport.isMobile()) {
+        <!-- Phone: compact grid for orientation, the tapped day's shifts listed beneath (like Google Calendar). -->
+        <app-mobile-month-grid
+          [month]="currentDate()"
+          [selected]="agendaDate()"
+          [indicators]="dayIndicators()"
+          (dateSelected)="selectDate($event)"
+        />
+        <section class="mt-4" aria-label="Shifts for the selected day" data-testid="mobile-agenda">
+          <div class="mb-2 flex items-center justify-between gap-2 px-1">
             <div>
-              <p class="text-base font-semibold text-gray-900">
-                {{
-                  currentDate().toLocaleString('default', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                }}
-              </p>
-              <p class="text-xs text-gray-500">
-                {{ currentDayShifts().length }}
-                {{ currentDayShifts().length === 1 ? 'shift' : 'shifts' }}
-                @if (hasActiveFilters()) {
-                  <span> (filtered)</span>
-                }
+              <h3 class="m-0 text-sm font-semibold text-gray-800" data-testid="mobile-agenda-label">
+                {{ agendaLabel() }}
+              </h3>
+              <p class="m-0 text-xs text-gray-500">
+                {{ agendaShifts().length }} {{ agendaShifts().length === 1 ? 'shift' : 'shifts' }}
               </p>
             </div>
           </div>
-        </div>
-        <div class="divide-y divide-gray-100">
-          @for (shift of currentDayShifts(); track shift.shift_id) {
-            <div
-              [class]="
-                'flex items-start gap-4 border-l-4 px-5 py-4 ' + shiftBorderStyles[shift.type]
-              "
-            >
-              <div class="w-24 shrink-0 text-center">
-                <p class="text-sm font-semibold text-gray-800">{{ shift.start_time }}</p>
-                <p class="text-xs text-gray-400">to</p>
-                <p class="text-sm font-semibold text-gray-800">{{ shift.end_time }}</p>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="font-semibold text-gray-900">{{ employeeName(shift.employee_id) }}</p>
-                <p class="mt-0.5 text-sm text-gray-500">{{ locationName(shift.location_id) }}</p>
-              </div>
-              <span
-                [class]="
-                  'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
-                  shiftBadgeStyles[shift.type]
-                "
-                >{{ shift.type }}</span
-              >
-            </div>
-          }
-          @if (currentDayShifts().length === 0) {
-            <div class="flex flex-col items-center gap-2 py-12 text-center">
-              <p class="text-sm font-medium text-gray-500">No shifts scheduled</p>
-              @if (hasActiveFilters()) {
-                <p class="text-xs text-gray-400">Try clearing your filters</p>
+          <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <ng-container
+              [ngTemplateOutlet]="dayBody"
+              [ngTemplateOutletContext]="{ shifts: agendaShifts(), compact: false }"
+            />
+          </div>
+        </section>
+      } @else if (viewMode() === 'month') {
+        <div class="overflow-x-auto rounded-xl">
+          <div
+            class="min-w-[490px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+          >
+            <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+              @for (day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track day) {
+                <div
+                  class="py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
+                >
+                  {{ day }}
+                </div>
               }
             </div>
-          }
+            <div class="divide-y divide-gray-200">
+              @for (week of calendarWeeks(); track $index) {
+                <div class="grid grid-cols-7 divide-x divide-gray-200">
+                  @for (day of week; track $index) {
+                    <div
+                      [class]="
+                        day === null
+                          ? 'min-h-[110px] bg-gray-50 p-1.5'
+                          : isTodayDay(day)
+                            ? 'min-h-[110px] bg-blue-50/40 p-1.5'
+                            : 'min-h-[110px] bg-white p-1.5'
+                      "
+                    >
+                      @if (day !== null) {
+                        <div class="mb-1 flex justify-end">
+                          @if (isTodayDay(day)) {
+                            <span
+                              class="flex h-6 w-6 items-center justify-center rounded-full bg-dt-primary text-xs font-bold text-white"
+                              >{{ day }}</span
+                            >
+                          } @else {
+                            <span class="text-xs font-semibold text-gray-400">{{ day }}</span>
+                          }
+                        </div>
+                        <div class="space-y-0.5">
+                          @for (shift of shiftsForDay(day); track shift.shift_id) {
+                            <div
+                              [class]="
+                                'rounded px-1.5 py-0.5 text-[10px] leading-tight ' +
+                                shiftStyles[shift.type]
+                              "
+                              [title]="
+                                employeeName(shift.employee_id) +
+                                ' · ' +
+                                shift.start_time +
+                                ' – ' +
+                                shift.end_time
+                              "
+                            >
+                              <span class="block font-semibold">{{
+                                shortName(shift.employee_id)
+                              }}</span>
+                              <span class="block opacity-70"
+                                >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }} ·
+                                {{ shortLocation(shift.location_id) }}</span
+                              >
+                            </div>
+                          }
+                          @if (shiftsForDay(day).length === 0 && hasActiveFilters()) {
+                            <p class="text-[10px] italic text-gray-300">No shifts</p>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
         </div>
-      </div>
-    }
+      }
+
+      <!-- ═══ WEEKLY VIEW ════════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'week' && viewport.isMobile()) {
+        <!-- Phone: vertical list of the 7 days — nothing scrolls sideways. -->
+        <app-mobile-day-list [days]="weekDayGroups()">
+          <ng-template let-day>
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <ng-container
+                [ngTemplateOutlet]="dayBody"
+                [ngTemplateOutletContext]="{ shifts: shiftsForKey(day.dateKey), compact: true }"
+              />
+            </div>
+          </ng-template>
+        </app-mobile-day-list>
+      } @else if (viewMode() === 'week') {
+        <div class="overflow-x-auto rounded-xl">
+          <div
+            class="min-w-[560px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+          >
+            <div
+              class="grid grid-cols-7 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50"
+            >
+              @for (date of weekDays(); track date.getTime()) {
+                <div class="flex flex-col items-center py-3">
+                  <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{
+                    dayAbbrev(date)
+                  }}</span>
+                  @if (isToday(date)) {
+                    <span
+                      class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-dt-primary text-sm font-bold text-white"
+                      >{{ date.getDate() }}</span
+                    >
+                  } @else {
+                    <span class="mt-1 text-sm font-semibold text-gray-700">{{
+                      date.getDate()
+                    }}</span>
+                  }
+                </div>
+              }
+            </div>
+            <div class="grid grid-cols-7 divide-x divide-gray-200">
+              @for (date of weekDays(); track date.getTime()) {
+                <div
+                  [class]="
+                    isToday(date) ? 'min-h-[320px] bg-blue-50/30 p-2' : 'min-h-[320px] bg-white p-2'
+                  "
+                >
+                  <div class="space-y-1">
+                    @for (shift of shiftsForDate(date); track shift.shift_id) {
+                      <div
+                        [class]="
+                          'rounded px-1.5 py-1 text-[11px] leading-tight ' + shiftStyles[shift.type]
+                        "
+                        [title]="
+                          employeeName(shift.employee_id) +
+                          ' · ' +
+                          shift.start_time +
+                          ' – ' +
+                          shift.end_time
+                        "
+                      >
+                        <span class="block font-semibold">{{ shortName(shift.employee_id) }}</span>
+                        <span class="block opacity-70"
+                          >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }}</span
+                        >
+                        <span class="block opacity-60">{{ shortLocation(shift.location_id) }}</span>
+                      </div>
+                    }
+                    @if (shiftsForDate(date).length === 0) {
+                      <p class="mt-2 text-center text-[11px] italic text-gray-300">
+                        {{ hasActiveFilters() ? 'No matches' : 'No shifts' }}
+                      </p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ═══ DAILY VIEW ═════════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'day') {
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div
+            [class]="
+              isToday(currentDate())
+                ? 'border-b border-gray-200 bg-blue-50/40 px-5 py-4'
+                : 'border-b border-gray-200 bg-gray-50 px-5 py-4'
+            "
+          >
+            <div class="flex items-center gap-3">
+              @if (isToday(currentDate())) {
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-full bg-dt-primary text-lg font-bold text-white shadow"
+                  >{{ currentDate().getDate() }}</span
+                >
+              } @else {
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200"
+                  >{{ currentDate().getDate() }}</span
+                >
+              }
+              <div>
+                <p class="text-base font-semibold text-gray-900">
+                  {{
+                    currentDate().toLocaleString('default', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  {{ currentDayShifts().length }}
+                  {{ currentDayShifts().length === 1 ? 'shift' : 'shifts' }}
+                  @if (hasActiveFilters()) {
+                    <span> (filtered)</span>
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          <ng-container
+            [ngTemplateOutlet]="dayBody"
+            [ngTemplateOutletContext]="{ shifts: currentDayShifts(), compact: false }"
+          />
+        </div>
+      }
+    </div>
 
     @if (allShifts().length === 0 && !hasActiveFilters()) {
       <app-empty-state
@@ -305,4 +318,49 @@
       <span class="text-xs italic text-gray-400">Export buttons above export the current view</span>
     </div>
   }
+
+  <!-- One day's shifts (+ unfilled slots on the manager page). Shared by the day view and the phone agenda / week list. -->
+  <ng-template #dayBody let-shifts="shifts" let-compact="compact">
+    <div class="divide-y divide-gray-100">
+      @for (shift of shifts; track shift.shift_id) {
+        <div
+          [class]="
+            'flex items-start gap-3 sm:gap-4 border-l-4 px-3 py-3 sm:px-5 sm:py-4 ' +
+            borderClass(shift.type)
+          "
+        >
+          <div class="w-14 shrink-0 sm:w-24 text-center">
+            <p class="text-sm font-semibold text-gray-800">{{ shift.start_time }}</p>
+            <p class="text-xs text-gray-400">to</p>
+            <p class="text-sm font-semibold text-gray-800">{{ shift.end_time }}</p>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-gray-900">{{ employeeName(shift.employee_id) }}</p>
+            <p class="mt-0.5 text-sm text-gray-500">{{ locationName(shift.location_id) }}</p>
+          </div>
+          <span
+            [class]="
+              'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+              badgeClass(shift.type)
+            "
+            >{{ shift.type }}</span
+          >
+        </div>
+      }
+      @if (shifts.length === 0) {
+        <div
+          [class]="
+            compact
+              ? 'flex flex-col items-center gap-1 py-3 text-center'
+              : 'flex flex-col items-center gap-2 py-12 text-center'
+          "
+        >
+          <p class="text-sm font-medium text-gray-500">No shifts scheduled</p>
+          @if (hasActiveFilters()) {
+            <p class="text-xs text-gray-400">Try clearing your filters</p>
+          }
+        </div>
+      }
+    </div>
+  </ng-template>
 </div>

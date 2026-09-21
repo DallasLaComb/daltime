@@ -7,13 +7,25 @@
     <!-- ── Header ──────────────────────────────────────────────────────────── -->
     <div class="mb-6 flex flex-col gap-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="text-2xl font-bold text-gray-900">Team Schedule</h2>
-          <p class="text-sm text-gray-500">Manage your team's shifts</p>
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900">Team Schedule</h2>
+            <p class="hidden text-sm text-gray-500 sm:block">Manage your team's shifts</p>
+          </div>
+          @if (viewport.isMobile()) {
+            <app-button
+              variant="primary"
+              size="sm"
+              data-testid="add-shift"
+              (clicked)="openCreateModal()"
+            >
+              + Add Shift
+            </app-button>
+          }
         </div>
         <div class="flex items-center gap-2">
           <section
-            class="flex overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 self-start sm:self-auto"
+            class="flex w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-100 p-0.5 gap-0.5 sm:w-auto"
             aria-label="Calendar view"
           >
             <app-schedule-view-toggle
@@ -22,44 +34,51 @@
               (viewModeChange)="setViewMode($event)"
             />
           </section>
-          <app-button
-            variant="primary"
-            size="sm"
-            data-testid="add-shift"
-            (clicked)="openCreateModal()"
-          >
-            + Add Shift
-          </app-button>
+          @if (!viewport.isMobile()) {
+            <app-button
+              variant="primary"
+              size="sm"
+              data-testid="add-shift"
+              (clicked)="openCreateModal()"
+            >
+              + Add Shift
+            </app-button>
+          }
         </div>
       </div>
 
-      <app-schedule-nav
-        [viewLabel]="viewLabel()"
-        (prevRequested)="prevPeriod()"
-        (nextRequested)="nextPeriod()"
-        (todayRequested)="goToToday()"
-      />
+      <!-- Availability is a recurring weekly schedule, so period navigation is meaningless on the phone card list. -->
+      @if (!(viewport.isMobile() && viewMode() === 'availability')) {
+        <app-schedule-nav
+          [viewLabel]="viewLabel()"
+          (prevRequested)="prevPeriod()"
+          (nextRequested)="nextPeriod()"
+          (todayRequested)="goToToday()"
+        />
+      }
     </div>
 
     <!-- ── Filters ─────────────────────────────────────────────────────────── -->
-    <app-schedule-filters
-      [employees]="employees()"
-      [locations]="locations()"
-      [filterEmployee]="filterEmployee()"
-      [filterLocation]="filterLocation()"
-      [filterType]="filterType()"
-      [hasActiveFilters]="hasActiveFilters()"
-      [activeStatusChips]="filterStatuses()"
-      (employeeFilterChange)="setEmployeeFilter($event)"
-      (locationFilterChange)="setLocationFilter($event)"
-      (typeFilterChange)="setTypeFilter($event)"
-      (clearFiltersRequested)="clearFilters()"
-      (statusChipsChange)="setStatusFilter($event)"
-    />
+    @if (!(viewport.isMobile() && viewMode() === 'availability')) {
+      <app-schedule-filters
+        [employees]="employees()"
+        [locations]="locations()"
+        [filterEmployee]="filterEmployee()"
+        [filterLocation]="filterLocation()"
+        [filterType]="filterType()"
+        [hasActiveFilters]="hasActiveFilters()"
+        [activeStatusChips]="filterStatuses()"
+        (employeeFilterChange)="setEmployeeFilter($event)"
+        (locationFilterChange)="setLocationFilter($event)"
+        (typeFilterChange)="setTypeFilter($event)"
+        (clearFiltersRequested)="clearFilters()"
+        (statusChipsChange)="setStatusFilter($event)"
+      />
+    }
 
     <!-- ── Color Legend ──────────────────────────────────────────────────────── -->
     @if (showUnfilledSlots()) {
-      <div class="flex flex-wrap items-center gap-4 px-1 mb-3 text-xs text-gray-500">
+      <div class="hidden flex-wrap items-center gap-4 px-1 mb-3 text-xs text-gray-500 sm:flex">
         <span class="font-semibold uppercase tracking-wide text-gray-400 text-[10px]"
           >Color key</span
         >
@@ -78,483 +97,371 @@
       </div>
     }
 
-    <!-- ── Schedule Actions ──────────────────────────────────────────────────── -->
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- Generate button always visible; disabled once 10-run limit is reached -->
-        <div class="flex items-center gap-2">
-          <app-button
-            variant="primary"
-            size="sm"
-            testId="generate-draft"
-            [disabled]="generating() || draftLimitReached()"
-            (clicked)="generateDraft()"
-          >
-            {{ generating() ? 'Generating…' : 'Generate Draft from Availability' }}
-          </app-button>
-          <span
-            [class]="
-              draftLimitReached()
-                ? 'text-xs font-semibold text-red-500'
-                : draftRunCount() >= maxDraftRuns() - 2
-                  ? 'text-xs font-semibold text-amber-600'
-                  : 'text-xs text-gray-400'
-            "
-            data-testid="draft-run-counter"
-          >
-            {{ draftRunCount() }}&thinsp;/&thinsp;{{ maxDraftRuns() }} runs
-          </span>
-        </div>
-        @if (hasDrafts()) {
-          <app-button
-            variant="primary"
-            size="sm"
-            testId="publish-schedule"
-            [disabled]="publishing()"
-            (clicked)="publishSchedule()"
-          >
-            {{ publishing() ? 'Publishing…' : 'Publish Schedule' }}
-          </app-button>
-          <span class="text-sm text-gray-500">
-            <span class="font-semibold text-amber-600">{{ draftCount() }} draft</span>
-            @if (publishedCount() > 0) {
-              <span class="mx-1 text-gray-300">·</span>
-              <span class="font-semibold text-green-600">{{ publishedCount() }} published</span>
-            }
-          </span>
-        } @else if (allShifts().length > 0) {
-          <span class="text-sm font-semibold text-green-600"
-            >{{ publishedCount() }} shifts published</span
-          >
-        }
-      </div>
-      @if (scheduleActionResult()) {
-        <p class="text-sm text-gray-700" data-testid="schedule-action-result">
-          {{ scheduleActionResult() }}
-        </p>
-      }
-    </div>
+    @if (!viewport.isMobile()) {
+      <ng-container [ngTemplateOutlet]="scheduleActions" />
+    }
 
-    <!-- ═══ MONTHLY VIEW ═══════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'month') {
-      <div class="overflow-x-auto rounded-xl">
-        <div
-          class="min-w-[490px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-        >
-          <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-            @for (day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track day) {
-              <div
-                class="py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
-              >
-                {{ day }}
-              </div>
-            }
+    <!-- Swiping left/right moves to the next/previous period on phones. -->
+    <div appSwipeNav data-testid="swipe-area" (swipedPrev)="swipePrev()" (swipedNext)="swipeNext()">
+      <!-- ═══ MONTHLY VIEW ═══════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'month' && viewport.isMobile()) {
+        <!-- Phone: compact grid for orientation, the tapped day's shifts listed beneath (like Google Calendar). -->
+        <app-mobile-month-grid
+          [month]="currentDate()"
+          [selected]="agendaDate()"
+          [indicators]="dayIndicators()"
+          (dateSelected)="selectDate($event)"
+        />
+        <section class="mt-4" aria-label="Shifts for the selected day" data-testid="mobile-agenda">
+          <div class="mb-2 flex items-center justify-between gap-2 px-1">
+            <div>
+              <h3 class="m-0 text-sm font-semibold text-gray-800" data-testid="mobile-agenda-label">
+                {{ agendaLabel() }}
+              </h3>
+              <p class="m-0 text-xs text-gray-500">
+                {{ agendaShifts().length }} {{ agendaShifts().length === 1 ? 'shift' : 'shifts' }}
+              </p>
+            </div>
+            <app-button
+              variant="primary"
+              size="sm"
+              testId="add-shift-for-day"
+              (clicked)="openCreateModal(agendaDateKey())"
+              >+ Add</app-button
+            >
           </div>
-          <div class="divide-y divide-gray-200">
-            @for (week of calendarWeeks(); track $index) {
-              <div class="grid grid-cols-7 divide-x divide-gray-200">
-                @for (day of week; track $index) {
-                  <div
-                    [class]="
-                      day === null
-                        ? 'min-h-[110px] bg-gray-50 p-1.5'
-                        : isTodayDay(day)
-                          ? 'min-h-[110px] bg-blue-50/40 p-1.5'
-                          : 'min-h-[110px] bg-white p-1.5 cursor-pointer hover:bg-gray-50'
-                    "
-                    [attr.tabindex]="day !== null ? '0' : null"
-                    [attr.data-testid]="day !== null ? 'day-cell-' + day : null"
-                    (click)="
-                      day !== null &&
-                        openCreateModal(
-                          currentDate().getFullYear() +
-                            '-' +
-                            (currentDate().getMonth() + 1).toString().padStart(2, '0') +
-                            '-' +
-                            day.toString().padStart(2, '0')
-                        )
-                    "
-                    (keydown.enter)="
-                      day !== null &&
-                        openCreateModal(
-                          currentDate().getFullYear() +
-                            '-' +
-                            (currentDate().getMonth() + 1).toString().padStart(2, '0') +
-                            '-' +
-                            day.toString().padStart(2, '0')
-                        )
-                    "
-                  >
-                    @if (day !== null) {
-                      <div class="mb-1 flex justify-end">
-                        @if (isTodayDay(day)) {
-                          <span
-                            class="flex h-6 w-6 items-center justify-center rounded-full bg-dt-primary text-xs font-bold text-white"
-                            >{{ day }}</span
-                          >
-                        } @else {
-                          <span class="text-xs font-semibold text-gray-400">{{ day }}</span>
-                        }
-                      </div>
-                      <div class="space-y-0.5">
-                        @for (shift of shiftsForDay(day); track shift.shift_id) {
-                          <button
-                            type="button"
-                            [class]="
-                              'rounded px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer text-left w-full ' +
-                              (shift.employee_id === ''
-                                ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800'
-                                : shift.status === 'draft'
-                                  ? 'border border-dashed opacity-70 ' + shiftStyles[shift.type]
-                                  : shiftStyles[shift.type])
-                            "
-                            [title]="
-                              (shift.employee_id === ''
-                                ? 'Draft — no employee assigned'
-                                : employeeName(shift.employee_id)) +
-                              ' · ' +
-                              shift.start_time +
-                              ' – ' +
-                              shift.end_time
-                            "
-                            data-testid="shift-chip"
-                            (click)="$event.stopPropagation(); openShiftAction(shift)"
-                          >
-                            <span class="block font-semibold">{{
-                              shift.employee_id ? shortName(shift.employee_id) : 'No Employee'
-                            }}</span>
-                            <span class="block opacity-70"
-                              >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }} ·
-                              {{ shortLocation(shift.location_id) }}</span
+          <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <ng-container
+              [ngTemplateOutlet]="dayBody"
+              [ngTemplateOutletContext]="{
+                shifts: agendaShifts(),
+                dateKey: agendaDateKey(),
+                compact: false,
+              }"
+            />
+          </div>
+        </section>
+      } @else if (viewMode() === 'month') {
+        <div class="overflow-x-auto rounded-xl">
+          <div
+            class="min-w-[490px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+          >
+            <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+              @for (day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track day) {
+                <div
+                  class="py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
+                >
+                  {{ day }}
+                </div>
+              }
+            </div>
+            <div class="divide-y divide-gray-200">
+              @for (week of calendarWeeks(); track $index) {
+                <div class="grid grid-cols-7 divide-x divide-gray-200">
+                  @for (day of week; track $index) {
+                    <div
+                      [class]="
+                        day === null
+                          ? 'min-h-[110px] bg-gray-50 p-1.5'
+                          : isTodayDay(day)
+                            ? 'min-h-[110px] bg-blue-50/40 p-1.5'
+                            : 'min-h-[110px] bg-white p-1.5 cursor-pointer hover:bg-gray-50'
+                      "
+                      [attr.tabindex]="day !== null ? '0' : null"
+                      [attr.data-testid]="day !== null ? 'day-cell-' + day : null"
+                      (click)="
+                        day !== null &&
+                          openCreateModal(
+                            currentDate().getFullYear() +
+                              '-' +
+                              (currentDate().getMonth() + 1).toString().padStart(2, '0') +
+                              '-' +
+                              day.toString().padStart(2, '0')
+                          )
+                      "
+                      (keydown.enter)="
+                        day !== null &&
+                          openCreateModal(
+                            currentDate().getFullYear() +
+                              '-' +
+                              (currentDate().getMonth() + 1).toString().padStart(2, '0') +
+                              '-' +
+                              day.toString().padStart(2, '0')
+                          )
+                      "
+                    >
+                      @if (day !== null) {
+                        <div class="mb-1 flex justify-end">
+                          @if (isTodayDay(day)) {
+                            <span
+                              class="flex h-6 w-6 items-center justify-center rounded-full bg-dt-primary text-xs font-bold text-white"
+                              >{{ day }}</span
                             >
-                          </button>
-                        }
-                        @if (day !== null && showUnfilledSlots()) {
-                          @for (
-                            slot of unfilledByDate().get(
-                              currentDate().getFullYear() +
-                                '-' +
-                                (currentDate().getMonth() + 1).toString().padStart(2, '0') +
-                                '-' +
-                                day.toString().padStart(2, '0')
-                            ) ?? [];
-                            track slot.shiftNeeded.shift_id
-                          ) {
+                          } @else {
+                            <span class="text-xs font-semibold text-gray-400">{{ day }}</span>
+                          }
+                        </div>
+                        <div class="space-y-0.5">
+                          @for (shift of shiftsForDay(day); track shift.shift_id) {
                             <button
                               type="button"
-                              class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
-                              [title]="
-                                'Not yet scheduled · ' +
-                                slot.shiftNeeded.start_time +
-                                '–' +
-                                slot.shiftNeeded.end_time +
-                                ' · ' +
-                                slot.remaining +
-                                ' position(s) needed'
+                              [class]="
+                                'rounded px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer text-left w-full ' +
+                                (shift.employee_id === ''
+                                  ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800'
+                                  : shift.status === 'draft'
+                                    ? 'border border-dashed opacity-70 ' + shiftStyles[shift.type]
+                                    : shiftStyles[shift.type])
                               "
-                              data-testid="unfilled-chip"
-                              (click)="$event.stopPropagation(); openFillShiftView(slot)"
+                              [title]="
+                                (shift.employee_id === ''
+                                  ? 'Draft — no employee assigned'
+                                  : employeeName(shift.employee_id)) +
+                                ' · ' +
+                                shift.start_time +
+                                ' – ' +
+                                shift.end_time
+                              "
+                              data-testid="shift-chip"
+                              (click)="$event.stopPropagation(); openShiftAction(shift)"
                             >
-                              <span class="block font-semibold text-red-600">Not Scheduled</span>
-                              <span class="block text-red-400"
-                                >{{ shortTime(slot.shiftNeeded.start_time) }}–{{
-                                  shortTime(slot.shiftNeeded.end_time)
-                                }}</span
+                              <span class="block font-semibold">{{
+                                shift.employee_id ? shortName(shift.employee_id) : 'No Employee'
+                              }}</span>
+                              <span class="block opacity-70"
+                                >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }} ·
+                                {{ shortLocation(shift.location_id) }}</span
                               >
                             </button>
                           }
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- ═══ WEEKLY VIEW ════════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'week') {
-      <div class="overflow-x-auto rounded-xl">
-        <div
-          class="min-w-[560px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-        >
-          <div
-            class="grid grid-cols-7 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50"
-          >
-            @for (date of weekDays(); track date.getTime()) {
-              <div class="flex flex-col items-center py-3">
-                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{
-                  dayAbbrev(date)
-                }}</span>
-                @if (isToday(date)) {
-                  <span
-                    class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-dt-primary text-sm font-bold text-white"
-                    >{{ date.getDate() }}</span
-                  >
-                } @else {
-                  <span class="mt-1 text-sm font-semibold text-gray-700">{{ date.getDate() }}</span>
-                }
-              </div>
-            }
-          </div>
-          <div class="grid grid-cols-7 divide-x divide-gray-200">
-            @for (date of weekDays(); track date.getTime()) {
-              <div
-                [class]="
-                  isToday(date) ? 'min-h-[320px] bg-blue-50/30 p-2' : 'min-h-[320px] bg-white p-2'
-                "
-              >
-                <div class="space-y-1">
-                  @for (shift of shiftsForDate(date); track shift.shift_id) {
-                    <button
-                      type="button"
-                      [class]="
-                        'rounded px-1.5 py-1 text-[11px] leading-tight cursor-pointer text-left w-full ' +
-                        (shift.employee_id === ''
-                          ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800'
-                          : shift.status === 'draft'
-                            ? 'border border-dashed opacity-70 ' + shiftStyles[shift.type]
-                            : shiftStyles[shift.type])
-                      "
-                      [title]="
-                        (shift.employee_id === ''
-                          ? 'Draft — no employee assigned'
-                          : employeeName(shift.employee_id)) +
-                        ' · ' +
-                        shift.start_time +
-                        ' – ' +
-                        shift.end_time
-                      "
-                      data-testid="shift-chip"
-                      (click)="openShiftAction(shift)"
-                    >
-                      <span class="block font-semibold">{{
-                        shift.employee_id ? shortName(shift.employee_id) : 'No Employee'
-                      }}</span>
-                      <span class="block opacity-70"
-                        >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }}</span
-                      >
-                      <span class="block opacity-60">{{ shortLocation(shift.location_id) }}</span>
-                    </button>
-                  }
-                  @if (showUnfilledSlots()) {
-                    @for (
-                      slot of unfilledByDate().get(toDateKey(date)) ?? [];
-                      track slot.shiftNeeded.shift_id
-                    ) {
-                      <button
-                        type="button"
-                        class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-1 text-[11px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
-                        [title]="
-                          'Not yet scheduled · ' +
-                          slot.shiftNeeded.start_time +
-                          '–' +
-                          slot.shiftNeeded.end_time +
-                          ' · ' +
-                          slot.remaining +
-                          ' position(s) needed'
-                        "
-                        data-testid="unfilled-chip"
-                        (click)="openFillShiftView(slot)"
-                      >
-                        <span class="block font-semibold text-red-600">Not Scheduled</span>
-                        <span class="block text-red-400"
-                          >{{ shortTime(slot.shiftNeeded.start_time) }}–{{
-                            shortTime(slot.shiftNeeded.end_time)
-                          }}</span
-                        >
-                      </button>
-                    }
-                  }
-                  @if (
-                    shiftsForDate(date).length === 0 &&
-                    (unfilledByDate().get(toDateKey(date)) ?? []).length === 0
-                  ) {
-                    <p class="mt-2 text-center text-[11px] italic text-gray-300">
-                      {{ hasActiveFilters() ? 'No matches' : 'No shifts' }}
-                    </p>
+                          @if (day !== null && showUnfilledSlots()) {
+                            @for (
+                              slot of unfilledByDate().get(
+                                currentDate().getFullYear() +
+                                  '-' +
+                                  (currentDate().getMonth() + 1).toString().padStart(2, '0') +
+                                  '-' +
+                                  day.toString().padStart(2, '0')
+                              ) ?? [];
+                              track slot.shiftNeeded.shift_id
+                            ) {
+                              <button
+                                type="button"
+                                class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
+                                [title]="
+                                  'Not yet scheduled · ' +
+                                  slot.shiftNeeded.start_time +
+                                  '–' +
+                                  slot.shiftNeeded.end_time +
+                                  ' · ' +
+                                  slot.remaining +
+                                  ' position(s) needed'
+                                "
+                                data-testid="unfilled-chip"
+                                (click)="$event.stopPropagation(); openFillShiftView(slot)"
+                              >
+                                <span class="block font-semibold text-red-600">Not Scheduled</span>
+                                <span class="block text-red-400"
+                                  >{{ shortTime(slot.shiftNeeded.start_time) }}–{{
+                                    shortTime(slot.shiftNeeded.end_time)
+                                  }}</span
+                                >
+                              </button>
+                            }
+                          }
+                        </div>
+                      }
+                    </div>
                   }
                 </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- ═══ DAILY VIEW ═════════════════════════════════════════════════════════ -->
-    @if (viewMode() === 'day') {
-      <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div
-          [class]="
-            isToday(currentDate())
-              ? 'border-b border-gray-200 bg-blue-50/40 px-5 py-4'
-              : 'border-b border-gray-200 bg-gray-50 px-5 py-4'
-          "
-        >
-          <div class="flex items-center gap-3">
-            @if (isToday(currentDate())) {
-              <span
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-dt-primary text-lg font-bold text-white shadow"
-                >{{ currentDate().getDate() }}</span
-              >
-            } @else {
-              <span
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200"
-                >{{ currentDate().getDate() }}</span
-              >
-            }
-            <div>
-              <p class="text-base font-semibold text-gray-900">
-                {{
-                  currentDate().toLocaleString('default', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                }}
-              </p>
-              <p class="text-xs text-gray-500">
-                {{ currentDayShifts().length }}
-                {{ currentDayShifts().length === 1 ? 'shift' : 'shifts' }}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="divide-y divide-gray-100">
-          @for (shift of currentDayShifts(); track shift.shift_id) {
-            <button
-              type="button"
-              [class]="
-                'flex cursor-pointer items-start gap-4 border-l-4 px-5 py-4 text-left w-full ' +
-                (shift.employee_id === ''
-                  ? 'border-dashed border-amber-400 bg-amber-50 hover:bg-amber-100'
-                  : shift.status === 'draft'
-                    ? 'opacity-75 border-dashed hover:bg-gray-50 ' + shiftBorderStyles[shift.type]
-                    : 'hover:bg-gray-50 ' + shiftBorderStyles[shift.type])
-              "
-              data-testid="shift-card"
-              (click)="openShiftAction(shift)"
-            >
-              <div class="w-24 shrink-0 text-center">
-                <p
-                  [class]="
-                    'text-sm font-semibold ' +
-                    (shift.employee_id === '' ? 'text-amber-700' : 'text-gray-800')
-                  "
-                >
-                  {{ shift.start_time }}
-                </p>
-                <p
-                  [class]="
-                    'text-xs ' + (shift.employee_id === '' ? 'text-amber-400' : 'text-gray-400')
-                  "
-                >
-                  to
-                </p>
-                <p
-                  [class]="
-                    'text-sm font-semibold ' +
-                    (shift.employee_id === '' ? 'text-amber-700' : 'text-gray-800')
-                  "
-                >
-                  {{ shift.end_time }}
-                </p>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p
-                  [class]="
-                    'font-semibold ' +
-                    (shift.employee_id === '' ? 'text-amber-800' : 'text-gray-900')
-                  "
-                >
-                  {{
-                    shift.employee_id
-                      ? employeeName(shift.employee_id)
-                      : 'Draft — no employee assigned'
-                  }}
-                </p>
-                <p
-                  [class]="
-                    'mt-0.5 text-sm ' +
-                    (shift.employee_id === '' ? 'text-amber-600' : 'text-gray-500')
-                  "
-                >
-                  {{ locationName(shift.location_id) }}
-                </p>
-              </div>
-              <div class="flex shrink-0 flex-col items-end gap-1">
-                @if (shift.employee_id === '') {
-                  <span
-                    class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700"
-                    >No Employee</span
-                  >
-                } @else if (shift.status === 'draft') {
-                  <span
-                    class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700"
-                    >Draft</span
-                  >
-                }
-                <span
-                  [class]="
-                    'rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
-                    shiftBadgeStyles[shift.type]
-                  "
-                  >{{ shift.type }}</span
-                >
-              </div>
-            </button>
-          }
-          @if (showUnfilledSlots()) {
-            @for (
-              slot of unfilledByDate().get(toDateKey(currentDate())) ?? [];
-              track slot.shiftNeeded.shift_id
-            ) {
-              <button
-                type="button"
-                class="flex cursor-pointer items-start gap-4 border-l-4 border-dashed border-l-red-400 bg-red-50 px-5 py-4 hover:bg-red-100 text-left w-full"
-                data-testid="unfilled-card"
-                (click)="openFillShiftView(slot)"
-                tabindex="0"
-              >
-                <div class="w-24 shrink-0 text-center">
-                  <p class="text-sm font-semibold text-red-700">
-                    {{ slot.shiftNeeded.start_time }}
-                  </p>
-                  <p class="text-xs text-red-300">to</p>
-                  <p class="text-sm font-semibold text-red-700">{{ slot.shiftNeeded.end_time }}</p>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="font-semibold text-red-700">Not Yet Scheduled</p>
-                  <p class="mt-0.5 text-sm text-red-500">
-                    {{ locationName(slot.shiftNeeded.location_id) }} ·
-                    {{ slot.remaining }} employee{{ slot.remaining === 1 ? '' : 's' }}
-                    needed
-                  </p>
-                </div>
-                <span
-                  class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-600"
-                  >Not Scheduled</span
-                >
-              </button>
-            }
-          }
-          @if (
-            currentDayShifts().length === 0 &&
-            (!showUnfilledSlots() ||
-              (unfilledByDate().get(toDateKey(currentDate())) ?? []).length === 0)
-          ) {
-            <div class="flex flex-col items-center gap-2 py-12 text-center">
-              <p class="text-sm font-medium text-gray-500">No shifts scheduled</p>
-              @if (hasActiveFilters()) {
-                <p class="text-xs text-gray-400">Try clearing your filters</p>
               }
             </div>
-          }
+          </div>
         </div>
+      }
+
+      <!-- ═══ WEEKLY VIEW ════════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'week' && viewport.isMobile()) {
+        <!-- Phone: vertical list of the 7 days — nothing scrolls sideways. -->
+        <app-mobile-day-list [days]="weekDayGroups()">
+          <ng-template let-day>
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <ng-container
+                [ngTemplateOutlet]="dayBody"
+                [ngTemplateOutletContext]="{
+                  shifts: shiftsForKey(day.dateKey),
+                  dateKey: day.dateKey,
+                  compact: true,
+                }"
+              />
+            </div>
+          </ng-template>
+        </app-mobile-day-list>
+      } @else if (viewMode() === 'week') {
+        <div class="overflow-x-auto rounded-xl">
+          <div
+            class="min-w-[560px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+          >
+            <div
+              class="grid grid-cols-7 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50"
+            >
+              @for (date of weekDays(); track date.getTime()) {
+                <div class="flex flex-col items-center py-3">
+                  <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{
+                    dayAbbrev(date)
+                  }}</span>
+                  @if (isToday(date)) {
+                    <span
+                      class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-dt-primary text-sm font-bold text-white"
+                      >{{ date.getDate() }}</span
+                    >
+                  } @else {
+                    <span class="mt-1 text-sm font-semibold text-gray-700">{{
+                      date.getDate()
+                    }}</span>
+                  }
+                </div>
+              }
+            </div>
+            <div class="grid grid-cols-7 divide-x divide-gray-200">
+              @for (date of weekDays(); track date.getTime()) {
+                <div
+                  [class]="
+                    isToday(date) ? 'min-h-[320px] bg-blue-50/30 p-2' : 'min-h-[320px] bg-white p-2'
+                  "
+                >
+                  <div class="space-y-1">
+                    @for (shift of shiftsForDate(date); track shift.shift_id) {
+                      <button
+                        type="button"
+                        [class]="
+                          'rounded px-1.5 py-1 text-[11px] leading-tight cursor-pointer text-left w-full ' +
+                          (shift.employee_id === ''
+                            ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800'
+                            : shift.status === 'draft'
+                              ? 'border border-dashed opacity-70 ' + shiftStyles[shift.type]
+                              : shiftStyles[shift.type])
+                        "
+                        [title]="
+                          (shift.employee_id === ''
+                            ? 'Draft — no employee assigned'
+                            : employeeName(shift.employee_id)) +
+                          ' · ' +
+                          shift.start_time +
+                          ' – ' +
+                          shift.end_time
+                        "
+                        data-testid="shift-chip"
+                        (click)="openShiftAction(shift)"
+                      >
+                        <span class="block font-semibold">{{
+                          shift.employee_id ? shortName(shift.employee_id) : 'No Employee'
+                        }}</span>
+                        <span class="block opacity-70"
+                          >{{ shortTime(shift.start_time) }}–{{ shortTime(shift.end_time) }}</span
+                        >
+                        <span class="block opacity-60">{{ shortLocation(shift.location_id) }}</span>
+                      </button>
+                    }
+                    @if (showUnfilledSlots()) {
+                      @for (
+                        slot of unfilledByDate().get(toDateKey(date)) ?? [];
+                        track slot.shiftNeeded.shift_id
+                      ) {
+                        <button
+                          type="button"
+                          class="rounded border border-dashed border-red-300 bg-red-50 px-1.5 py-1 text-[11px] leading-tight cursor-pointer hover:bg-red-100 text-left w-full"
+                          [title]="
+                            'Not yet scheduled · ' +
+                            slot.shiftNeeded.start_time +
+                            '–' +
+                            slot.shiftNeeded.end_time +
+                            ' · ' +
+                            slot.remaining +
+                            ' position(s) needed'
+                          "
+                          data-testid="unfilled-chip"
+                          (click)="openFillShiftView(slot)"
+                        >
+                          <span class="block font-semibold text-red-600">Not Scheduled</span>
+                          <span class="block text-red-400"
+                            >{{ shortTime(slot.shiftNeeded.start_time) }}–{{
+                              shortTime(slot.shiftNeeded.end_time)
+                            }}</span
+                          >
+                        </button>
+                      }
+                    }
+                    @if (
+                      shiftsForDate(date).length === 0 &&
+                      (unfilledByDate().get(toDateKey(date)) ?? []).length === 0
+                    ) {
+                      <p class="mt-2 text-center text-[11px] italic text-gray-300">
+                        {{ hasActiveFilters() ? 'No matches' : 'No shifts' }}
+                      </p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ═══ DAILY VIEW ═════════════════════════════════════════════════════════ -->
+      @if (viewMode() === 'day') {
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div
+            [class]="
+              isToday(currentDate())
+                ? 'border-b border-gray-200 bg-blue-50/40 px-5 py-4'
+                : 'border-b border-gray-200 bg-gray-50 px-5 py-4'
+            "
+          >
+            <div class="flex items-center gap-3">
+              @if (isToday(currentDate())) {
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-full bg-dt-primary text-lg font-bold text-white shadow"
+                  >{{ currentDate().getDate() }}</span
+                >
+              } @else {
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200"
+                  >{{ currentDate().getDate() }}</span
+                >
+              }
+              <div>
+                <p class="text-base font-semibold text-gray-900">
+                  {{
+                    currentDate().toLocaleString('default', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  {{ currentDayShifts().length }}
+                  {{ currentDayShifts().length === 1 ? 'shift' : 'shifts' }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <ng-container
+            [ngTemplateOutlet]="dayBody"
+            [ngTemplateOutletContext]="{
+              shifts: currentDayShifts(),
+              dateKey: toDateKey(currentDate()),
+              compact: false,
+            }"
+          />
+        </div>
+      }
+    </div>
+
+    @if (viewport.isMobile() && viewMode() !== 'fill-shift') {
+      <div class="mt-6">
+        <ng-container [ngTemplateOutlet]="scheduleActions" />
       </div>
     }
 
@@ -732,7 +639,85 @@
     }
 
     <!-- ═══ AVAILABILITY VIEW ═════════════════════════════════════════════════ -->
-    @if (viewMode() === 'availability') {
+    @if (viewMode() === 'availability' && viewport.isMobile()) {
+      <!-- Phone: one card per employee — a glanceable Mon–Sun strip that opens into each day's time ranges. -->
+      <ul class="m-0 flex list-none flex-col gap-2 p-0" data-testid="mobile-availability-list">
+        @for (card of availabilityCards(); track card.employeeId) {
+          <li
+            class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+            data-testid="availability-card"
+          >
+            <button
+              type="button"
+              class="flex min-h-11 w-full flex-col gap-2 px-4 py-3 text-left"
+              [attr.aria-expanded]="isAvailabilityExpanded(card.employeeId)"
+              data-testid="availability-card-toggle"
+              (click)="toggleAvailability(card.employeeId)"
+            >
+              <span class="flex items-center justify-between gap-2">
+                <span class="min-w-0 truncate text-sm font-semibold text-gray-800">{{
+                  card.name
+                }}</span>
+                <span class="shrink-0 text-gray-400" aria-hidden="true">{{
+                  isAvailabilityExpanded(card.employeeId) ? '▴' : '▾'
+                }}</span>
+              </span>
+              @if (card.hasSchedule) {
+                <span class="flex gap-1.5">
+                  @for (day of card.days; track day.key) {
+                    <span
+                      [class]="
+                        'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ' +
+                        (day.available
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-400')
+                      "
+                      [attr.data-available]="day.available"
+                      data-testid="availability-day-pip"
+                      ><span aria-hidden="true">{{ day.letter }}</span
+                      ><span class="sr-only"
+                        >{{ day.label }} {{ day.available ? 'available' : 'unavailable' }}</span
+                      ></span
+                    >
+                  }
+                </span>
+              } @else {
+                <span class="text-xs italic text-gray-400">No availability submitted</span>
+              }
+            </button>
+            @if (isAvailabilityExpanded(card.employeeId)) {
+              <dl
+                class="m-0 divide-y divide-gray-100 border-t border-gray-100"
+                data-testid="availability-details"
+              >
+                @for (day of card.days; track day.key) {
+                  <div class="flex items-start justify-between gap-3 px-4 py-2.5">
+                    <dt class="text-sm font-medium text-gray-600">{{ day.label }}</dt>
+                    <dd class="m-0 flex flex-wrap justify-end gap-1">
+                      @if (day.available && day.slots.length > 0) {
+                        @for (slot of day.slots; track $index) {
+                          <span
+                            class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
+                            >{{ shortTime(slot.from) }}–{{ shortTime(slot.to) }}</span
+                          >
+                        }
+                      } @else if (day.available) {
+                        <span class="text-xs font-medium text-green-700">Available</span>
+                      } @else {
+                        <span class="text-sm text-gray-300">—</span>
+                      }
+                    </dd>
+                  </div>
+                }
+              </dl>
+            }
+          </li>
+        }
+        @if (availabilityCards().length === 0) {
+          <li class="py-12 text-center text-sm text-gray-500">No employees found.</li>
+        }
+      </ul>
+    } @else if (viewMode() === 'availability') {
       <div class="overflow-x-auto rounded-xl">
         <div
           class="min-w-[560px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
@@ -989,4 +974,195 @@
       </div>
     </div>
   }
+
+  <!-- One day's shifts (+ unfilled slots on the manager page). Shared by the day view and the phone agenda / week list. -->
+  <ng-template #dayBody let-shifts="shifts" let-dateKey="dateKey" let-compact="compact">
+    <div class="divide-y divide-gray-100">
+      @for (shift of shifts; track shift.shift_id) {
+        <button
+          type="button"
+          [class]="
+            'flex cursor-pointer items-start gap-3 sm:gap-4 border-l-4 px-3 py-3 sm:px-5 sm:py-4 text-left w-full ' +
+            (shift.employee_id === ''
+              ? 'border-dashed border-amber-400 bg-amber-50 hover:bg-amber-100'
+              : shift.status === 'draft'
+                ? 'opacity-75 border-dashed hover:bg-gray-50 ' + borderClass(shift.type)
+                : 'hover:bg-gray-50 ' + borderClass(shift.type))
+          "
+          data-testid="shift-card"
+          (click)="openShiftAction(shift)"
+        >
+          <div class="w-14 shrink-0 sm:w-24 text-center">
+            <p
+              [class]="
+                'text-sm font-semibold ' +
+                (shift.employee_id === '' ? 'text-amber-700' : 'text-gray-800')
+              "
+            >
+              {{ shift.start_time }}
+            </p>
+            <p
+              [class]="'text-xs ' + (shift.employee_id === '' ? 'text-amber-400' : 'text-gray-400')"
+            >
+              to
+            </p>
+            <p
+              [class]="
+                'text-sm font-semibold ' +
+                (shift.employee_id === '' ? 'text-amber-700' : 'text-gray-800')
+              "
+            >
+              {{ shift.end_time }}
+            </p>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p
+              [class]="
+                'font-semibold ' + (shift.employee_id === '' ? 'text-amber-800' : 'text-gray-900')
+              "
+            >
+              {{
+                shift.employee_id ? employeeName(shift.employee_id) : 'Draft — no employee assigned'
+              }}
+            </p>
+            <p
+              [class]="
+                'mt-0.5 text-sm ' + (shift.employee_id === '' ? 'text-amber-600' : 'text-gray-500')
+              "
+            >
+              {{ locationName(shift.location_id) }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-1">
+            @if (shift.employee_id === '') {
+              <span
+                class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700"
+                >No Employee</span
+              >
+            } @else if (shift.status === 'draft') {
+              <span
+                class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700"
+                >Draft</span
+              >
+            }
+            <span
+              [class]="
+                'rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                badgeClass(shift.type)
+              "
+              >{{ shift.type }}</span
+            >
+          </div>
+        </button>
+      }
+      @if (showUnfilledSlots()) {
+        @for (slot of unfilledByDate().get(dateKey) ?? []; track slot.shiftNeeded.shift_id) {
+          <button
+            type="button"
+            class="flex cursor-pointer items-start gap-3 sm:gap-4 border-l-4 border-dashed border-l-red-400 bg-red-50 px-3 py-3 sm:px-5 sm:py-4 hover:bg-red-100 text-left w-full"
+            data-testid="unfilled-card"
+            (click)="openFillShiftView(slot)"
+            tabindex="0"
+          >
+            <div class="w-14 shrink-0 sm:w-24 text-center">
+              <p class="text-sm font-semibold text-red-700">
+                {{ slot.shiftNeeded.start_time }}
+              </p>
+              <p class="text-xs text-red-300">to</p>
+              <p class="text-sm font-semibold text-red-700">{{ slot.shiftNeeded.end_time }}</p>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-red-700">Not Yet Scheduled</p>
+              <p class="mt-0.5 text-sm text-red-500">
+                {{ locationName(slot.shiftNeeded.location_id) }} · {{ slot.remaining }} employee{{
+                  slot.remaining === 1 ? '' : 's'
+                }}
+                needed
+              </p>
+            </div>
+            <span
+              class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-600"
+              >Not Scheduled</span
+            >
+          </button>
+        }
+      }
+      @if (
+        shifts.length === 0 &&
+        (!showUnfilledSlots() || (unfilledByDate().get(dateKey) ?? []).length === 0)
+      ) {
+        <div
+          [class]="
+            compact
+              ? 'flex flex-col items-center gap-1 py-3 text-center'
+              : 'flex flex-col items-center gap-2 py-12 text-center'
+          "
+        >
+          <p class="text-sm font-medium text-gray-500">No shifts scheduled</p>
+          @if (hasActiveFilters()) {
+            <p class="text-xs text-gray-400">Try clearing your filters</p>
+          }
+        </div>
+      }
+    </div>
+  </ng-template>
+
+  <!-- Generate / publish controls. Above the calendar on desktop, below it on phones so the calendar comes first. -->
+  <ng-template #scheduleActions>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Generate button always visible; disabled once 10-run limit is reached -->
+        <div class="flex items-center gap-2">
+          <app-button
+            variant="primary"
+            size="sm"
+            testId="generate-draft"
+            [disabled]="generating() || draftLimitReached()"
+            (clicked)="generateDraft()"
+          >
+            {{ generating() ? 'Generating…' : 'Generate Draft from Availability' }}
+          </app-button>
+          <span
+            [class]="
+              draftLimitReached()
+                ? 'text-xs font-semibold text-red-500'
+                : draftRunCount() >= maxDraftRuns() - 2
+                  ? 'text-xs font-semibold text-amber-600'
+                  : 'text-xs text-gray-400'
+            "
+            data-testid="draft-run-counter"
+          >
+            {{ draftRunCount() }}&thinsp;/&thinsp;{{ maxDraftRuns() }} runs
+          </span>
+        </div>
+        @if (hasDrafts()) {
+          <app-button
+            variant="primary"
+            size="sm"
+            testId="publish-schedule"
+            [disabled]="publishing()"
+            (clicked)="publishSchedule()"
+          >
+            {{ publishing() ? 'Publishing…' : 'Publish Schedule' }}
+          </app-button>
+          <span class="text-sm text-gray-500">
+            <span class="font-semibold text-amber-600">{{ draftCount() }} draft</span>
+            @if (publishedCount() > 0) {
+              <span class="mx-1 text-gray-300">·</span>
+              <span class="font-semibold text-green-600">{{ publishedCount() }} published</span>
+            }
+          </span>
+        } @else if (allShifts().length > 0) {
+          <span class="text-sm font-semibold text-green-600"
+            >{{ publishedCount() }} shifts published</span
+          >
+        }
+      </div>
+      @if (scheduleActionResult()) {
+        <p class="text-sm text-gray-700" data-testid="schedule-action-result">
+          {{ scheduleActionResult() }}
+        </p>
+      }
+    </div>
+  </ng-template>
 </div>

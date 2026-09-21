@@ -1,8 +1,8 @@
 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-  <div class="flex items-center gap-2">
+  <div class="flex w-full items-center gap-2 sm:w-auto">
     <button
       type="button"
-      class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
       data-testid="prev-period"
       aria-label="Previous period"
       (click)="prevRequested.emit()"
@@ -12,12 +12,12 @@
       &#8249;
     </button>
     <span
-      class="min-w-[120px] text-center text-sm font-semibold text-gray-800 sm:min-w-[180px] sm:text-base"
+      class="min-w-0 flex-1 truncate text-center text-sm font-semibold text-gray-800 sm:min-w-[180px] sm:flex-none sm:text-base"
       >{{ viewLabel() }}</span
     >
     <button
       type="button"
-      class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
       data-testid="next-period"
       aria-label="Next period"
       (click)="nextRequested.emit()"
@@ -28,7 +28,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+      class="min-h-11 shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium sm:min-h-0 text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
       data-testid="goto-today"
       (click)="todayRequested.emit()"
       (keydown.enter)="todayRequested.emit()"

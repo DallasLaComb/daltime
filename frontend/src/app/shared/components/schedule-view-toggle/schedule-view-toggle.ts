@@ -6,7 +6,8 @@ export type ScheduleViewMode = 'day' | 'week' | 'month' | 'availability' | 'fill
   selector: 'app-schedule-view-toggle',
   templateUrl: './schedule-view-toggle.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'dt-debug' },
+  // `contents` lets the buttons flex directly inside the page's segmented-control wrapper.
+  host: { class: 'dt-debug contents' },
 })
 export class ScheduleViewToggleComponent {
   viewMode = input<ScheduleViewMode>('week');

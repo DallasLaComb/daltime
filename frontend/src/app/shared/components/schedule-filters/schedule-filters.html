@@ -1,110 +1,139 @@
-<div class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-  <!-- ── Dropdown row (employee / location / type) ─────────────────────────── -->
-  <div class="flex flex-wrap items-end gap-3">
-    <div class="flex min-w-[140px] flex-1 flex-col gap-1">
-      <label
-        class="text-xs font-semibold uppercase tracking-wide text-gray-500"
-        for="filter-employee"
-        >Employee</label
-      >
-      <select
-        id="filter-employee"
-        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
-        [value]="filterEmployee()"
-        (change)="employeeFilterChange.emit($event)"
-      >
-        <option value="">All Employees</option>
-        @for (emp of employees(); track emp.employee_id) {
-          <option [value]="emp.employee_id">{{ emp.first_name }} {{ emp.last_name }}</option>
-        }
-      </select>
-    </div>
-    <div class="flex min-w-[140px] flex-1 flex-col gap-1">
-      <label
-        class="text-xs font-semibold uppercase tracking-wide text-gray-500"
-        for="filter-location"
-        >Location</label
-      >
-      <select
-        id="filter-location"
-        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
-        [value]="filterLocation()"
-        (change)="locationFilterChange.emit($event)"
-      >
-        <option value="">All Locations</option>
-        @for (loc of locations(); track loc.location_id) {
-          <option [value]="loc.location_id">{{ loc.name }}</option>
-        }
-      </select>
-    </div>
-    <div class="flex min-w-[140px] flex-1 flex-col gap-1">
-      <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-type"
-        >Shift Type</label
-      >
-      <select
-        id="filter-type"
-        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary focus:outline-none focus:ring-1 focus:ring-dt-primary"
-        [value]="filterType()"
-        (change)="typeFilterChange.emit($event)"
-      >
-        <option value="">All Types</option>
-        <option value="morning">Morning</option>
-        <option value="afternoon">Afternoon</option>
-        <option value="night">Night</option>
-      </select>
-    </div>
-    @if (hasActiveFilters()) {
-      <button
-        type="button"
-        class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100"
-        data-testid="clear-filters"
-        (click)="clearFiltersRequested.emit()"
-        (keydown.enter)="clearFiltersRequested.emit()"
-        (keydown.space)="clearFiltersRequested.emit()"
-      >
-        Clear filters
-      </button>
-    }
-  </div>
+@if (viewport.isMobile()) {
+  <!-- Phone: filters live behind a button so they don't push the schedule off-screen. -->
+  <button
+    type="button"
+    class="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700"
+    [attr.aria-expanded]="expanded()"
+    aria-controls="schedule-filters-panel"
+    data-testid="filters-toggle"
+    (click)="toggleExpanded()"
+  >
+    <span class="flex items-center gap-2">
+      Filters
+      @if (activeCount() > 0) {
+        <span
+          class="rounded-full bg-dt-primary px-2 py-0.5 text-xs font-bold text-white"
+          data-testid="filters-active-count"
+          >{{ activeCount() }}</span
+        >
+      }
+    </span>
+    <span class="text-gray-400" aria-hidden="true">{{ expanded() ? '▴' : '▾' }}</span>
+  </button>
+}
 
-  <!-- ── Status chip row ────────────────────────────────────────────────────── -->
-  <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by shift status">
-    <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Status</span>
+@if (!viewport.isMobile() || expanded()) {
+  <div
+    id="schedule-filters-panel"
+    class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4"
+  >
+    <!-- ── Dropdown row (employee / location / type) ─────────────────────────── -->
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-employee"
+          >Employee</label
+        >
+        <select
+          id="filter-employee"
+          class="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary sm:min-h-0 focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterEmployee()"
+          (change)="employeeFilterChange.emit($event)"
+        >
+          <option value="">All Employees</option>
+          @for (emp of employees(); track emp.employee_id) {
+            <option [value]="emp.employee_id">{{ emp.first_name }} {{ emp.last_name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label
+          class="text-xs font-semibold uppercase tracking-wide text-gray-500"
+          for="filter-location"
+          >Location</label
+        >
+        <select
+          id="filter-location"
+          class="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary sm:min-h-0 focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterLocation()"
+          (change)="locationFilterChange.emit($event)"
+        >
+          <option value="">All Locations</option>
+          @for (loc of locations(); track loc.location_id) {
+            <option [value]="loc.location_id">{{ loc.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex min-w-[140px] flex-1 flex-col gap-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500" for="filter-type"
+          >Shift Type</label
+        >
+        <select
+          id="filter-type"
+          class="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-dt-primary sm:min-h-0 focus:outline-none focus:ring-1 focus:ring-dt-primary"
+          [value]="filterType()"
+          (change)="typeFilterChange.emit($event)"
+        >
+          <option value="">All Types</option>
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="night">Night</option>
+        </select>
+      </div>
+      @if (hasActiveFilters()) {
+        <button
+          type="button"
+          class="min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-100 sm:min-h-0"
+          data-testid="clear-filters"
+          (click)="clearFiltersRequested.emit()"
+          (keydown.enter)="clearFiltersRequested.emit()"
+          (keydown.space)="clearFiltersRequested.emit()"
+        >
+          Clear filters
+        </button>
+      }
+    </div>
 
-    <!-- "All" pill — active when no chips are selected -->
-    <button
-      type="button"
-      [class]="
-        'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-dt-primary focus:ring-offset-1 ' +
-        (allActive()
-          ? 'bg-dt-primary text-white border-dt-primary'
-          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50')
-      "
-      [attr.aria-pressed]="allActive()"
-      data-testid="status-chip-all"
-      (click)="selectAll()"
-      (keydown.enter)="selectAll()"
-      (keydown.space)="$event.preventDefault(); selectAll()"
-    >
-      All
-    </button>
+    <!-- ── Status chip row ────────────────────────────────────────────────────── -->
+    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by shift status">
+      <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Status</span>
 
-    <!-- Named status chips (Filled / Unfilled) -->
-    @for (chip of statusChips; track chip.key) {
+      <!-- "All" pill — active when no chips are selected -->
       <button
         type="button"
         [class]="
-          'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-dt-primary focus:ring-offset-1 ' +
-          (isChipActive(chip.key) ? chip.activeClasses : chip.inactiveClasses)
+          'min-h-11 rounded-full border px-3 py-1 text-xs font-semibold transition-colors sm:min-h-0 focus:outline-none focus:ring-2 focus:ring-dt-primary focus:ring-offset-1 ' +
+          (allActive()
+            ? 'bg-dt-primary text-white border-dt-primary'
+            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50')
         "
-        [attr.aria-pressed]="isChipActive(chip.key)"
-        [attr.data-testid]="'status-chip-' + chip.key"
-        (click)="toggleChip(chip.key)"
-        (keydown.enter)="toggleChip(chip.key)"
-        (keydown.space)="$event.preventDefault(); toggleChip(chip.key)"
+        [attr.aria-pressed]="allActive()"
+        data-testid="status-chip-all"
+        (click)="selectAll()"
+        (keydown.enter)="selectAll()"
+        (keydown.space)="$event.preventDefault(); selectAll()"
       >
-        {{ chip.label }}
+        All
       </button>
-    }
+
+      <!-- Named status chips (Filled / Unfilled) -->
+      @for (chip of statusChips; track chip.key) {
+        <button
+          type="button"
+          [class]="
+            'min-h-11 rounded-full border px-3 py-1 text-xs font-semibold transition-colors sm:min-h-0 focus:outline-none focus:ring-2 focus:ring-dt-primary focus:ring-offset-1 ' +
+            (isChipActive(chip.key) ? chip.activeClasses : chip.inactiveClasses)
+          "
+          [attr.aria-pressed]="isChipActive(chip.key)"
+          [attr.data-testid]="'status-chip-' + chip.key"
+          (click)="toggleChip(chip.key)"
+          (keydown.enter)="toggleChip(chip.key)"
+          (keydown.space)="$event.preventDefault(); toggleChip(chip.key)"
+        >
+          {{ chip.label }}
+        </button>
+      }
+    </div>
   </div>
-</div>
+}

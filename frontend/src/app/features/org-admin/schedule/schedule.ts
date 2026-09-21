@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { forkJoin } from 'rxjs';
 import type { Shift } from '../../../core/models/shift.model';
 import {
@@ -29,11 +30,15 @@ import {
   ScheduleFiltersComponent,
   ScheduleViewToggleComponent,
   ScheduleNavComponent,
+  MobileMonthGridComponent,
+  MobileDayListComponent,
+  SwipeNavDirective,
 } from '@common-daltime';
 
 @Component({
   selector: 'app-org-admin-schedule',
   imports: [
+    NgTemplateOutlet,
     ButtonComponent,
     LoadingSpinnerComponent,
     ErrorAlertComponent,
@@ -41,6 +46,9 @@ import {
     ScheduleFiltersComponent,
     ScheduleViewToggleComponent,
     ScheduleNavComponent,
+    MobileMonthGridComponent,
+    MobileDayListComponent,
+    SwipeNavDirective,
   ],
   templateUrl: './schedule.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

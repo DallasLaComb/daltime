@@ -6,13 +6,21 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import type { Shift } from '../../../core/models/shift.model';
+import { NgTemplateOutlet } from '@angular/common';
+import type { Shift, ShiftType } from '../../../core/models/shift.model';
 import { EmployeeShiftsService } from './shifts.service';
+import { Viewport } from '../../../core/services/viewport';
 import {
   ButtonComponent,
   LoadingSpinnerComponent,
   ErrorAlertComponent,
   EmptyStateComponent,
+  MobileMonthGridComponent,
+  MobileDayListComponent,
+  SwipeNavDirective,
+  buildDayIndicators,
+  resolveSelectedDate,
+  type MobileDayGroup,
 } from '@common-daltime';
 import {
   SHIFT_BORDER_STYLES,
@@ -44,12 +52,24 @@ interface WeekDay {
 
 @Component({
   selector: 'app-employee-schedule',
-  imports: [ButtonComponent, LoadingSpinnerComponent, ErrorAlertComponent, EmptyStateComponent],
+  imports: [
+    NgTemplateOutlet,
+    ButtonComponent,
+    LoadingSpinnerComponent,
+    ErrorAlertComponent,
+    EmptyStateComponent,
+    MobileMonthGridComponent,
+    MobileDayListComponent,
+    SwipeNavDirective,
+  ],
   templateUrl: './schedule.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EmployeeScheduleComponent {
   private readonly shiftsService = inject(EmployeeShiftsService);
+
+  /** Phones get an agenda-style layout (no horizontal scrolling); ≥ 768px keeps the grids. */
+  protected readonly viewport = inject(Viewport);
 
   /** Expose style maps to the template for shift card theming. */
   protected readonly shiftBorderStyles = SHIFT_BORDER_STYLES;
@@ -62,6 +82,12 @@ export class EmployeeScheduleComponent {
 
   /** The date the user is currently navigated to. All view modes use this as an anchor. */
   protected readonly currentDate = signal<Date>(new Date());
+
+  /**
+   * Day the user tapped in the phone month grid. Kept separate from `currentDate` because changing
+   * `currentDate` re-fetches; selecting a day inside the loaded month must not.
+   */
+  private readonly selectedDate = signal<Date | null>(null);
 
   // ── Own-shifts state ───────────────────────────────────────────────────────
 
@@ -180,6 +206,78 @@ export class EmployeeScheduleComponent {
 
   /** True when there are no shifts anywhere in the current week. Used to show empty state. */
   protected readonly weekIsEmpty = computed(() => this.shifts().length === 0);
+
+  // ── Phone layouts (month grid + agenda, week day list) ─────────────────────
+
+  /** Own shifts keyed by date, each day sorted by start time. */
+  private readonly shiftsByDate = computed(() => {
+    const map = new Map<string, Shift[]>();
+    for (const shift of this.shifts()) {
+      map.set(shift.date, [...(map.get(shift.date) ?? []), shift]);
+    }
+    for (const dayShifts of map.values()) {
+      dayShifts.sort((a, b) => a.start_time.localeCompare(b.start_time));
+    }
+    return map;
+  });
+
+  /** Dots for the phone month grid. */
+  protected readonly dayIndicators = computed(() => buildDayIndicators(this.shiftsByDate()));
+
+  /** The day whose shifts are listed under the phone month grid. */
+  protected readonly agendaDate = computed(() =>
+    resolveSelectedDate(this.selectedDate(), this.currentDate()),
+  );
+
+  protected readonly agendaLabel = computed(() =>
+    formatLongDateLabel(toDateKey(this.agendaDate())),
+  );
+
+  protected readonly agendaShifts = computed(
+    () => this.shiftsByDate().get(toDateKey(this.agendaDate())) ?? [],
+  );
+
+  /** Section headers for the phone week list (Sun–Sat). */
+  protected readonly weekDayGroups = computed((): MobileDayGroup[] =>
+    this.weekColumns().map((day) => ({
+      dateKey: day.dateKey,
+      label: day.date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      }),
+      isToday: day.isToday,
+      count: day.shifts.length,
+    })),
+  );
+
+  // Typed lookups for the untyped `let-shift` context of the shared shift-row template.
+  protected borderClass(type: ShiftType): string {
+    return SHIFT_BORDER_STYLES[type];
+  }
+
+  protected badgeClass(type: ShiftType): string {
+    return SHIFT_BADGE_STYLES[type];
+  }
+
+  /** Shifts for one day of the phone week list. */
+  protected shiftsOn(dateKey: string): Shift[] {
+    return this.shiftsByDate().get(dateKey) ?? [];
+  }
+
+  /** Handles a tap on a day in the phone month grid. */
+  protected selectDate(date: Date): void {
+    this.selectedDate.set(date);
+  }
+
+  /** Swipe navigation only applies to the phone layout. */
+  protected swipePrev(): void {
+    if (this.viewport.isMobile()) this.navigatePrev();
+  }
+
+  protected swipeNext(): void {
+    if (this.viewport.isMobile()) this.navigateNext();
+  }
 
   // ── Today check for month-view date-group headers ──────────────────────────
 
@@ -322,6 +420,7 @@ export class EmployeeScheduleComponent {
   protected setViewMode(mode: ViewMode): void {
     this.viewMode.set(mode);
     this.currentDate.set(new Date());
+    this.selectedDate.set(null);
   }
 
   /** Re-triggers the current view's data load. Used by the error-alert retry button. */

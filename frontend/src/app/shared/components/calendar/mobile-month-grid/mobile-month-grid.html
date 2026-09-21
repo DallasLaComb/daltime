@@ -1,0 +1,70 @@
+<div
+  class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+  role="group"
+  aria-label="Month"
+  data-testid="mobile-month-grid"
+>
+  <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50" aria-hidden="true">
+    @for (name of weekdays; track $index) {
+      <div class="py-2 text-center text-xs font-semibold text-gray-500">{{ name }}</div>
+    }
+  </div>
+
+  @for (week of weeks(); track $index) {
+    <div class="grid grid-cols-7">
+      @for (cell of week; track $index) {
+        @if (cell) {
+          <!-- A raw <button> on purpose: the cell is a custom day-number + dots control, not an action button. -->
+          <button
+            type="button"
+            [class]="
+              'flex h-14 min-w-0 flex-col items-center justify-center gap-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-dt-primary ' +
+              (cell.isSelected ? 'bg-dt-primary/10' : 'hover:bg-gray-50')
+            "
+            [attr.aria-label]="cell.label"
+            [attr.aria-pressed]="cell.isSelected"
+            [attr.aria-current]="cell.isToday ? 'date' : null"
+            [attr.data-testid]="'mobile-day-cell-' + cell.day"
+            (click)="dateSelected.emit(cell.date)"
+          >
+            <span
+              [class]="
+                'flex h-7 w-7 items-center justify-center rounded-full text-sm ' +
+                (cell.isToday
+                  ? 'bg-dt-primary font-bold text-white'
+                  : cell.isSelected
+                    ? 'font-bold text-dt-primary ring-2 ring-dt-primary'
+                    : 'font-medium text-gray-700')
+              "
+              >{{ cell.day }}</span
+            >
+            <span class="flex h-2 items-center gap-0.5" aria-hidden="true">
+              @for (kind of cell.dots; track $index) {
+                <span [class]="'inline-block h-1.5 w-1.5 rounded-full ' + dotClass[kind]"></span>
+              }
+              @if (cell.overflow) {
+                <span class="text-[10px] font-bold leading-none text-gray-500">+</span>
+              }
+            </span>
+          </button>
+        } @else {
+          <div class="h-14 bg-gray-50" aria-hidden="true"></div>
+        }
+      }
+    </div>
+  }
+
+  @if (legend().length > 0) {
+    <div
+      class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500"
+      data-testid="mobile-month-legend"
+    >
+      @for (item of legend(); track item.kind) {
+        <span class="flex items-center gap-1.5">
+          <span [class]="'inline-block h-2 w-2 rounded-full ' + dotClass[item.kind]"></span>
+          {{ item.label }}
+        </span>
+      }
+    </div>
+  }
+</div>

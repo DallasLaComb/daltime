@@ -1,6 +1,12 @@
-import { computed, signal } from '@angular/core';
+import { computed, inject, signal } from '@angular/core';
 import type { Signal } from '@angular/core';
-import type { Shift } from '../models/shift.model';
+import type { Shift, ShiftType } from '../models/shift.model';
+import { Viewport } from '../services/viewport';
+import {
+  buildDayIndicators,
+  resolveSelectedDate,
+} from '../../shared/components/calendar/calendar.utils';
+import type { MobileDayGroup } from '../../shared/components/calendar/mobile-day-list/mobile-day-list';
 import type { EmployeeResponse } from '../models/employee.model';
 import type { ManagerLocation } from '../models/manager-location.model';
 import {
@@ -96,6 +102,90 @@ export abstract class ScheduleBaseComponent {
     const chips = this.filterStatuses();
     return chips.size === 0 || chips.has('unfilled');
   });
+
+  // ── Phone layouts (month grid + agenda, week day list) ───────────────────────
+
+  /** Phones get agenda-style layouts (no horizontal scrolling); ≥ 768px keeps the grids. */
+  protected readonly viewport = inject(Viewport);
+
+  /** Day tapped in the phone month grid. Separate from `currentDate` so selecting never reloads data. */
+  private readonly selectedDate = signal<Date | null>(null);
+
+  /**
+   * Unfilled-slot counts per date for the month-grid dots. Only the manager page has unfilled
+   * slots, so it overrides this; the default is "none".
+   */
+  protected readonly unfilledCountByDate: Signal<ReadonlyMap<string, number> | undefined> =
+    computed(() => undefined);
+
+  protected readonly dayIndicators = computed(() =>
+    buildDayIndicators(this.shiftsByDate(), this.unfilledCountByDate()),
+  );
+
+  /** The day whose shifts are listed under the phone month grid. */
+  protected readonly agendaDate = computed(() =>
+    resolveSelectedDate(this.selectedDate(), this.currentDate()),
+  );
+
+  protected readonly agendaDateKey = computed(() => toDateKey(this.agendaDate()));
+
+  protected readonly agendaLabel = computed(() =>
+    this.agendaDate().toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    }),
+  );
+
+  protected readonly agendaShifts = computed(
+    () => this.shiftsByDate().get(this.agendaDateKey()) ?? [],
+  );
+
+  /** Section headers for the phone week list (Sun–Sat). */
+  protected readonly weekDayGroups = computed((): MobileDayGroup[] =>
+    this.weekDays().map((date) => {
+      const dateKey = toDateKey(date);
+      return {
+        dateKey,
+        label: date.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        }),
+        isToday: isTodayFn(date, this.today),
+        count:
+          (this.shiftsByDate().get(dateKey)?.length ?? 0) +
+          (this.unfilledCountByDate()?.get(dateKey) ?? 0),
+      };
+    }),
+  );
+
+  protected selectDate(date: Date): void {
+    this.selectedDate.set(date);
+  }
+
+  /** Shifts on one date (`YYYY-MM-DD`) after filters. */
+  protected shiftsForKey(dateKey: string): Shift[] {
+    return this.shiftsByDate().get(dateKey) ?? [];
+  }
+
+  // Typed lookups for untyped `let-shift` template contexts.
+  protected borderClass(type: ShiftType): string {
+    return SHIFT_BORDER_STYLES[type];
+  }
+
+  protected badgeClass(type: ShiftType): string {
+    return SHIFT_BADGE_STYLES[type];
+  }
+
+  /** Swipe navigation only applies to the phone layout. */
+  protected swipePrev(): void {
+    if (this.viewport.isMobile()) this.prevPeriod();
+  }
+
+  protected swipeNext(): void {
+    if (this.viewport.isMobile()) this.nextPeriod();
+  }
 
   protected readonly calendarWeeks = computed(() => buildCalendarWeeks(this.currentDate()));
 

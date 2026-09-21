@@ -12,6 +12,7 @@ import type { ShiftNeeded } from '../../../core/models/manager-shift-needed.mode
 import type {
   DayAvailability,
   DayOfWeek,
+  TimeSlot,
 } from '../../../core/models/employee-availability.model';
 import { toDateKey, toMonthKey, buildViewLabel } from '../../../core/utils/schedule.utils';
 import { ScheduleBaseComponent } from '../../../core/utils/schedule-base';
@@ -22,7 +23,7 @@ import { ManagerLocationsService } from '../shifts-needed/locations.service';
 import { ManagerShiftsNeededService } from '../shifts-needed/shifts-needed.service';
 import { ManagerEmployeeAvailabilityService } from './employee-availability.service';
 import type { EmployeeAvailabilityBundle } from './employee-availability.service';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import {
   ButtonComponent,
   LoadingSpinnerComponent,
@@ -31,9 +32,29 @@ import {
   ScheduleFiltersComponent,
   ScheduleViewToggleComponent,
   ScheduleNavComponent,
+  MobileMonthGridComponent,
+  MobileDayListComponent,
+  SwipeNavDirective,
 } from '@common-daltime';
 
 export type ViewMode = 'day' | 'week' | 'month' | 'availability' | 'fill-shift';
+
+/** View model for one employee in the phone availability list. */
+export interface AvailabilityCard {
+  employeeId: string;
+  name: string;
+  /** False when the employee has never submitted a weekly schedule. */
+  hasSchedule: boolean;
+  days: {
+    key: DayOfWeek;
+    /** "Mon" */
+    label: string;
+    /** "M" */
+    letter: string;
+    available: boolean;
+    slots: TimeSlot[];
+  }[];
+}
 
 export interface UnfilledSlot {
   shiftNeeded: ShiftNeeded;
@@ -107,6 +128,7 @@ function weeklyHoursForEmployee(employeeId: string, targetDate: string, shifts: 
   selector: 'app-manager-schedule',
   imports: [
     DatePipe,
+    NgTemplateOutlet,
     ButtonComponent,
     LoadingSpinnerComponent,
     ErrorAlertComponent,
@@ -114,6 +136,9 @@ function weeklyHoursForEmployee(employeeId: string, targetDate: string, shifts: 
     ScheduleFiltersComponent,
     ScheduleViewToggleComponent,
     ScheduleNavComponent,
+    MobileMonthGridComponent,
+    MobileDayListComponent,
+    SwipeNavDirective,
   ],
   templateUrl: './schedule.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -185,6 +210,14 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
     return map;
   });
 
+  /** Unfilled slots per date, for the phone month grid's red rings. Honors the status-chip filter. */
+  protected override readonly unfilledCountByDate = computed(() => {
+    if (!this.showUnfilledSlots()) return undefined;
+    const counts = new Map<string, number>();
+    for (const [date, slots] of this.unfilledByDate()) counts.set(date, slots.length);
+    return counts;
+  });
+
   // ── Feature #165: Availability view ──────────────────────────────────────────
 
   protected readonly DAYS_DISPLAY: { key: DayOfWeek; label: string }[] = [
@@ -203,6 +236,35 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
       return { employee: emp, bundle: bundle ?? null };
     }),
   );
+
+  /** One card per employee for the phone availability list (replaces the 560px matrix). */
+  protected readonly availabilityCards = computed((): AvailabilityCard[] =>
+    this.availabilityRows().map(({ employee, bundle }) => ({
+      employeeId: employee.employee_id,
+      name: `${employee.first_name} ${employee.last_name}`.trim(),
+      hasSchedule: !!bundle?.availability?.schedule,
+      days: this.DAYS_DISPLAY.map(({ key, label }) => {
+        const avail = this.dayAvailForEmployee(bundle, key);
+        const slots = avail?.available ? (avail.slots ?? []) : [];
+        return { key, label, letter: label[0], available: !!avail?.available, slots };
+      }),
+    })),
+  );
+
+  /** Employee ids whose phone availability card is open. */
+  private readonly expandedAvailability = signal<ReadonlySet<string>>(new Set());
+
+  protected isAvailabilityExpanded(employeeId: string): boolean {
+    return this.expandedAvailability().has(employeeId);
+  }
+
+  protected toggleAvailability(employeeId: string): void {
+    this.expandedAvailability.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(employeeId)) next.add(employeeId);
+      return next;
+    });
+  }
 
   protected readonly showUnavailableCandidates = signal(false);
 

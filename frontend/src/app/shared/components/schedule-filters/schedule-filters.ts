@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { Viewport } from '../../../core/services/viewport';
 import type { ShiftStatusFilter } from '../../../core/utils/schedule.utils';
 
 export interface ScheduleFilterEmployee {
@@ -70,6 +79,24 @@ export class ScheduleFiltersComponent {
    * Named 'statusChipsChange' (not 'change') to avoid the @angular-eslint/no-output-native rule.
    */
   statusChipsChange = output<Set<ShiftStatusFilter>>();
+
+  protected readonly viewport = inject(Viewport);
+
+  /** Phones collapse the filter panel behind a "Filters" button; desktop always shows it. */
+  protected readonly expanded = signal(false);
+
+  /** How many filters are currently narrowing the schedule (shown as a badge on the phone toggle). */
+  protected readonly activeCount = computed(
+    () =>
+      (this.filterEmployee() ? 1 : 0) +
+      (this.filterLocation() ? 1 : 0) +
+      (this.filterType() ? 1 : 0) +
+      this.activeStatusChips().size,
+  );
+
+  protected toggleExpanded(): void {
+    this.expanded.update((open) => !open);
+  }
 
   /** Expose chip metadata to the template so the template stays logic-free. */
   protected readonly statusChips = STATUS_CHIPS;

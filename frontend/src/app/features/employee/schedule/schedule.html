@@ -10,9 +10,10 @@
     <div
       role="group"
       aria-label="Schedule view"
-      class="flex items-center gap-1 self-start rounded-lg bg-neutral-100 p-1"
+      class="flex w-full items-center gap-1 rounded-lg bg-neutral-100 p-1 sm:w-auto sm:self-start"
     >
       <app-button
+        class="flex-1 sm:flex-none [&>button]:w-full sm:[&>button]:w-auto"
         [variant]="viewMode() === 'day' ? 'primary' : 'secondary'"
         size="sm"
         testId="view-toggle-day"
@@ -21,6 +22,7 @@
         >Day</app-button
       >
       <app-button
+        class="flex-1 sm:flex-none [&>button]:w-full sm:[&>button]:w-auto"
         [variant]="viewMode() === 'week' ? 'primary' : 'secondary'"
         size="sm"
         testId="view-toggle-week"
@@ -29,6 +31,7 @@
         >Week</app-button
       >
       <app-button
+        class="flex-1 sm:flex-none [&>button]:w-full sm:[&>button]:w-auto"
         [variant]="viewMode() === 'month' ? 'primary' : 'secondary'"
         size="sm"
         testId="view-toggle-month"
@@ -40,7 +43,7 @@
   </div>
 
   <!-- ── Date navigation ───────────────────────────────────────────────────── -->
-  <div class="mb-5 flex flex-wrap items-center gap-2">
+  <div class="mb-4 flex items-center gap-2 sm:mb-5">
     <app-button
       variant="secondary"
       size="sm"
@@ -51,7 +54,7 @@
     >
 
     <span
-      class="min-w-[140px] text-center text-sm font-semibold text-neutral-800 sm:min-w-[200px] sm:text-base"
+      class="min-w-0 flex-1 truncate text-center text-sm font-semibold text-neutral-800 sm:min-w-[200px] sm:flex-none sm:text-base"
       aria-live="polite"
       aria-atomic="true"
       >{{ viewLabel() }}</span
@@ -79,213 +82,313 @@
   } @else if (error()) {
     <app-error-alert [message]="error()!" [retryable]="true" (retry)="retry()" />
   } @else {
-    <!-- ════════════════════ DAY VIEW ════════════════════ -->
-    @if (viewMode() === 'day') {
-      <!-- Own shifts for the selected date -->
-      @if (shifts().length === 0) {
-        <app-empty-state
-          [title]="isViewingToday() ? 'No shifts scheduled today' : 'No shifts scheduled'"
-          [description]="
-            isViewingToday()
-              ? 'You have no shifts scheduled for today.'
-              : 'No shifts for ' + dayLabel() + '.'
-          "
-        />
-      } @else {
-        <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-          @for (shift of shifts(); track shift.shift_id; let idx = $index) {
-            <div
-              [class]="
-                'flex items-center gap-4 border-l-4 px-5 py-4 ' +
-                (idx > 0 ? 'border-t border-neutral-100 ' : '') +
-                shiftBorderStyles[shift.type]
-              "
-              data-testid="shift-card"
-            >
-              <div class="w-28 shrink-0">
-                <p class="text-sm font-semibold text-neutral-800">
-                  {{ formatTime(shift.start_time) }}
-                </p>
-                <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-neutral-900">
-                  {{ shift.location_name || 'Location TBD' }}
-                </p>
-                <p class="mt-0.5 text-sm text-neutral-500 capitalize">{{ shift.type }} shift</p>
-              </div>
-              <span
-                [class]="
-                  'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
-                  shiftBadgeStyles[shift.type]
-                "
-                data-testid="shift-type-badge"
-                >{{ shift.type }}</span
-              >
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Available from coworkers (day view only; hidden when empty) -->
-      @if (!availableShiftsLoading() && availableShifts().length > 0) {
-        <section class="mt-6" aria-label="Available shifts from coworkers">
-          <h3 class="mb-3 text-sm font-semibold text-neutral-700">Available from coworkers</h3>
-          <div class="flex flex-col gap-3">
-            @for (shift of availableShifts(); track shift.shift_id) {
+    <!-- Swiping left/right moves to the next/previous period on phones. -->
+    <div
+      appSwipeNav
+      class="min-h-[50dvh] md:min-h-0"
+      data-testid="swipe-area"
+      (swipedPrev)="swipePrev()"
+      (swipedNext)="swipeNext()"
+    >
+      <!-- ════════════════════ DAY VIEW ════════════════════ -->
+      @if (viewMode() === 'day') {
+        <!-- Own shifts for the selected date -->
+        @if (shifts().length === 0) {
+          <app-empty-state
+            [title]="isViewingToday() ? 'No shifts scheduled today' : 'No shifts scheduled'"
+            [description]="
+              isViewingToday()
+                ? 'You have no shifts scheduled for today.'
+                : 'No shifts for ' + dayLabel() + '.'
+            "
+          />
+        } @else {
+          <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+            @for (shift of shifts(); track shift.shift_id; let idx = $index) {
               <div
-                class="flex flex-col gap-3 rounded-xl border-2 border-dashed border-secondary bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center"
-                data-testid="available-shift-card"
+                [class]="
+                  'flex items-center gap-4 border-l-4 px-5 py-4 ' +
+                  (idx > 0 ? 'border-t border-neutral-100 ' : '') +
+                  shiftBorderStyles[shift.type]
+                "
+                data-testid="shift-card"
               >
+                <div class="w-28 shrink-0">
+                  <p class="text-sm font-semibold text-neutral-800">
+                    {{ formatTime(shift.start_time) }}
+                  </p>
+                  <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
+                </div>
                 <div class="min-w-0 flex-1">
                   <p class="font-medium text-neutral-900">
                     {{ shift.location_name || 'Location TBD' }}
                   </p>
-                  <p class="mt-0.5 text-sm text-neutral-500 capitalize">
-                    {{ shift.type }} shift · {{ formatTime(shift.start_time) }} –
-                    {{ formatTime(shift.end_time) }}
-                  </p>
+                  <p class="mt-0.5 text-sm text-neutral-500 capitalize">{{ shift.type }} shift</p>
                 </div>
                 <span
                   [class]="
-                    'self-start shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize sm:self-auto ' +
+                    'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
                     shiftBadgeStyles[shift.type]
                   "
-                  data-testid="available-shift-type-badge"
+                  data-testid="shift-type-badge"
                   >{{ shift.type }}</span
-                >
-                <app-button variant="secondary" size="sm" [disabled]="true" testId="claim-shift-btn"
-                  >Claim shift</app-button
                 >
               </div>
             }
           </div>
-        </section>
-      }
-    }
+        }
 
-    <!-- ════════════════════ WEEK VIEW ════════════════════ -->
-    @if (viewMode() === 'week') {
-      <!-- Horizontal-scroll wrapper ensures columns don't collapse on mobile -->
-      <div class="overflow-x-auto" role="region" aria-label="Week schedule">
-        <div class="grid min-w-[560px] grid-cols-7">
-          <!-- Day column headers — always rendered so keyboard/screen-reader users can orient -->
-          @for (day of weekColumns(); track day.dateKey) {
-            <div
-              [class]="
-                'border-b border-neutral-200 px-2 py-2 text-center text-xs font-semibold ' +
-                (day.isToday ? 'bg-tertiary/20 text-primary' : 'text-neutral-500')
-              "
-              [attr.aria-current]="day.isToday ? 'date' : null"
-              data-testid="week-day-header"
-            >
-              {{ day.dayLabel }}
-            </div>
-          }
-          <!-- Shift cells per day -->
-          @for (day of weekColumns(); track day.dateKey) {
-            <div
-              [class]="
-                'min-h-16 border-r border-neutral-100 p-1.5 last:border-r-0 ' +
-                (day.isToday ? 'bg-tertiary/10' : '')
-              "
-              data-testid="week-day-cell"
-            >
-              @for (shift of day.shifts; track shift.shift_id) {
+        <!-- Available from coworkers (day view only; hidden when empty) -->
+        @if (!availableShiftsLoading() && availableShifts().length > 0) {
+          <section class="mt-6" aria-label="Available shifts from coworkers">
+            <h3 class="mb-3 text-sm font-semibold text-neutral-700">Available from coworkers</h3>
+            <div class="flex flex-col gap-3">
+              @for (shift of availableShifts(); track shift.shift_id) {
                 <div
-                  [class]="
-                    'mb-1 rounded-md border-l-2 px-1.5 py-1 text-xs ' +
-                    shiftBorderStyles[shift.type] +
-                    ' ' +
-                    shiftBadgeStyles[shift.type]
-                  "
-                  data-testid="week-shift-card"
+                  class="flex flex-col gap-3 rounded-xl border-2 border-dashed border-secondary bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center"
+                  data-testid="available-shift-card"
                 >
-                  <p class="font-semibold leading-tight">{{ formatTime(shift.start_time) }}</p>
-                  <p class="leading-tight opacity-80">{{ shift.location_name || 'TBD' }}</p>
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-neutral-900">
+                      {{ shift.location_name || 'Location TBD' }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-neutral-500 capitalize">
+                      {{ shift.type }} shift · {{ formatTime(shift.start_time) }} –
+                      {{ formatTime(shift.end_time) }}
+                    </p>
+                  </div>
+                  <span
+                    [class]="
+                      'self-start shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize sm:self-auto ' +
+                      shiftBadgeStyles[shift.type]
+                    "
+                    data-testid="available-shift-type-badge"
+                    >{{ shift.type }}</span
+                  >
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="true"
+                    testId="claim-shift-btn"
+                    >Claim shift</app-button
+                  >
                 </div>
               }
             </div>
-          }
-        </div>
-      </div>
-      <!-- Empty state is shown below the column headers, not instead of them -->
-      @if (weekIsEmpty()) {
-        <div class="mt-6">
-          <app-empty-state
-            title="No shifts scheduled"
-            description="You have no shifts assigned for this week."
-          />
-        </div>
+          </section>
+        }
       }
-    }
 
-    <!-- ════════════════════ MONTH VIEW ════════════════════ -->
-    @if (viewMode() === 'month') {
-      @if (grouped().length === 0) {
-        <app-empty-state
-          title="No shifts scheduled"
-          [description]="'You have no shifts assigned for ' + viewLabel() + '.'"
-        />
-      } @else {
-        <div class="flex flex-col gap-6">
-          @for (group of grouped(); track group.date) {
-            <div>
-              <div class="mb-2 flex items-center gap-2">
-                @if (isToday(group.date)) {
-                  <span class="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-white"
-                    >Today</span
-                  >
-                }
-                <h3 class="text-sm font-semibold text-neutral-700" data-testid="date-group-label">
-                  {{ group.dateLabel }}
-                </h3>
-              </div>
-
+      <!-- ════════════════════ WEEK VIEW ════════════════════ -->
+      @if (viewMode() === 'week' && viewport.isMobile()) {
+        <!-- Phone: vertical list of the 7 days — nothing scrolls sideways. -->
+        <app-mobile-day-list [days]="weekDayGroups()">
+          <ng-template let-day>
+            @if (shiftsOn(day.dateKey).length === 0) {
+              <p class="mb-0 px-3 pb-1 text-sm text-neutral-400" data-testid="week-day-empty">
+                No shifts
+              </p>
+            } @else {
               <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                @for (shift of group.shifts; track shift.shift_id; let idx = $index) {
+                @for (shift of shiftsOn(day.dateKey); track shift.shift_id; let idx = $index) {
+                  <ng-container
+                    [ngTemplateOutlet]="shiftRow"
+                    [ngTemplateOutletContext]="{ $implicit: shift, first: idx === 0 }"
+                  />
+                }
+              </div>
+            }
+          </ng-template>
+        </app-mobile-day-list>
+      } @else if (viewMode() === 'week') {
+        <!-- Horizontal-scroll wrapper ensures columns don't collapse on narrow tablets -->
+        <div class="overflow-x-auto" role="region" aria-label="Week schedule">
+          <div class="grid min-w-[560px] grid-cols-7">
+            <!-- Day column headers — always rendered so keyboard/screen-reader users can orient -->
+            @for (day of weekColumns(); track day.dateKey) {
+              <div
+                [class]="
+                  'border-b border-neutral-200 px-2 py-2 text-center text-xs font-semibold ' +
+                  (day.isToday ? 'bg-tertiary/20 text-primary' : 'text-neutral-500')
+                "
+                [attr.aria-current]="day.isToday ? 'date' : null"
+                data-testid="week-day-header"
+              >
+                {{ day.dayLabel }}
+              </div>
+            }
+            <!-- Shift cells per day -->
+            @for (day of weekColumns(); track day.dateKey) {
+              <div
+                [class]="
+                  'min-h-16 border-r border-neutral-100 p-1.5 last:border-r-0 ' +
+                  (day.isToday ? 'bg-tertiary/10' : '')
+                "
+                data-testid="week-day-cell"
+              >
+                @for (shift of day.shifts; track shift.shift_id) {
                   <div
                     [class]="
-                      'flex items-center gap-4 border-l-4 px-5 py-4 ' +
-                      (idx > 0 ? 'border-t border-neutral-100 ' : '') +
-                      shiftBorderStyles[shift.type]
+                      'mb-1 rounded-md border-l-2 px-1.5 py-1 text-xs ' +
+                      shiftBorderStyles[shift.type] +
+                      ' ' +
+                      shiftBadgeStyles[shift.type]
                     "
-                    data-testid="shift-card"
+                    data-testid="week-shift-card"
                   >
-                    <div class="w-28 shrink-0">
-                      <p class="text-sm font-semibold text-neutral-800">
-                        {{ formatTime(shift.start_time) }}
-                      </p>
-                      <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <p class="font-medium text-neutral-900">
-                        {{ shift.location_name || 'Location TBD' }}
-                      </p>
-                      <p class="mt-0.5 text-sm text-neutral-500 capitalize">
-                        {{ shift.type }} shift
-                      </p>
-                    </div>
-                    <span
-                      [class]="
-                        'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
-                        shiftBadgeStyles[shift.type]
-                      "
-                      data-testid="shift-type-badge"
-                      >{{ shift.type }}</span
-                    >
+                    <p class="font-semibold leading-tight">{{ formatTime(shift.start_time) }}</p>
+                    <p class="leading-tight opacity-80">{{ shift.location_name || 'TBD' }}</p>
                   </div>
                 }
               </div>
+            }
+          </div>
+        </div>
+        <!-- Empty state is shown below the column headers, not instead of them -->
+        @if (weekIsEmpty()) {
+          <div class="mt-6">
+            <app-empty-state
+              title="No shifts scheduled"
+              description="You have no shifts assigned for this week."
+            />
+          </div>
+        }
+      }
+
+      <!-- ════════════════════ MONTH VIEW ════════════════════ -->
+      @if (viewMode() === 'month' && viewport.isMobile()) {
+        <!-- Phone: compact grid for orientation, the tapped day's shifts listed beneath (like Google Calendar). -->
+        <app-mobile-month-grid
+          [month]="currentDate()"
+          [selected]="agendaDate()"
+          [indicators]="dayIndicators()"
+          (dateSelected)="selectDate($event)"
+        />
+        <section class="mt-4" aria-label="Shifts for the selected day" data-testid="mobile-agenda">
+          <div class="mb-2 flex items-center justify-between px-1">
+            <h3
+              class="m-0 text-sm font-semibold text-neutral-800"
+              data-testid="mobile-agenda-label"
+            >
+              {{ agendaLabel() }}
+            </h3>
+            <span class="text-xs text-neutral-500"
+              >{{ agendaShifts().length }}
+              {{ agendaShifts().length === 1 ? 'shift' : 'shifts' }}</span
+            >
+          </div>
+          @if (agendaShifts().length === 0) {
+            <app-empty-state
+              title="No shifts scheduled"
+              description="Nothing scheduled this day."
+            />
+          } @else {
+            <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+              @for (shift of agendaShifts(); track shift.shift_id; let idx = $index) {
+                <ng-container
+                  [ngTemplateOutlet]="shiftRow"
+                  [ngTemplateOutletContext]="{ $implicit: shift, first: idx === 0 }"
+                />
+              }
             </div>
           }
-        </div>
+        </section>
+      } @else if (viewMode() === 'month') {
+        @if (grouped().length === 0) {
+          <app-empty-state
+            title="No shifts scheduled"
+            [description]="'You have no shifts assigned for ' + viewLabel() + '.'"
+          />
+        } @else {
+          <div class="flex flex-col gap-6">
+            @for (group of grouped(); track group.date) {
+              <div>
+                <div class="mb-2 flex items-center gap-2">
+                  @if (isToday(group.date)) {
+                    <span class="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-white"
+                      >Today</span
+                    >
+                  }
+                  <h3 class="text-sm font-semibold text-neutral-700" data-testid="date-group-label">
+                    {{ group.dateLabel }}
+                  </h3>
+                </div>
 
-        <p class="mt-6 text-sm text-neutral-500">
-          <span class="font-semibold text-neutral-700">{{ shifts().length }}</span>
-          {{ shifts().length === 1 ? 'shift' : 'shifts' }} in {{ viewLabel() }}
-        </p>
+                <div
+                  class="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm"
+                >
+                  @for (shift of group.shifts; track shift.shift_id; let idx = $index) {
+                    <div
+                      [class]="
+                        'flex items-center gap-4 border-l-4 px-5 py-4 ' +
+                        (idx > 0 ? 'border-t border-neutral-100 ' : '') +
+                        shiftBorderStyles[shift.type]
+                      "
+                      data-testid="shift-card"
+                    >
+                      <div class="w-28 shrink-0">
+                        <p class="text-sm font-semibold text-neutral-800">
+                          {{ formatTime(shift.start_time) }}
+                        </p>
+                        <p class="text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <p class="font-medium text-neutral-900">
+                          {{ shift.location_name || 'Location TBD' }}
+                        </p>
+                        <p class="mt-0.5 text-sm text-neutral-500 capitalize">
+                          {{ shift.type }} shift
+                        </p>
+                      </div>
+                      <span
+                        [class]="
+                          'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+                          shiftBadgeStyles[shift.type]
+                        "
+                        data-testid="shift-type-badge"
+                        >{{ shift.type }}</span
+                      >
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <p class="mt-6 text-sm text-neutral-500">
+            <span class="font-semibold text-neutral-700">{{ shifts().length }}</span>
+            {{ shifts().length === 1 ? 'shift' : 'shifts' }} in {{ viewLabel() }}
+          </p>
+        }
       }
-    }
+    </div>
   }
+
+  <!-- One shift, compact for phones. Used by the phone month agenda and the phone week list. -->
+  <ng-template #shiftRow let-shift let-first="first">
+    <div
+      [class]="
+        'flex items-center gap-3 border-l-4 px-4 py-3 ' +
+        (first ? '' : 'border-t border-neutral-100 ') +
+        borderClass(shift.type)
+      "
+      data-testid="shift-card"
+    >
+      <div class="w-20 shrink-0">
+        <p class="m-0 text-sm font-semibold text-neutral-800">{{ formatTime(shift.start_time) }}</p>
+        <p class="m-0 text-xs text-neutral-400">to {{ formatTime(shift.end_time) }}</p>
+      </div>
+      <p class="m-0 min-w-0 flex-1 truncate font-medium text-neutral-900">
+        {{ shift.location_name || 'Location TBD' }}
+      </p>
+      <span
+        [class]="
+          'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ' +
+          badgeClass(shift.type)
+        "
+        data-testid="shift-type-badge"
+        >{{ shift.type }}</span
+      >
+    </div>
+  </ng-template>
 </div>
