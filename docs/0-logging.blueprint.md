@@ -275,7 +275,7 @@ applies: local, dev, qa, prod).
 | 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ✅ |
 | 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ✅ |
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ✅ |
-| 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ⬜ |
+| 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ✅ |
 | 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ⬜ |
 | 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | No | ⬜ |
 | 8 | Client context + interaction tracking (device type, screen size, clicks, navigation, breadcrumbs) | Yes — check on desktop, phone, tablet | ⬜ |
@@ -441,7 +441,7 @@ not `console`); a grep shows no `console.` in the slice; review the diff for PII
 **AI verification:** `npm run lint` + `npm test` in backend and frontend; the arch test fails when a handler
 without `withLogging` is temporarily added (prove it, then revert).
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Added `no-console: error` to `backend/eslint.config.js` (no violations — all console calls replaced in Phases 1–4). Created `test/unit/shared/arch.withlogging.test.ts`: globs all 29 `handler.ts` files, one test per file asserting `withLogging` presence — 30 tests pass. Created `docs/logging.md`: level table, standard fields, PII rules, service conventions, how-to guide for new slices, 8 ready-to-paste Logs Insights queries (errors by route, slow requests, caller activity, client errors, click trail, device breakdown, rage clicks, sub→user resolution), retention/level table by environment. Added Logging section to `CLAUDE.md` under Key constraints. All 981 tests pass, ESLint clean.
 
 ---
 
