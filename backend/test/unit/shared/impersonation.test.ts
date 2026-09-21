@@ -16,6 +16,20 @@ vi.mock('../../../src/functions/web-admin/impersonate/db.js', () => ({
   getSession: vi.fn(),
   putAuditRecord: vi.fn(),
 }));
+vi.mock('../../../src/functions/shared/logger.js', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    addContext: vi.fn(),
+    appendKeys: vi.fn(),
+    resetKeys: vi.fn(),
+  },
+  serializeError: vi.fn((err: unknown) =>
+    err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) },
+  ),
+}));
 
 import {
   withImpersonation,
@@ -25,6 +39,7 @@ import {
 import { getCallerSub, getCallerGroups } from '../../../src/functions/shared/auth.js';
 import { getWebAdminLookup } from '../../../src/functions/web-admin/shared/db.js';
 import { isRoleMember, getSession, putAuditRecord } from '../../../src/functions/web-admin/impersonate/db.js';
+import { logger } from '../../../src/functions/shared/logger.js';
 
 const ADMIN_SUB = 'admin-sub-1';
 const TARGET = 'target-user-42';
@@ -97,8 +112,8 @@ beforeEach(() => {
   vi.mocked(isRoleMember).mockResolvedValue(true);
   vi.mocked(getSession).mockResolvedValue(ACTIVE_SESSION);
   vi.mocked(putAuditRecord).mockResolvedValue(undefined);
-  vi.spyOn(console, 'info').mockImplementation(() => undefined);
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  vi.mocked(logger.info).mockClear();
+  vi.mocked(logger.error).mockClear();
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -365,19 +380,22 @@ describe('audit and error handling', () => {
   it('logs a structured audit line naming actor, target, and session_id — never the token', async () => {
     await run(buildEvent({ headers: { authorization: 'Bearer SECRET.TOKEN.VALUE' } }));
 
-    const line = vi.mocked(console.info).mock.calls.map((c) => String(c[0])).find((l) => l.includes('impersonation'))!;
-    expect(line).toBeDefined();
-    expect(JSON.parse(line)).toMatchObject({
-      audit: 'impersonation',
-      session_id: ACTIVE_SESSION.session_id,
-      actor_web_admin_id: 'WADMIN#abc',
-      actor_sub: ADMIN_SUB,
-      target_user_id: TARGET,
-      role: 'Manager',
-      method: 'GET',
-      path: '/manager/shifts',
-    });
-    expect(line).not.toContain('SECRET');
+    expect(vi.mocked(logger.info)).toHaveBeenCalledWith(
+      'impersonation audit',
+      expect.objectContaining({
+        audit: 'impersonation',
+        session_id: ACTIVE_SESSION.session_id,
+        actor_web_admin_id: 'WADMIN#abc',
+        actor_sub: ADMIN_SUB,
+        target_user_id: TARGET,
+        role: 'Manager',
+        method: 'GET',
+        path: '/manager/shifts',
+      }),
+    );
+    // Confirm the token never makes it into the logged fields
+    const calls = vi.mocked(logger.info).mock.calls;
+    expect(JSON.stringify(calls)).not.toContain('SECRET');
   });
 
   it('writes a DynamoDB audit record for each impersonated call', async () => {
@@ -399,7 +417,7 @@ describe('audit and error handling', () => {
   it('writes no audit line when the request is rejected', async () => {
     await run(buildEvent({ method: 'POST' }));
     await run(buildEvent({ groups: '[Manager]' }));
-    expect(vi.mocked(console.info)).not.toHaveBeenCalled();
+    expect(vi.mocked(logger.info)).not.toHaveBeenCalled();
   });
 
   it('turns an unexpected error from the real handler into a generic 500 without leaking it', async () => {

@@ -7,6 +7,7 @@ import {
   ConflictError,
 } from '../../shared/errors.js';
 import { putNotification } from '../../shared/notifications/db.js';
+import { logger, serializeError } from '../../shared/logger.js';
 import type { NotificationRecord, SwapShiftApiFields, SwapShiftRecord } from '@daltime/contracts';
 import * as db from './db.js';
 
@@ -104,8 +105,7 @@ async function tryNotifyManager(managerId: string, message: string): Promise<voi
   try {
     await putNotification(buildNotification(managerId, message));
   } catch (err) {
-    // Log and continue — notification failures must never fail the primary response.
-    console.error('[swap-shifts] manager notification write failed:', err);
+    logger.error('manager notification write failed', { error: serializeError(err) });
   }
 }
 

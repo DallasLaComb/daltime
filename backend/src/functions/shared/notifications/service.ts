@@ -6,6 +6,7 @@ import type {
 } from '@daltime/contracts';
 import { stripKeys } from '../dynamo.js';
 import { NotFoundError, ValidationError } from '../errors.js';
+import { logger } from '../logger.js';
 import * as db from './db.js';
 
 /**
@@ -37,9 +38,7 @@ export async function createNotification(
   };
 
   await db.putNotification(record);
-  console.log(
-    `[notifications] created notification_id=${notification_id} recipient_sub=${recipientSub} type=${type}`,
-  );
+  logger.info('notification created', { notification_id, recipient_sub: recipientSub, type });
   return stripKeys(record);
 }
 
@@ -71,9 +70,6 @@ export async function markOneAsRead(
   const sk = toSortKey(notificationId);
   const existing = await db.getNotification(callerSub, sk);
   if (!existing) {
-    console.error(
-      `[notifications] markOneAsRead not found caller_sub=${callerSub} notification_id=${notificationId}`,
-    );
     throw new NotFoundError(`Notification '${notificationId}' not found`);
   }
 
@@ -81,9 +77,7 @@ export async function markOneAsRead(
     await db.updateNotificationRead(callerSub, sk);
   }
 
-  console.log(
-    `[notifications] markOneAsRead succeeded caller_sub=${callerSub} notification_id=${notificationId} already_read=${existing.read}`,
-  );
+  logger.info('notification read', { caller_sub: callerSub, notification_id: notificationId, already_read: existing.read });
   return stripKeys({ ...existing, read: true });
 }
 
@@ -91,8 +85,6 @@ export async function markOneAsRead(
 export async function markAllAsRead(callerSub: string): Promise<number> {
   const unread = await db.queryUnreadNotificationsByUser(callerSub);
   await Promise.all(unread.map((item) => db.updateNotificationRead(callerSub, item.SK)));
-  console.log(
-    `[notifications] markAllAsRead succeeded caller_sub=${callerSub} items_marked=${unread.length}`,
-  );
+  logger.info('notifications all read', { caller_sub: callerSub, items_marked: unread.length });
   return unread.length;
 }

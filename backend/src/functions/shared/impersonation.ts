@@ -3,6 +3,7 @@ import type { ImpersonatableRole } from '@daltime/contracts';
 import { requireWebAdminWithLookup, decodeLocalJwtPayload } from './auth.js';
 import { badRequest, forbidden, notFound, setRequestOrigin } from './response.js';
 import { mapHandlerError } from './errors.js';
+import { logger, serializeError } from './logger.js';
 import { isRoleMember, getSession, putAuditRecord } from '../web-admin/impersonate/db.js';
 
 /**
@@ -172,20 +173,18 @@ export function withImpersonation<R>(inner: Handler<R>): Handler<R | APIGatewayP
 
       // Persist an audit record and emit a structured log line. No PII beyond opaque ids.
       void putAuditRecord(session, method, event.rawPath).catch((err: unknown) => {
-        console.error('withImpersonation: audit record write failed', err);
+        logger.error('withImpersonation: audit record write failed', { error: serializeError(err) });
       });
-      console.info(
-        JSON.stringify({
-          audit: 'impersonation',
-          session_id: session.session_id,
-          actor_web_admin_id: actor.web_admin_id,
-          actor_sub: actor.sub,
-          target_user_id: targetUserId,
-          role,
-          method,
-          path: event.rawPath,
-        }),
-      );
+      logger.info('impersonation audit', {
+        audit: 'impersonation',
+        session_id: session.session_id,
+        actor_web_admin_id: actor.web_admin_id,
+        actor_sub: actor.sub,
+        target_user_id: targetUserId,
+        role,
+        method,
+        path: event.rawPath,
+      });
 
       return await inner(buildImpersonatedEvent(event, targetUserId, role, actor));
     } catch (err) {
