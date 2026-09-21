@@ -271,7 +271,7 @@ applies: local, dev, qa, prod).
 
 | Phase | Title | Human gate? | Status |
 | --- | --- | --- | --- |
-| 1 | Backend logger foundation + pilot handler + console→logger in shared code | No | ⬜ |
+| 1 | Backend logger foundation + pilot handler + console→logger in shared code | No | ✅ |
 | 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ⬜ |
 | 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ⬜ |
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ⬜ |
@@ -319,7 +319,7 @@ valid JSON with the keys in 5.2.
 
 **Human gate:** none.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Installed `@aws-lambda-powertools/logger@2.35.0` (verified Node 24 + esbuild). Created `shared/logger.ts` (singleton, persistent `env` key, `serializeError`) and `shared/with-logging.ts` (`withLogging(handler, name)` outermost wrapper with correlation-id, appendKeys, "request completed" line, resetKeys in finally, guards `addContext` on `invokedFunctionArn` presence so tests with minimal context stubs don't crash). Updated `mapHandlerError` (4xx → WARN, unexpected → ERROR). Replaced all `console.*` in `shared/impersonation.ts` (audit keys preserved exactly), `shared/notifications/service.ts` (removed pre-throw double-log — mapHandlerError handles 4xx), `employee/swap-shifts/service.ts`. Wired pilot: `employee/profile/handler.ts`. Tests: 40 files, 915 pass; lint clean; SAM build verified. Q3 answers: Powertools 2.35.0 supports Node 24 ✅; no built-in redaction — allow-list approach via structured fields (no bodies/tokens/emails ever passed to logger); `POWERTOOLS_LOG_LEVEL` sets the library filter, `ApplicationLogLevel` (Phase 2) sets the Lambda platform filter — Lambda applies the lower of the two at ingestion.
 
 ---
 
