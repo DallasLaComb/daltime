@@ -608,6 +608,10 @@ Resources:
           - DELETE
           - OPTIONS
         MaxAge: 300
+      RouteSettings:
+        'POST /shared/client-logs':
+          ThrottlingBurstLimit: 10
+          ThrottlingRateLimit: 10
 
   DalTimeTable:
     Type: AWS::DynamoDB::Table
@@ -2281,6 +2285,55 @@ Resources:
       BuildProperties:
         EntryPoints:
           - src/functions/shared/health/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
+  ClientLogsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ClientLogsFunction'
+      RetentionInDays: !Ref LogRetentionDays
+
+  ClientLogsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ClientLogsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ClientLogsFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ClientLogsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
+      CodeUri: ../backend
+      Handler: src/functions/shared/client-logs/handler.handler
+      Events:
+        PostClientLogs:
+          Type: HttpApi
+          Properties:
+            Path: /shared/client-logs
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        OptionsClientLogs:
+          Type: HttpApi
+          Properties:
+            Path: /shared/client-logs
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/shared/client-logs/handler.ts
         Format: esm
         OutExtension:
           - .js=.mjs

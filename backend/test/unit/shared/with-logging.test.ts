@@ -156,7 +156,7 @@ describe('withLogging', () => {
   it('omits caller_sub and caller_role when the event has no JWT claims', async () => {
     const event = buildEvent();
     // Remove authorizer claims entirely (OPTIONS-style)
-    (event.requestContext as Record<string, unknown>)['authorizer'] = undefined;
+    (event.requestContext as unknown as Record<string, unknown>)['authorizer'] = undefined;
     event.headers = {};
 
     const wrapped = withLogging(inner, 'test-handler');

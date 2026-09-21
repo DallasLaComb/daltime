@@ -8549,6 +8549,326 @@
           }
         }
       }
+    },
+    "/shared/client-logs": {
+      "post": {
+        "operationId": "postClientLogs",
+        "summary": "Batch-ingest client log entries",
+        "tags": [
+          "shared"
+        ],
+        "description": "Authenticated endpoint for the Angular/Capacitor frontend to batch-ship client-side log entries into CloudWatch via the same Powertools logger used by the backend. The server stamps caller_sub and caller_role from the verified JWT; client-supplied identity fields are stored as untrusted context only. Returns 204 on success.",
+        "x-implementation-path": [
+          "backend/src/functions/shared/client-logs/handler.ts",
+          "backend/src/functions/shared/client-logs/service.ts"
+        ],
+        "x-dynamodb-access": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "client_session_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "platform": {
+                        "type": "string",
+                        "enum": [
+                          "web",
+                          "ios",
+                          "android"
+                        ]
+                      },
+                      "device_type": {
+                        "type": "string",
+                        "enum": [
+                          "mobile",
+                          "tablet",
+                          "desktop"
+                        ]
+                      },
+                      "os": {
+                        "type": "string",
+                        "enum": [
+                          "ios",
+                          "android",
+                          "windows",
+                          "macos",
+                          "linux",
+                          "other"
+                        ]
+                      },
+                      "browser": {
+                        "type": "string",
+                        "maxLength": 30
+                      },
+                      "is_native": {
+                        "type": "boolean"
+                      },
+                      "app_version": {
+                        "type": "string",
+                        "maxLength": 20
+                      },
+                      "authenticated": {
+                        "type": "boolean"
+                      },
+                      "role": {
+                        "type": "string",
+                        "maxLength": 20
+                      },
+                      "org_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "impersonating": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "client_session_id",
+                      "platform",
+                      "device_type",
+                      "os",
+                      "browser"
+                    ]
+                  },
+                  "entries": {
+                    "minItems": 1,
+                    "maxItems": 25,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "log",
+                            "error",
+                            "click",
+                            "navigation",
+                            "rage_click",
+                            "session_start",
+                            "viewport_change"
+                          ]
+                        },
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "debug",
+                            "info",
+                            "warn",
+                            "error"
+                          ]
+                        },
+                        "ts": {
+                          "type": "string",
+                          "maxLength": 30
+                        },
+                        "seq": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "route": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "viewport": {
+                          "type": "object",
+                          "properties": {
+                            "w": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9999
+                            },
+                            "h": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9999
+                            }
+                          },
+                          "required": [
+                            "w",
+                            "h"
+                          ]
+                        },
+                        "breakpoint": {
+                          "type": "string",
+                          "enum": [
+                            "base",
+                            "sm",
+                            "md",
+                            "lg",
+                            "xl",
+                            "2xl"
+                          ]
+                        },
+                        "orientation": {
+                          "type": "string",
+                          "enum": [
+                            "portrait",
+                            "landscape"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "stack": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "http": {
+                          "type": "object",
+                          "properties": {
+                            "method": {
+                              "type": "string",
+                              "maxLength": 10
+                            },
+                            "path": {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            "status": {
+                              "type": "integer",
+                              "minimum": 100,
+                              "maximum": 599
+                            }
+                          },
+                          "required": [
+                            "method",
+                            "path",
+                            "status"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "tag": {
+                          "type": "string",
+                          "maxLength": 50
+                        },
+                        "x": {
+                          "type": "number",
+                          "minimum": -9999,
+                          "maximum": 9999
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": -9999,
+                          "maximum": 9999
+                        },
+                        "breadcrumbs": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "click",
+                                  "navigation"
+                                ]
+                              },
+                              "target": {
+                                "type": "string",
+                                "maxLength": 100
+                              },
+                              "ts": {
+                                "type": "string",
+                                "maxLength": 30
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ]
+                          }
+                        },
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "user_agent": {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            "screen": {
+                              "type": "object",
+                              "properties": {
+                                "w": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9999
+                                },
+                                "h": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9999
+                                }
+                              },
+                              "required": [
+                                "w",
+                                "h"
+                              ]
+                            },
+                            "dpr": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 10
+                            },
+                            "touch": {
+                              "type": "boolean"
+                            },
+                            "lang": {
+                              "type": "string",
+                              "maxLength": 20
+                            },
+                            "tz": {
+                              "type": "string",
+                              "maxLength": 50
+                            }
+                          },
+                          "required": [
+                            "user_agent",
+                            "screen",
+                            "dpr",
+                            "touch"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "level",
+                        "ts",
+                        "seq"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "context",
+                  "entries"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Log entries accepted and ingested."
+          },
+          "400": {
+            "description": "Validation failed."
+          }
+        }
+      }
     }
   },
   "components": {

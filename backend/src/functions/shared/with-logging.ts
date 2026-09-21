@@ -11,7 +11,7 @@ import { parseUaContext } from './ua-context.js';
 type EventHandler<R> = (event: APIGatewayProxyEventV2WithJWTAuthorizer) => Promise<R>;
 type LambdaHandler<R> = (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
-  context: Context,
+  context?: Context,
 ) => Promise<R>;
 
 /**
@@ -25,7 +25,7 @@ export function withLogging<R extends APIGatewayProxyResultV2>(
   inner: EventHandler<R>,
   name: string,
 ): LambdaHandler<R> {
-  return async (event, context) => {
+  return async (event, context?) => {
     const start = Date.now();
     const method = event.requestContext?.http?.method ?? 'UNKNOWN';
     const route = event.routeKey ?? event.rawPath ?? 'unknown';

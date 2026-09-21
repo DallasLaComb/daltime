@@ -1308,6 +1308,26 @@ export interface paths {
         patch: operations["markOneEmployeeNotificationRead"];
         trace?: never;
     };
+    "/shared/client-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch-ingest client log entries
+         * @description Authenticated endpoint for the Angular/Capacitor frontend to batch-ship client-side log entries into CloudWatch via the same Powertools logger used by the backend. The server stamps caller_sub and caller_role from the verified JWT; client-supplied identity fields are stored as untrusted context only. Returns 204 on success.
+         */
+        post: operations["postClientLogs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7523,6 +7543,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
+            };
+        };
+    };
+    postClientLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        client_session_id: string;
+                        /** @enum {string} */
+                        platform: "web" | "ios" | "android";
+                        /** @enum {string} */
+                        device_type: "mobile" | "tablet" | "desktop";
+                        /** @enum {string} */
+                        os: "ios" | "android" | "windows" | "macos" | "linux" | "other";
+                        browser: string;
+                        is_native?: boolean;
+                        app_version?: string;
+                        authenticated?: boolean;
+                        role?: string;
+                        org_id?: string;
+                        impersonating?: boolean;
+                    };
+                    entries: {
+                        /** @enum {string} */
+                        type: "log" | "error" | "click" | "navigation" | "rage_click" | "session_start" | "viewport_change";
+                        /** @enum {string} */
+                        level: "debug" | "info" | "warn" | "error";
+                        ts: string;
+                        seq: number;
+                        route?: string;
+                        viewport?: {
+                            w: number;
+                            h: number;
+                        };
+                        /** @enum {string} */
+                        breakpoint?: "base" | "sm" | "md" | "lg" | "xl" | "2xl";
+                        /** @enum {string} */
+                        orientation?: "portrait" | "landscape";
+                        message?: string;
+                        stack?: string;
+                        http?: {
+                            method: string;
+                            path: string;
+                            status: number;
+                        };
+                        target?: string;
+                        tag?: string;
+                        x?: number;
+                        y?: number;
+                        breadcrumbs?: {
+                            /** @enum {string} */
+                            type: "click" | "navigation";
+                            target?: string;
+                            ts?: string;
+                        }[];
+                        session?: {
+                            user_agent: string;
+                            screen: {
+                                w: number;
+                                h: number;
+                            };
+                            dpr: number;
+                            touch: boolean;
+                            lang?: string;
+                            tz?: string;
+                        };
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Log entries accepted and ingested. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation failed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
