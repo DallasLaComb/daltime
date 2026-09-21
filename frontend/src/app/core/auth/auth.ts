@@ -11,8 +11,9 @@ import {
   ConfirmForgotPasswordCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { type UserRole, isValidRole, ROLE_DASHBOARD_MAP } from './user-role.model';
+import { TokenStorage } from '../storage/token-storage';
 
-const TOKEN_KEYS = {
+export const TOKEN_KEYS = {
   access: 'daltime_access_token',
   id: 'daltime_id_token',
   refresh: 'daltime_refresh_token',
@@ -30,6 +31,7 @@ const AUTH_ERROR_MAP: Record<string, string> = {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly router = inject(Router);
+  private readonly tokens = inject(TokenStorage);
   private readonly cognitoClient = new CognitoIdentityProviderClient({
     region: environment.cognito.region,
   });
@@ -65,8 +67,16 @@ export class AuthService {
   }
 
   async initialize(): Promise<void> {
-    const accessToken = sessionStorage.getItem(TOKEN_KEYS.access);
-    const idToken = sessionStorage.getItem(TOKEN_KEYS.id);
+    let accessToken = this.tokens.get(TOKEN_KEYS.access);
+    let idToken = this.tokens.get(TOKEN_KEYS.id);
+
+    // An app relaunched after the 60-minute access token lapsed still holds a refresh token
+    // (5 days): trade it for a fresh access/id token instead of forcing a new login.
+    if (!accessToken || !idToken || this.isTokenExpired(accessToken)) {
+      const refreshed = await this.refreshSession();
+      accessToken = refreshed?.accessToken ?? null;
+      idToken = refreshed?.idToken ?? null;
+    }
 
     if (accessToken && idToken && !this.isTokenExpired(accessToken)) {
       this.accessToken = accessToken;
@@ -164,9 +174,7 @@ export class AuthService {
     this.challengeSession = null;
     this.challengeEmail = null;
 
-    sessionStorage.removeItem(TOKEN_KEYS.access);
-    sessionStorage.removeItem(TOKEN_KEYS.id);
-    sessionStorage.removeItem(TOKEN_KEYS.refresh);
+    void this.clearStoredTokens();
 
     this.router.navigate(['/']);
   }
@@ -222,7 +230,7 @@ export class AuthService {
     }
   }
 
-  private async storeTokens(result: {
+  private async persistTokens(result: {
     AccessToken?: string;
     IdToken?: string;
     RefreshToken?: string;
@@ -230,9 +238,55 @@ export class AuthService {
     this.accessToken = result.AccessToken ?? null;
     this.idToken = result.IdToken ?? null;
 
-    if (result.AccessToken) sessionStorage.setItem(TOKEN_KEYS.access, result.AccessToken);
-    if (result.IdToken) sessionStorage.setItem(TOKEN_KEYS.id, result.IdToken);
-    if (result.RefreshToken) sessionStorage.setItem(TOKEN_KEYS.refresh, result.RefreshToken);
+    await Promise.all([
+      result.AccessToken && this.tokens.set(TOKEN_KEYS.access, result.AccessToken),
+      result.IdToken && this.tokens.set(TOKEN_KEYS.id, result.IdToken),
+      result.RefreshToken && this.tokens.set(TOKEN_KEYS.refresh, result.RefreshToken),
+    ]);
+  }
+
+  private async clearStoredTokens(): Promise<void> {
+    await Promise.all(Object.values(TOKEN_KEYS).map((key) => this.tokens.remove(key)));
+  }
+
+  /**
+   * Exchanges the stored refresh token for a new access/id token (REFRESH_TOKEN_AUTH).
+   * Returns null when there is no refresh token or Cognito rejects it (expired/revoked),
+   * in which case the stored tokens are cleared so the user lands on the login screen.
+   */
+  private async refreshSession(): Promise<{ accessToken: string; idToken: string } | null> {
+    const refreshToken = this.tokens.get(TOKEN_KEYS.refresh);
+    if (!refreshToken) return null;
+
+    try {
+      const response = await this.cognitoClient.send(
+        new InitiateAuthCommand({
+          AuthFlow: 'REFRESH_TOKEN_AUTH',
+          ClientId: environment.cognito.clientId,
+          AuthParameters: { REFRESH_TOKEN: refreshToken },
+        }),
+      );
+
+      const result = response.AuthenticationResult;
+      if (result?.AccessToken && result.IdToken) {
+        // Cognito only returns a new refresh token when rotation is enabled; otherwise keep ours.
+        await this.persistTokens(result);
+        return { accessToken: result.AccessToken, idToken: result.IdToken };
+      }
+    } catch {
+      // Refresh token expired or revoked — fall through and clear.
+    }
+
+    await this.clearStoredTokens();
+    return null;
+  }
+
+  private async storeTokens(result: {
+    AccessToken?: string;
+    IdToken?: string;
+    RefreshToken?: string;
+  }): Promise<void> {
+    await this.persistTokens(result);
 
     this._isAuthenticated.set(true);
 

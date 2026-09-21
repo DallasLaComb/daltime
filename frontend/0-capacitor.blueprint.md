@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–4 complete; Phase 5 (persistent token storage) is next.**
+Status: **Approved for phased implementation — Phases 1–5 complete (Phase 5 awaiting its device human gate); Phase 6 (native UX polish) is next.**
 
 ---
 
@@ -271,7 +271,7 @@ reaches an older native shell it can't run on.
 | 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
 | 3 | Environment support: Android flavors, config switching, build scripts | No | ✅ |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
-| 5 | Persistent token storage (auth refactor) | No (tests are automated) | ⬜ |
+| 5 | Persistent token storage (auth refactor) | Yes — relaunch check on a device/simulator | ✅ (verified on a physical iPhone) |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
 | 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
 | 8 | CI: Android signed build workflow (artifact only) | Yes — keystore secrets | ⬜ |
@@ -605,7 +605,53 @@ unchanged (existing specs green; e2e smoke suite still applicable and untouched)
 **Human gate:** on an emulator/simulator: log in, kill the app, relaunch → still logged in; sign
 out → tokens gone; relaunch → login screen.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** (2026-09-20, branch `feature/capacitor`; staged, not committed)
+
+- **Plugin (D2 resolved): `capacitor-secure-storage-plugin@0.13.0`** (exact pin) — iOS Keychain / Android KeyStore +
+  encrypted SharedPreferences. Peer dep `@capacitor/core >=8.0.0`, ships a `Package.swift` (SPM), `cap sync` lists it for
+  both platforms. Its README still says "Capacitor v7 → latest", but the 0.13.0 manifest declares `>=8` and both native
+  builds pass (below). Considered `@aparajita/capacitor-secure-storage@8.0.0` (also Capacitor 8 + SPM) but it declares
+  `@capacitor/app`/`keyboard` as regular dependencies; `@capgo/capacitor-native-biometric` is for the optional Face ID idea
+  (section 9).
+- **`core/storage/token-storage.ts` (`TokenStorage`, root service):** web → `sessionStorage`, unchanged. Native (via
+  `Capacitor.isNativePlatform()`) → in-memory `Map` filled by `hydrate(keys)`, `set`/`remove` update memory first then write
+  through to the plugin (async, errors logged, never thrown; a failed write keeps the in-memory value for the session).
+  The plugin is `import()`ed lazily so it is not in the web startup path. The plugin rejects for a missing key — treated as
+  "no value".
+- **`app.config.ts`:** `provideAppInitializer(() => inject(TokenStorage).hydrate(Object.values(TOKEN_KEYS)))` so the cache is
+  full before `App.ngOnInit` → `AuthService.initialize()` reads it synchronously. Guards/interceptors unchanged (they read
+  `AuthService` state, which is still synchronous). `TOKEN_KEYS` is now exported from `auth.ts`.
+- **`auth.ts`:** all token reads/writes go through `TokenStorage`. Public API and signals unchanged. Impersonation context
+  stays in `sessionStorage` (as designed).
+- **Deviation (added, not in the plan): refresh on startup.** The app never used the refresh token, and the Cognito client has
+  access/id tokens valid 60 min (`infra/foundation.yaml`), refresh 5 days. Persisting tokens alone would still force a login
+  on any relaunch after an hour. `initialize()` now, when the access token is missing/expired but a refresh token exists,
+  calls `InitiateAuth` `REFRESH_TOKEN_AUTH` (already permitted: `ALLOW_REFRESH_TOKEN_AUTH`); on success it persists the new
+  access/id token (keeps the refresh token unless Cognito rotates it), on failure it clears all three keys and the user
+  lands on login. This also applies on web (only when the access token is expired at load, e.g. an old tab reload) —
+  previously that logged the user out. There is still **no mid-session refresh**: a token that expires while the app stays
+  open gets 401s until the next launch. Candidate for a follow-up (interceptor-level refresh).
+- **Bug found on the first iPhone run and fixed (2026-09-20):** Xcode showed `[error] ERROR {"code":"UNIMPLEMENTED"}` at launch. Cause: `TokenStorage.loadPlugin()` was `async` and returned the Capacitor plugin proxy; resolving a promise with it reads `plugin.then`, which the proxy forwards to native as a method named `then` → `UNIMPLEMENTED`, and the promise never settles — so `hydrate()` (run by `provideAppInitializer`) could hang app startup. Fix: the loader returns `{ plugin }` (never the bare proxy) and is exposed as the `SECURE_STORAGE_LOADER` injection token (typed, so returning the bare plugin no longer compiles). **Rule for later phases: never return/await a Capacitor plugin object directly from an async function.** Confirmed on the iOS simulator: launch log now shows three native `SecureStoragePlugin get` calls. With an empty keychain Capacitor logs `[error] {"message":"Item with given key does not exist"}` once per key — expected on a first launch or after sign-out, caught by `hydrate`.
+- **Tests:** `token-storage.spec.ts` (9; native flag and plugin are injected via `IS_NATIVE_PLATFORM` / `SECURE_STORAGE_LOADER` because `vi.mock` of `@capacitor/core` proved flaky in the Angular test builder — alternating pass/fail on identical code. Covers: web passthrough, plugin never called on web, native hydrate incl. missing keys,
+  cache-before-write ordering, write-through set/remove, write failure keeps memory value, no error for removing an unset
+  key). `auth.spec.ts` rewritten (the shared `APP_TEST_PROVIDERS` swap `AuthService` for a mock, so the old spec tested
+  nothing): restore from stored tokens, logged out when empty, refresh success (flow + params, refresh token kept),
+  refresh rejected clears all keys, login persists all three, logout clears all three. `Router` is stubbed.
+- **Verification (real runs):** `npm test` 40 files / 553 tests pass (was 538; 4 consecutive full runs stable); `npm run lint` clean; `npm run build` OK
+  (initial 570.27 kB vs 560.61 kB — +~10 kB, same pre-existing >500 kB warning, under the 1 MB budget);
+  `npm run mobile:build:dev` synced both platforms and registered the plugin; `xcodebuild` "App Dev" simulator build
+  **BUILD SUCCEEDED**; `./gradlew assembleDevDebug` succeeded. Native changes: `ios/App/CapApp-SPM/Package.swift`,
+  `android/capacitor.settings.gradle`, `android/app/capacitor.build.gradle`.
+- **Human gate passed (2026-09-20, iPhone 16, dev build, by the user):** login persists after killing the app; sign-out clears it. (Refresh after >60 min and Android still unverified on device.)
+- Original gate text: actual persistence on a device — needs a real login. On an emulator/simulator/iPhone
+  with the **dev** build: log in → kill the app → relaunch → still logged in (dashboard, no login screen); sign out → kill →
+  relaunch → login screen. To test refresh, relaunch after >60 min (or temporarily shorten `AccessTokenValidity`).
+- Notes: iOS Keychain items survive an app delete/reinstall (iOS behavior), so a reinstall can come back already logged in
+  until the refresh token expires; Android's encrypted prefs can be restored by auto-backup without the Keystore key —
+  `hydrate` treats undecryptable values as missing, so the result is just a login prompt.
+- Xcode rewrote the project settings in `project.pbxproj` and the three `.xcscheme` files ("upgrade to recommended
+  settings", e.g. `LastUpgradeCheck`, script sandboxing) while it was open — **not** staged here; decide separately whether to
+  keep them.
 
 ---
 
@@ -800,3 +846,6 @@ plan, and why.)_
 - Phase 2: `cap run ios` cannot open the simulator on Xcode 27 (Simulator.app path); use `xcrun simctl` or Xcode. Revisit if a newer Capacitor fixes it.
 - Phase 2: the built app has placeholder API/Cognito values until phase 3, so a simulator run cannot log in yet.
 - Phase 4: implemented with extra build configurations + shared schemes (not duplicated targets); `Info.plist` display name now comes from `APP_DISPLAY_NAME`. Physical-device runs of `.dev`/`.qa` need those App IDs registered (Xcode automatic signing normally does this).
+- Phase 5: D2 resolved → `capacitor-secure-storage-plugin@0.13.0` (see phase 5 notes for why not the alternatives).
+- Phase 5: added refresh-token exchange at startup (not in the original plan) so persisted login survives past the 60-minute access token. Mid-session refresh is still missing — open question whether to add an interceptor-level refresh.
+- Open idea (asked 2026-09-20, out of scope per section 1): **Face ID / Touch ID.** Feasible on top of phase 5 as an app lock: keep tokens in Keychain, prompt biometrics on cold start (before/around `initialize()`), fall back to the password screen. Would use `@capgo/capacitor-native-biometric` (8.6.11, peer `@capacitor/core >=8`) + `NSFaceIDUsageDescription` in `Info.plist`; needs a real device to verify. Decide whether to add as a phase between 6 and 7.
