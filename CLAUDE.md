@@ -96,6 +96,15 @@ Blueprint location:
 - **Every shared component root element needs `class="dt-debug"`**
 - **ESM `.js` extensions** on all backend imports
 
+## Logging
+
+- **No `console.*` in backend** — `no-console: error` is enforced by ESLint; use `logger` from `shared/logger.ts`
+- **Every Lambda handler must be exported via `withLogging`** — `export const handler = withLogging(handleRequest, 'role-feature')`. An architecture test (`test/unit/shared/arch.withlogging.test.ts`) enforces this automatically.
+- **Services log state-changing operations** — one `logger.info` per create/update/delete/assign/publish with entity ids only (never emails, names, bodies, tokens, or DynamoDB items)
+- **Angular components do not log routine flow** — frontend logging goes through the `LoggerService`; components never call `console.*` directly
+
+See `docs/logging.md` for the full policy, field dictionary, PII rules, and ready-to-paste Logs Insights queries.
+
 ---
 
 ## Agent sub-task close requirement

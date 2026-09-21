@@ -7,6 +7,7 @@ export default tseslint.config(
     extends: [...tseslint.configs.recommended],
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-console': 'error',
     },
   },
   // Response conformance: a handler must name the contract response type it returns —
