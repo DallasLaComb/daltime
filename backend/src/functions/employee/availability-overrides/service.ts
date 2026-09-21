@@ -8,6 +8,7 @@ import type {
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 const ISO_DATE_RE = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -122,5 +123,6 @@ export async function upsertAvailabilityOverrides(callerSub: string, body: Upser
   };
 
   await db.upsertAvailabilityOverrides(record);
+  logger.info('availability overrides upserted', { user_id: callerSub, org_id });
   return stripKeys(record);
 }

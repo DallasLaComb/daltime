@@ -4,6 +4,7 @@ import { stripKeys, buildEmployeeRecord } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError, NotFoundError, ForbiddenError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import {
   enrichWithCognitoStatus,
   createCognitoEmployee,
@@ -55,6 +56,7 @@ export async function createEmployee(
   });
 
   await db.createEmployee(employee);
+  logger.info('employee created', { org_id, employee_id: employeeSub });
 
   return stripKeys(employee);
 }
@@ -93,6 +95,7 @@ export async function updateEmployee(
   if (body.manager_id !== undefined) fields.manager_id = body.manager_id.trim();
 
   const updated = await db.updateEmployee(org_id, employeeId, fields, new Date().toISOString());
+  logger.info('employee updated', { org_id, employee_id: employeeId });
   return stripKeys(updated!);
 }
 
@@ -109,6 +112,7 @@ export async function disableEmployee(
 
   await adminDisableUser(cognitoClient, lookup.email);
   await db.disableEmployee(org_id, employeeId);
+  logger.info('employee disabled', { org_id, employee_id: employeeId });
 }
 
 export async function enableEmployee(
@@ -124,4 +128,5 @@ export async function enableEmployee(
 
   await adminEnableUser(cognitoClient, lookup.email);
   await db.enableEmployee(org_id, employeeId);
+  logger.info('employee enabled', { org_id, employee_id: employeeId });
 }

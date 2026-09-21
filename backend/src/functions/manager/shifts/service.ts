@@ -4,6 +4,7 @@ import * as db from './db.js';
 import type { ShiftType } from '../../shared/models/manager/shift.model.js';
 
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 const VALID_TYPES: ShiftType[] = ['morning', 'afternoon', 'night'];
 
@@ -112,6 +113,7 @@ export async function createShift(
   };
 
   await db.createShift(item);
+  logger.info('shift created', { org_id, shift_id: shiftId, manager_id });
   return stripKeys(item);
 }
 
@@ -169,6 +171,7 @@ export async function updateShift(callerSub: string, shiftId: string, body: Shif
 
   const updated = await db.updateShift(org_id, shiftId, fields, new Date().toISOString());
   if (!updated) throw new NotFoundError('Shift not found');
+  logger.info('shift updated', { org_id, shift_id: shiftId });
   return stripKeys(updated);
 }
 
@@ -178,4 +181,5 @@ export async function removeShift(callerSub: string, shiftId: string) {
   if (!existing) throw new NotFoundError('Shift not found');
   if (existing.manager_id !== manager_id) throw new ForbiddenError('You do not own this shift');
   await db.deleteShift(org_id, shiftId);
+  logger.info('shift removed', { org_id, shift_id: shiftId });
 }

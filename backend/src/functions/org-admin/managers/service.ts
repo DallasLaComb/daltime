@@ -15,6 +15,7 @@ import {
   NotFoundError,
   ForbiddenError,
 } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import {
   enrichWithCognitoStatus,
   adminDisableUser,
@@ -104,6 +105,7 @@ export async function createManager(
 
   await db.createManager(manager);
   await db.incrementManagerCount(org_id, orgAdminId);
+  logger.info('manager created', { org_id, manager_id: managerSub });
 
   return stripKeys(manager);
 }
@@ -137,6 +139,7 @@ export async function updateManager(
   if (body.phone !== undefined) fields.phone = body.phone.trim();
 
   const updated = await db.updateManager(org_id, managerId, fields, new Date().toISOString());
+  logger.info('manager updated', { org_id, manager_id: managerId });
   return stripKeys(updated!);
 }
 
@@ -154,6 +157,7 @@ export async function disableManager(
   await adminDisableUser(cognitoClient, lookup.email);
   await db.disableManager(org_id, managerId);
   await db.decrementManagerCount(org_id, orgAdminId);
+  logger.info('manager disabled', { org_id, manager_id: managerId });
 }
 
 export async function enableManager(
@@ -169,4 +173,5 @@ export async function enableManager(
 
   await adminEnableUser(cognitoClient, lookup.email);
   await db.enableManager(org_id, managerId);
+  logger.info('manager enabled', { org_id, manager_id: managerId });
 }

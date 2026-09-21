@@ -7,6 +7,7 @@ import {
   NotFoundError,
   ConflictError,
 } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; user_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -60,6 +61,7 @@ export async function assignLocation(
   };
 
   await db.createManagerLocation(assignment);
+  logger.info('manager location assigned', { org_id, manager_id: managerId, location_id: body.location_id });
   return stripKeys(assignment);
 }
 
@@ -75,4 +77,5 @@ export async function removeLocation(callerSub: string, managerId: string, locat
   if (!existing) throw new NotFoundError('Assignment not found');
 
   await db.deleteManagerLocation(managerId, locationId);
+  logger.info('manager location removed', { org_id, manager_id: managerId, location_id: locationId });
 }

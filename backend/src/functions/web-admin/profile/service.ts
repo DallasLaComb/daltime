@@ -16,6 +16,7 @@ import { ValidationError, NotFoundError } from '../../shared/errors.js';
 import { enrichSingleWithCognitoStatus } from '../../shared/cognito.js';
 import * as db from './db.js';
 import type { UpdateProfileRequest, WebAdminProfile } from './model.js';
+import { logger } from '../../shared/logger.js';
 
 /** Max/min length limits for name fields — prevents absurdly short or long values. */
 const NAME_MIN = 1;
@@ -103,6 +104,7 @@ export async function updateProfile(
   const updatedAt = new Date().toISOString();
   const updated = await db.updateWebAdminProfile(sub, fields, updatedAt);
   if (!updated) throw new NotFoundError('WebAdmin profile not found');
+  logger.info('web admin profile updated', { user_id: sub });
 
   return stripKeys(updated) as unknown as WebAdminProfile;
 }

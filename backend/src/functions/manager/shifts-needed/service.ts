@@ -4,6 +4,7 @@ import { getLocation } from '../locations/db.js';
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; manager_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -114,6 +115,7 @@ export async function createShift(
   };
 
   await db.createShift(item);
+  logger.info('shift needed created', { org_id, shift_id: shiftId, manager_id });
   return stripKeys(item);
 }
 
@@ -176,6 +178,7 @@ export async function updateShift(callerSub: string, shiftId: string, body: Shif
 
   const updated = await db.updateShift(org_id, shiftId, fields, updatedAt);
   if (!updated) throw new NotFoundError('Shift not found');
+  logger.info('shift needed updated', { org_id, shift_id: shiftId });
   return stripKeys(updated);
 }
 
@@ -185,4 +188,5 @@ export async function removeShift(callerSub: string, shiftId: string) {
   if (!existing) throw new NotFoundError('Shift not found');
   if (existing.manager_id !== manager_id) throw new ForbiddenError('You do not own this shift');
   await db.deleteShift(org_id, shiftId);
+  logger.info('shift needed removed', { org_id, shift_id: shiftId });
 }

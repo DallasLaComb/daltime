@@ -14,6 +14,7 @@ import * as db from './db.js';
 import * as orgDb from '../organizations/db.js';
 
 import { ValidationError, ConflictError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import { EMAIL_REGEX } from '../../shared/validation.js';
 import {
   enrichWithCognitoStatus,
@@ -105,6 +106,7 @@ export async function createOrgAdmin(
 
   await db.createOrgAdminUser(user, webAdminId);
   await db.incrementOrgAdminCount(orgId);
+  logger.info('org admin created', { org_id: orgId, user_id: userSub });
 
   return stripKeys(user);
 }
@@ -125,6 +127,7 @@ export async function disableOrgAdmin(
   await adminDisableUser(cognitoClient, lookup.email);
   await db.disableOrgAdminUser(orgId, userId, webAdminId);
   await db.decrementOrgAdminCount(orgId);
+  logger.info('org admin disabled', { org_id: orgId, user_id: userId });
 }
 
 /**
@@ -143,4 +146,5 @@ export async function enableOrgAdmin(
   await adminEnableUser(cognitoClient, lookup.email);
   await db.enableOrgAdminUser(orgId, userId, webAdminId);
   await db.incrementOrgAdminCount(orgId);
+  logger.info('org admin enabled', { org_id: orgId, user_id: userId });
 }

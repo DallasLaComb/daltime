@@ -3,6 +3,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import { getOrgLocation } from '../../shared/dynamo.js';
 import * as db from './db.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import type {
   ScheduleTemplateRecord,
   TemplateShiftBlock,
@@ -86,6 +87,7 @@ export async function createTemplate(
   };
 
   await db.createTemplate(item);
+  logger.info('template created', { org_id, template_id: templateId, manager_id });
   return stripKeys(item);
 }
 
@@ -117,6 +119,7 @@ export async function updateTemplate(
 
   const updated = await db.updateTemplate(org_id, templateId, fields, new Date().toISOString());
   if (!updated) throw new NotFoundError('Template not found');
+  logger.info('template updated', { org_id, template_id: templateId });
   return stripKeys(updated);
 }
 
@@ -126,6 +129,7 @@ export async function removeTemplate(callerSub: string, templateId: string) {
   if (!existing) throw new NotFoundError('Template not found');
   if (existing.manager_id !== manager_id) throw new ForbiddenError('You do not own this template');
   await db.deleteTemplate(org_id, templateId);
+  logger.info('template removed', { org_id, template_id: templateId });
 }
 
 export async function applyTemplate(
@@ -200,5 +204,6 @@ export async function applyTemplate(
     cursor = new Date(cursor.getTime() + dayMs);
   }
 
+  logger.info('template applied', { org_id, template_id: templateId, manager_id, shifts_created: created.length });
   return { created: created.length, shifts: created };
 }

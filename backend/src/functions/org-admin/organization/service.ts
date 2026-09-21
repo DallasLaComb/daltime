@@ -2,6 +2,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -33,6 +34,7 @@ export async function updateOrganization(
     address: body.address?.trim() ?? (existing['address'] as string),
     updated_at: new Date().toISOString(),
   });
+  logger.info('organization updated', { org_id });
 
   return stripKeys(updated);
 }

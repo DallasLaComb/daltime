@@ -6,6 +6,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import { enrichSingleWithCognitoStatus } from '../../shared/cognito.js';
 
 const USER_POOL_ID = process.env['USER_POOL_ID']!;
@@ -48,6 +49,7 @@ export async function updateProfile(
   );
 
   await db.updateOrgAdminName(org_id, user_id, name, new Date().toISOString());
+  logger.info('profile updated', { user_id, org_id });
 
   return { ...stripKeys(record), name };
 }

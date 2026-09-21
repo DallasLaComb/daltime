@@ -9,6 +9,7 @@ import type {
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
   'monday',
@@ -140,5 +141,6 @@ export async function upsertAvailability(callerSub: string, body: UpsertAvailabi
   };
 
   await db.upsertAvailability(record);
+  logger.info('availability upserted', { user_id: callerSub, org_id });
   return stripKeys(record);
 }

@@ -8,6 +8,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 export async function listOrganizations() {
   const items = await db.listOrganizations();
@@ -43,6 +44,7 @@ export async function createOrganization(body: CreateOrganizationBody, webAdminI
   };
 
   await db.createOrganization(org, webAdminId);
+  logger.info('organization created', { org_id: id, web_admin_id: webAdminId });
   return stripKeys(org);
 }
 
@@ -68,6 +70,7 @@ export async function updateOrganization(
     },
     webAdminId,
   );
+  logger.info('organization updated', { org_id: orgId, web_admin_id: webAdminId });
 
   return stripKeys(updated);
 }
@@ -83,5 +86,6 @@ export async function deleteOrganization(orgId: string, webAdminId: string) {
   const existing = await db.getOrganizationById(orgId);
   if (!existing) return false;
   await db.deleteOrganization(orgId, webAdminId);
+  logger.info('organization deleted', { org_id: orgId, web_admin_id: webAdminId });
   return true;
 }

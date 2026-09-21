@@ -2,6 +2,7 @@ import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-
 import { stripKeys } from './dynamo.js';
 import { ValidationError, ForbiddenError, NotFoundError } from './errors.js';
 import { enrichSingleWithCognitoStatus } from './cognito.js';
+import { logger } from './logger.js';
 
 /** A profile record with the single-table keys removed, guaranteed to carry what enrichment needs. */
 type StrippedProfile<R extends { email: string; status: string }> = Omit<
@@ -63,6 +64,7 @@ export function createProfileService<R extends { email: string; status: string }
 
       const updated = await db.updateRecord(org_id, callerSub, fields, new Date().toISOString());
       if (!updated) throw new NotFoundError('Profile not found');
+      logger.info('profile updated', { user_id: callerSub, org_id });
       return stripKeys(updated);
     },
   };

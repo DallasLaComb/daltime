@@ -10,6 +10,7 @@
 import { randomUUID } from 'node:crypto';
 import type { GenerateDummyDataBody } from '@daltime/contracts';
 import { ValidationError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import { listOrgLocations } from '../../shared/dynamo.js';
 import { listOrganizations } from '../organizations/db.js';
 import { listEmployeesByOrg } from '../../org-admin/employees/db.js';
@@ -375,6 +376,7 @@ export async function generateDummyData(rawBody: unknown): Promise<string> {
     orgsProcessed++;
   }
 
+  logger.info('dummy data generated', { year, month, orgs_processed: orgsProcessed, availability_records: totalAvailabilityRecords, shifts: totalShifts });
   return (
     `Generated dummy data for ${month}/${year}: ` +
     `${totalAvailabilityRecords} availability records and ` +

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { stripKeys } from '../../shared/dynamo.js';
 import { listShifts as listShiftsNeeded } from '../../manager/shifts-needed/db.js';
 import { listEmployeesByManager } from '../../manager/employees/db.js';
+import { logger } from '../../shared/logger.js';
 import type { Employee } from '../../shared/models/org-admin/employee.model.js';
 import type { Shift, ShiftType } from '../../shared/models/manager/shift.model.js';
 import type {
@@ -304,6 +305,7 @@ export async function generateDraftSchedule(
   const newDraftCount = currentDraftCount + 1;
   await db.upsertScheduleMeta(org_id, manager_id, month, newDraftCount, now);
 
+  logger.info('draft schedule generated', { org_id, manager_id, month, created, unfilled, draft_count: newDraftCount });
   return { created, unfilled, draftFailed, draftCount: newDraftCount, maxDrafts: MAX_DRAFTS };
 }
 
@@ -319,6 +321,7 @@ export async function publishSchedule(
 
   const now = new Date().toISOString();
   await Promise.all(drafts.map((s) => db.publishShift(org_id, s.shift_id, now)));
+  logger.info('schedule published', { org_id, manager_id, month, published: drafts.length });
 
   return { published: drafts.length };
 }

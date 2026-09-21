@@ -3,6 +3,7 @@ import { stripKeys } from '../../shared/dynamo.js';
 import * as db from './db.js';
 
 import { ValidationError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 
 async function resolveCallerOrg(sub: string): Promise<{ org_id: string; user_id: string }> {
   const lookup = await db.getCallerLookup(sub);
@@ -41,6 +42,7 @@ export async function createLocation(callerSub: string, body: { name?: string; a
   };
 
   await db.createLocation(item);
+  logger.info('location created', { org_id, location_id: locationId });
   return stripKeys(item);
 }
 
@@ -74,6 +76,7 @@ export async function updateLocation(
   }
 
   const updated = await db.updateLocation(org_id, locationId, fields, new Date().toISOString());
+  logger.info('location updated', { org_id, location_id: locationId });
   return stripKeys(updated!);
 }
 
@@ -82,4 +85,5 @@ export async function removeLocation(callerSub: string, locationId: string) {
   const existing = await db.getLocation(org_id, locationId);
   if (!existing) throw new NotFoundError('Location not found');
   await db.deleteLocation(org_id, locationId);
+  logger.info('location removed', { org_id, location_id: locationId });
 }

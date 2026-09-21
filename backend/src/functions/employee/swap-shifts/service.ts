@@ -221,6 +221,7 @@ export async function postSwapShift(
   };
 
   await db.putSwap(swap);
+  logger.info('swap shift posted', { org_id, swap_id: swapId, shift_id: shiftId, employee_id });
 
   // Notify manager after the primary write — non-blocking, failure is logged only.
   const message = `${employeeName} has put ${shift.date} ${shift.start_time}–${shift.end_time} up for swap`;
@@ -266,6 +267,7 @@ export async function claimSwapShift(
       employee_id,
       employee_name: claimerName,
     });
+    logger.info('swap shift claimed', { org_id, swap_id: validSwapId, shift_id: swap.shift_id, claimer_employee_id: employee_id });
   } catch (err: unknown) {
     // DynamoDB throws ConditionalCheckFailedException when a concurrent claim
     // already updated the status away from 'open' between our read and write.
@@ -322,4 +324,5 @@ export async function cancelSwapShift(callerSub: string, swapId: string): Promis
   }
 
   await db.cancelSwap(org_id, validSwapId, swap.created_at);
+  logger.info('swap shift cancelled', { org_id, swap_id: validSwapId, shift_id: swap.shift_id, employee_id });
 }
