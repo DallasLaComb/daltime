@@ -166,3 +166,23 @@ backend/scripts/seed-dev.mjs
 # Built copy of @daltime/contracts, mirrored into the SAM CodeUri by
 # backend/scripts/sync-contracts.mjs. Source of truth is contracts/.
 backend/vendor/
+
+# Capacitor mobile shells (frontend/android, frontend/ios are committed; never commit build output or signing material)
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/App/Pods/
+frontend/ios/**/DerivedData/
+frontend/fastlane/report.xml
+frontend/ios/fastlane/report.xml
+frontend/ios/fastlane/README.md
+frontend/ios/fastlane/test_output/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.p8
+google-services.json
+GoogleService-Info.plist
+.env.mobile.*
+!.env.mobile.example

@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phase 1 code done and GitHub vars set; dev deploy + curl preflight pending, then Phase 2.**
+Status: **Approved for phased implementation — Phases 1–2 complete; Phase 3 is next..**
 
 ---
 
@@ -262,8 +262,8 @@ reaches an older native shell it can't run on.
 
 | Phase | Title | Human gate? | Status |
 | --- | --- | --- | --- |
-| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ⏸ (code + vars done; deploy dev + preflight pending) |
-| 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ⬜ |
+| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ✅ |
+| 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
 | 3 | Environment support: Android flavors, config switching, build scripts | No | ⬜ |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ⬜ |
 | 5 | Persistent token storage (auth refactor) | No (tests are automated) | ⬜ |
@@ -320,7 +320,11 @@ returns `access-control-allow-origin: https://localhost`. Record the result in C
   qa = `https://qa.daltime.com`; main = `https://daltime.com`.
 - **GitHub variables set (2026-09-20, via `gh variable set`, read back and verified):** dev, qa and main
   `ALLOWED_ORIGINS` now include `https://localhost` (values below).
-- **Human gate (still pending):** deploy dev, run the curl preflight, and record the result here.
+- **Deployed:** commit `862e37f` pushed to `dev` on 2026-09-20; CI and `CD — dev` (run 35540589369) succeeded.
+- **Preflight result (2026-09-20):** `OPTIONS https://ddy3hzd0ef.execute-api.us-east-1.amazonaws.com/employee/shifts`
+  with `Origin: https://localhost` → `HTTP/2 200`, `access-control-allow-origin: https://localhost`,
+  `access-control-allow-headers: authorization,content-type,x-impersonate-user`. Passes for dev.
+  qa and prod have the variable set but will only pick it up on their next CD deploy; verify then (phase 7).
 
 ```bash
 # already run:
@@ -330,7 +334,7 @@ gh variable set ALLOWED_ORIGINS --env main --repo DallasLaComb/daltime --body 'h
 ```
 
 - Preflight check: `curl -i -X OPTIONS <dev-api>/<any-route> -H 'Origin: https://localhost' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization'`
-  → expect `access-control-allow-origin: https://localhost`. Result: _(human fills in)_
+  → expect `access-control-allow-origin: https://localhost`. Result: see above.
 - Note for later phases: the Lambda `setRequestOrigin` falls back to the FIRST allowed origin when the
   request origin isn't listed, so a missing `https://localhost` shows up as a CORS mismatch, not a 403.
 
@@ -364,7 +368,46 @@ artifacts or secrets staged; `npx lint-staged` passes.
 `cap:open:ios` and run the default build on an emulator/simulator to confirm the shell loads
 (login screen renders; API calls will fail CORS-wise until phase 1 is deployed — expected).
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** (2026-09-20, branch `feature/capacitor`; staged, not committed)
+
+- Installed `@capacitor/core|android|ios` (dependencies) and `@capacitor/cli` (devDependency), all pinned
+  exactly to **8.5.2** (latest 8.x on npm at the time). `npx cap doctor` reports iOS and Android healthy.
+- `frontend/capacitor.config.ts` per 5.2: `appId com.daltime.app`, `appName DalTime`,
+  `webDir dist/frontend/browser`, `androidScheme`/`iosScheme` = `https`, no `server.url`.
+  Per-env switching on `NODE_ENV` is phase 3.
+- `dist/frontend/browser/index.html` is the real app shell. There is **no** `prerendered-routes.json` in
+  the output (no SSR/prerender configured), so nothing to handle there.
+- `cap add android` and `cap add ios` both succeeded; `iOS uses Swift Package Manager` (no CocoaPods needed).
+  `npm run cap:sync` exits 0. Native projects are committed (73 files); Capacitor's own `android/.gitignore`
+  and `ios/.gitignore` already exclude generated output (`public/`, `capacitor.config.json`, `config.xml`, build dirs).
+- Hygiene: root `.gitignore` gained signing-material/build patterns (`*.keystore`, `*.jks`, `*.p12`,
+  `*.mobileprovision`, `*.p8`, `google-services.json`, `GoogleService-Info.plist`, `.env.mobile.*` except
+  `.env.mobile.example`, Pods, DerivedData, Gradle, fastlane output). `sonar.exclusions` gained
+  `frontend/android/**,frontend/ios/**`. `eslint src` only lints `src`, so native dirs and
+  `capacitor.config.ts` are untouched by lint.
+- **lint-staged does not exist in this repo** (no config in root/`frontend`/`backend`, no `package.json`
+  entry, no `.husky`, no git hooks). `npx lint-staged` therefore fails with "could not find any valid
+  configuration"; CLAUDE.md's lint-staged rules are aspirational. `npm run lint` (`eslint src`) is the real gate.
+- npm scripts added: `cap:sync`, `cap:open:android`, `cap:open:ios`.
+- Verification: `npm run build` passes (pre-existing warnings only: initial bundle 560.61 kB vs the 500 kB
+  warning budget, NG8102 in organizations.html, `bowser` CommonJS; none introduced here); `npm run lint`
+  clean; `npm test` 39 files / 538 tests pass; staged files contain no build artifacts or secrets.
+- Environment notes: Xcode 27.0 is installed. The Xcode license had to be accepted (`sudo xcodebuild -license accept`)
+  before `/usr/bin/git` worked, and `xcodebuild -runFirstLaunch` was still pending (simulator tools missing)
+  when checked. Android SDK/JDK not checked yet (needed in phase 3).
+- **Simulator smoke test (2026-09-20, iPhone 18 Pro, iOS 27.0 simulator):** `cap run ios` built successfully
+  (xcodebuild 124 s) and the shell loads the real landing page ("Scheduling made simple."). Observed for phase 6:
+  the navbar renders **under** the status bar (clock overlaps the logo) because safe-area insets are not applied yet.
+  `cap run ios` then fails at the deploy step ("Simulator.app does not exist" — Xcode 27 no longer ships
+  `Simulator.app` at the path Capacitor 8.5.2 expects). Workaround: `xcrun simctl boot <id>`,
+  `xcrun simctl install <id> ios/DerivedData/<id>/Build/Products/Debug-iphonesimulator/App.app`,
+  `xcrun simctl launch <id> com.daltime.app`. Physical device runs go through Xcode (⌘R) instead.
+- `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` was generated by the first
+  build and is committed to pin the SPM dependency versions.
+- **Human gate (optional now, needed by phase 7):** `npm run cap:open:ios`, run on a simulator or a device
+  and confirm the shell loads the login screen. API calls will still show placeholder values until phase 3's
+  `mobile-env.mjs` runs (the build contains `__API_BASE_URL__` etc.), so login will not work yet.
+
 
 ---
 
@@ -644,3 +687,6 @@ plan, and why.)_
 
 - Phase 1: implemented on new branch `feature/capacitor` (was on `dev`). CLAUDE.md's `ai/*` docs still don't exist (as noted in section 0).
 - Phase 1: README deploy command also updated (not in original plan).
+- Phase 2: lint-staged is not configured anywhere in the repo (CLAUDE.md assumes it). Decide whether to add it or update CLAUDE.md; does not block the mobile work.
+- Phase 2: `cap run ios` cannot open the simulator on Xcode 27 (Simulator.app path); use `xcrun simctl` or Xcode. Revisit if a newer Capacitor fixes it.
+- Phase 2: the built app has placeholder API/Cognito values until phase 3, so a simulator run cannot log in yet.
