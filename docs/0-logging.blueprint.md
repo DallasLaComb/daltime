@@ -273,7 +273,7 @@ applies: local, dev, qa, prod).
 | --- | --- | --- | --- |
 | 1 | Backend logger foundation + pilot handler + console→logger in shared code | No | ✅ |
 | 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ✅ |
-| 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ⬜ |
+| 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ✅ |
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ⬜ |
 | 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ⬜ |
 | 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ⬜ |
@@ -384,7 +384,7 @@ sub-phase and each contains `withLogging`.
 **Human gate (after 3e or any sub-phase, optional):** deploy dev, click through the app, confirm request lines
 in Logs Insights for the touched functions.
 
-**Completion notes:** _(Claude fills in, per sub-phase)_
+**Completion notes:** Done in one pass (all sub-phases 3a–3e). Added `shared/ua-context.ts` — lightweight pure UA parser providing `device_type` (mobile/tablet/desktop), `os` (ios/android/windows/macos/linux/other), `browser` (edge/chrome/firefox/safari/other), `platform` (ios/android/web). `X-Platform` header (to be sent by Capacitor frontend in Phase 7) wins over UA heuristic; iPadOS 13+ Macintosh UA is corrected when the header is present. `withLogging` appends these four fields to every request log line. `X-Platform` added to CORS `AllowHeaders` in both `response.ts` and `template.yaml`. All 29 remaining `handler.ts` files wrapped. 6 web-admin inline exports refactored to `handleRequest` + `withLogging(handleRequest, name)`. `shared/health` updated to `APIGatewayProxyEventV2WithJWTAuthorizer` (runtime-compatible). 41 test files, 945 tests pass. Every request log now carries: `caller_sub`, `caller_role`, `request_id`, `correlation_id`, `route`, `method`, `handler`, `device_type`, `os`, `browser`, `platform`, `status`, `duration_ms`, `env`.
 
 ---
 
