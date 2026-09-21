@@ -13,3 +13,4 @@ export * from './profile.js';
 export * from './schedule.js';
 export * from './shifts.js';
 export * from './shifts-needed.js';
+export * from './schedule-templates.js';

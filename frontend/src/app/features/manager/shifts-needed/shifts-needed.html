@@ -53,11 +53,40 @@
       </button>
     </div>
     <div class="flex items-center gap-2">
+      <app-button
+        variant="secondary"
+        size="sm"
+        testId="templates-btn"
+        (clicked)="openTemplatesPanel()"
+      >
+        Templates
+      </app-button>
       <app-button variant="primary" size="sm" testId="add-shift-btn" (clicked)="openAddForm()">
         + Add Shift
       </app-button>
     </div>
   </div>
+
+  <!-- Apply result banner -->
+  @if (applyResult()) {
+    <div
+      class="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 mb-4"
+      data-testid="apply-result-banner"
+    >
+      <span>{{ applyResult() }}</span>
+      <button
+        type="button"
+        class="ml-4 text-green-600 hover:text-green-800 font-semibold"
+        data-testid="dismiss-apply-result-btn"
+        (click)="dismissApplyResult()"
+        (keydown.enter)="dismissApplyResult()"
+        tabindex="0"
+        aria-label="Dismiss"
+      >
+        ✕
+      </button>
+    </div>
+  }
 
   <!-- Add / Edit form -->
   @if (formOpen()) {
@@ -326,3 +355,541 @@
     </div>
   }
 </div>
+
+<!-- ─── Templates Panel Modal ─────────────────────────────────────────────── -->
+@if (templatesPanelOpen()) {
+  <div
+    class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
+    data-testid="templates-panel-overlay"
+    (click)="closeTemplatesPanel()"
+    (keydown.escape)="closeTemplatesPanel()"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Schedule templates"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-xl w-full max-w-2xl"
+      data-testid="templates-panel"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <!-- Panel header -->
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Schedule Templates</h2>
+          <p class="text-sm text-gray-500 mt-0.5">
+            Reusable weekly patterns — apply to any date range
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          @if (!tplFormOpen()) {
+            <app-button variant="primary" size="sm" testId="new-template-btn" (clicked)="openAddTemplate()">
+              + New Template
+            </app-button>
+          }
+          <button
+            type="button"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            data-testid="close-templates-btn"
+            (click)="closeTemplatesPanel()"
+            (keydown.enter)="closeTemplatesPanel()"
+            tabindex="0"
+            aria-label="Close templates panel"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Template form (create / edit) -->
+      @if (tplFormOpen()) {
+        <div class="px-6 py-5 border-b border-gray-100" data-testid="template-form">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">
+            {{ editingTemplate() ? 'Edit Template' : 'New Template' }}
+          </h3>
+
+          @if (tplFormError()) {
+            <div
+              class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 mb-4"
+              data-testid="tpl-form-error"
+            >
+              {{ tplFormError() }}
+            </div>
+          }
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <!-- Name -->
+            <div>
+              <label
+                for="tpl-name"
+                class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+                >Template Name</label
+              >
+              <input
+                id="tpl-name"
+                type="text"
+                class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                [class.border-red-400]="tplFormSubmitted() && !tplFormName().trim()"
+                data-testid="tpl-name-input"
+                [value]="tplFormName()"
+                (input)="tplFormName.set($any($event.target).value)"
+                placeholder="e.g. Summer Weekday Schedule"
+              />
+              @if (tplFormSubmitted() && !tplFormName().trim()) {
+                <p class="text-red-600 text-sm mt-1">Name is required</p>
+              }
+            </div>
+
+            <!-- Location (only for new templates) -->
+            @if (!editingTemplate()) {
+              <div>
+                <label
+                  for="tpl-location"
+                  class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+                  >Location</label
+                >
+                <select
+                  id="tpl-location"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                  [class.border-red-400]="tplFormSubmitted() && !tplFormLocationId()"
+                  data-testid="tpl-location-select"
+                  [value]="tplFormLocationId()"
+                  (change)="tplFormLocationId.set($any($event.target).value)"
+                >
+                  <option value="" disabled>Select a location</option>
+                  @for (loc of locations(); track trackByLocationId($index, loc)) {
+                    <option [value]="loc.location_id">{{ loc.name }}</option>
+                  }
+                </select>
+                @if (tplFormSubmitted() && !tplFormLocationId()) {
+                  <p class="text-red-600 text-sm mt-1">Location is required</p>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Shift Blocks -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                Shift Blocks
+              </p>
+              <app-button variant="secondary" size="sm" testId="add-block-btn" (clicked)="addTemplateBlock()">
+                + Add Block
+              </app-button>
+            </div>
+
+            @if (tplFormSubmitted() && tplFormBlocks().length === 0) {
+              <p class="text-red-600 text-sm mb-2">At least one shift block is required</p>
+            }
+
+            <div class="flex flex-col gap-4">
+              @for (block of tplFormBlocks(); track trackByIndex($index); let idx = $index) {
+                <div
+                  class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                  data-testid="template-block"
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-gray-500">Block {{ idx + 1 }}</p>
+                    @if (tplFormBlocks().length > 1) {
+                      <app-button
+                        variant="danger-outline"
+                        size="sm"
+                        testId="remove-block-btn"
+                        (clicked)="removeTemplateBlock(idx)"
+                        >Remove</app-button
+                      >
+                    }
+                  </div>
+
+                  <!-- Days -->
+                  <div class="mb-3">
+                    <p class="text-xs text-gray-500 mb-2">Days</p>
+                    <div class="flex flex-wrap gap-2">
+                      @for (day of DAYS_DISPLAY; track day.key) {
+                        <button
+                          type="button"
+                          class="px-3 py-1 rounded-full text-xs font-semibold border transition-colors"
+                          [class]="blockHasDay(block, day.key)
+                            ? 'bg-dt-secondary text-white border-dt-secondary'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-dt-secondary'"
+                          [attr.data-testid]="'block-day-' + day.key"
+                          (click)="toggleBlockDay(idx, day.key)"
+                          (keydown.enter)="toggleBlockDay(idx, day.key)"
+                          (keydown.space)="toggleBlockDay(idx, day.key)"
+                        >
+                          {{ day.label }}
+                        </button>
+                      }
+                    </div>
+                    @if (tplFormSubmitted() && !blockDaysValid(block)) {
+                      <p class="text-red-600 text-xs mt-1">Select at least one day</p>
+                    }
+                  </div>
+
+                  <!-- Times and count -->
+                  <div class="grid grid-cols-3 gap-3">
+                    <div>
+                      <label
+                        [for]="'block-start-' + idx"
+                        class="block text-xs text-gray-500 mb-1"
+                        >Start</label
+                      >
+                      <input
+                        [id]="'block-start-' + idx"
+                        type="time"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                        [class.border-red-400]="tplFormSubmitted() && !block.start_time"
+                        [attr.data-testid]="'block-start-' + idx"
+                        [value]="block.start_time"
+                        (input)="updateBlockTime(idx, 'start_time', $any($event.target).value)"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        [for]="'block-end-' + idx"
+                        class="block text-xs text-gray-500 mb-1"
+                        >End</label
+                      >
+                      <input
+                        [id]="'block-end-' + idx"
+                        type="time"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                        [class.border-red-400]="tplFormSubmitted() && !blockTimesValid(block)"
+                        [attr.data-testid]="'block-end-' + idx"
+                        [value]="block.end_time"
+                        (input)="updateBlockTime(idx, 'end_time', $any($event.target).value)"
+                      />
+                      @if (tplFormSubmitted() && block.start_time && block.end_time && block.end_time <= block.start_time) {
+                        <p class="text-red-600 text-xs mt-1">End must be after start</p>
+                      }
+                    </div>
+                    <div>
+                      <label
+                        [for]="'block-count-' + idx"
+                        class="block text-xs text-gray-500 mb-1"
+                        >Staff</label
+                      >
+                      <input
+                        [id]="'block-count-' + idx"
+                        type="number"
+                        min="1"
+                        max="50"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                        [attr.data-testid]="'block-count-' + idx"
+                        [value]="block.employee_count"
+                        (input)="updateBlockCount(idx, +$any($event.target).value)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <app-button variant="secondary" size="sm" testId="cancel-tpl-form-btn" (clicked)="closeTemplateForm()">
+              Cancel
+            </app-button>
+            <app-button
+              variant="primary"
+              size="sm"
+              [loading]="tplFormSaving()"
+              testId="save-template-btn"
+              (clicked)="saveTemplate()"
+            >
+              {{ editingTemplate() ? 'Save Changes' : 'Create Template' }}
+            </app-button>
+          </div>
+        </div>
+      }
+
+      <!-- Templates list -->
+      <div class="px-6 py-4">
+        @if (templatesLoading()) {
+          <div class="flex justify-center py-8">
+            <app-loading-spinner />
+          </div>
+        } @else if (templatesError()) {
+          <app-error-alert [message]="templatesError()!" data-testid="templates-error" />
+        } @else if (templates().length === 0) {
+          <div class="text-center py-10">
+            <p class="text-gray-500 text-sm">No templates yet.</p>
+            <p class="text-gray-400 text-xs mt-1">Create a template to quickly populate recurring schedules.</p>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-6">
+            @for (group of templatesByLocation(); track group.locationName) {
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                  {{ group.locationName }}
+                </p>
+                <div class="flex flex-col gap-2">
+                  @for (tpl of group.templates; track trackByTemplateId($index, tpl)) {
+                    <div
+                      class="rounded-xl border border-gray-200 bg-white px-4 py-3"
+                      data-testid="template-row"
+                    >
+                      <div class="flex items-center justify-between gap-4">
+                        <div class="min-w-0">
+                          <p class="text-sm font-semibold text-gray-900 truncate">{{ tpl.name }}</p>
+                          <p class="text-xs text-gray-400 mt-0.5">{{ blockSummary(tpl) }}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                          <app-button
+                            variant="primary"
+                            size="sm"
+                            testId="apply-template-btn"
+                            (clicked)="openApplyWizard(tpl)"
+                          >
+                            Apply
+                          </app-button>
+                          <app-button
+                            variant="primary-outline"
+                            size="sm"
+                            testId="edit-template-btn"
+                            (clicked)="openEditTemplate(tpl)"
+                          >
+                            Edit
+                          </app-button>
+                          <app-button
+                            variant="danger-outline"
+                            size="sm"
+                            [loading]="tplDeletingId() === tpl.template_id"
+                            testId="delete-template-btn"
+                            (clicked)="deleteTemplate(tpl)"
+                          >
+                            Delete
+                          </app-button>
+                        </div>
+                      </div>
+
+                      <!-- Block previews -->
+                      <div class="mt-2 flex flex-col gap-1">
+                        @for (block of tpl.shift_blocks; track $index) {
+                          <p class="text-xs text-gray-500">
+                            {{ dayRangeLabel(block.days) }} · {{ block.start_time }}–{{ block.end_time }} · {{ employeeLabel(block.employee_count) }}
+                          </p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ─── Apply Wizard Modal ─────────────────────────────────────────────────── -->
+@if (applyWizardOpen()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+    data-testid="apply-wizard-overlay"
+    (click)="closeApplyWizard()"
+    (keydown.escape)="closeApplyWizard()"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Apply template wizard"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-xl w-full max-w-md"
+      data-testid="apply-wizard"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <!-- Wizard header -->
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Apply Template</h2>
+          @if (applyTemplateTarget()) {
+            <p class="text-sm text-gray-500 mt-0.5 truncate max-w-[280px]">
+              {{ applyTemplateTarget()!.name }} · {{ applyTemplateTarget()!.location_name }}
+            </p>
+          }
+        </div>
+        <div class="flex items-center gap-3">
+          <p class="text-xs text-gray-400">Step {{ applyStep() }} of {{ applyTotalSteps() }}</p>
+          <button
+            type="button"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            data-testid="close-wizard-btn"
+            (click)="closeApplyWizard()"
+            (keydown.enter)="closeApplyWizard()"
+            tabindex="0"
+            aria-label="Close wizard"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 1: Date range -->
+      @if (applyStep() === 1) {
+        <div class="px-6 py-5" data-testid="apply-step-1">
+          <p class="text-sm text-gray-700 font-semibold mb-4">Select date range</p>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                for="apply-start"
+                class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+                >Start Date</label
+              >
+              <input
+                id="apply-start"
+                type="date"
+                class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                [class.border-red-400]="applyStep1Submitted() && !applyStartDate()"
+                data-testid="apply-start-input"
+                [min]="today()"
+                [value]="applyStartDate()"
+                (input)="applyStartDate.set($any($event.target).value)"
+              />
+              @if (applyStep1Submitted() && !applyStartDate()) {
+                <p class="text-red-600 text-xs mt-1">Required</p>
+              }
+            </div>
+            <div>
+              <label
+                for="apply-end"
+                class="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1"
+                >End Date</label
+              >
+              <input
+                id="apply-end"
+                type="date"
+                class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base shadow-sm focus:border-dt-secondary focus:outline-none focus:ring-1 focus:ring-dt-secondary"
+                [class.border-red-400]="applyStep1Submitted() && (!applyEndDate() || applyEndDate() < applyStartDate())"
+                data-testid="apply-end-input"
+                [min]="applyStartDate() || today()"
+                [max]="maxEndDate()"
+                [value]="applyEndDate()"
+                (input)="applyEndDate.set($any($event.target).value)"
+              />
+              @if (applyStep1Submitted() && !applyEndDate()) {
+                <p class="text-red-600 text-xs mt-1">Required</p>
+              }
+              @if (applyStep1Submitted() && applyEndDate() && applyEndDate() < applyStartDate()) {
+                <p class="text-red-600 text-xs mt-1">Must be after start</p>
+              }
+            </div>
+          </div>
+
+          @if (applyStartDate() && applyEndDate() && applyEndDate() >= applyStartDate()) {
+            <p class="text-xs text-gray-400 mt-3" data-testid="apply-preview-hint">
+              ~{{ applyPreviewCount() ?? 0 }} shifts will be created
+            </p>
+          }
+        </div>
+        <div class="flex justify-end gap-2 px-6 pb-6">
+          <app-button variant="primary" size="sm" testId="wizard-next-btn" (clicked)="advanceApplyStep1()">
+            Next
+          </app-button>
+        </div>
+      }
+
+      <!-- Step 2: Holiday check -->
+      @if (applyStep() === 2) {
+        <div class="px-6 py-5" data-testid="apply-step-2">
+          <p class="text-sm font-semibold text-gray-700 mb-1">US Federal Holidays in range</p>
+          <p class="text-xs text-gray-500 mb-4">
+            Toggle each holiday to indicate whether your location is open or closed that day.
+          </p>
+          <div class="flex flex-col gap-2">
+            @for (holiday of applyHolidays(); track trackByHolidayDate($index, holiday)) {
+              <div
+                class="flex items-center justify-between rounded-lg border px-4 py-2.5 cursor-pointer transition-colors"
+                [class]="isHolidaySkipped(holiday.date)
+                  ? 'border-gray-200 bg-gray-50'
+                  : 'border-green-200 bg-green-50'"
+                data-testid="holiday-row"
+                (click)="toggleApplySkipDate(holiday.date)"
+                (keydown.enter)="toggleApplySkipDate(holiday.date)"
+                (keydown.space)="toggleApplySkipDate(holiday.date)"
+                tabindex="0"
+                [attr.aria-pressed]="!isHolidaySkipped(holiday.date)"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-gray-800">{{ holiday.name }}</p>
+                  <p class="text-xs text-gray-400">{{ holiday.date }}</p>
+                </div>
+                <span
+                  class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  [class]="isHolidaySkipped(holiday.date)
+                    ? 'bg-gray-200 text-gray-600'
+                    : 'bg-green-100 text-green-700'"
+                >
+                  {{ isHolidaySkipped(holiday.date) ? 'Closed' : 'Open' }}
+                </span>
+              </div>
+            }
+          </div>
+          <p class="text-xs text-gray-400 mt-3">
+            ~{{ applyPreviewCount() ?? 0 }} shifts will be created
+          </p>
+        </div>
+        <div class="flex justify-between gap-2 px-6 pb-6">
+          <app-button variant="secondary" size="sm" testId="wizard-back-btn" (clicked)="backApplyStep()">
+            Back
+          </app-button>
+          <app-button variant="primary" size="sm" testId="wizard-next2-btn" (clicked)="advanceApplyToStep3()">
+            Next
+          </app-button>
+        </div>
+      }
+
+      <!-- Step 3: Confirm -->
+      @if (applyStep() === 3) {
+        <div class="px-6 py-5" data-testid="apply-step-3">
+          <p class="text-sm font-semibold text-gray-700 mb-4">Confirm</p>
+
+          <div class="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4 mb-4 text-sm text-gray-700 space-y-1">
+            <p><span class="font-semibold">Template:</span> {{ applyTemplateTarget()?.name }}</p>
+            <p><span class="font-semibold">Location:</span> {{ applyTemplateTarget()?.location_name }}</p>
+            <p><span class="font-semibold">Range:</span> {{ applyStartDate() }} → {{ applyEndDate() }}</p>
+            @if (applySkipDates().size > 0) {
+              <p><span class="font-semibold">Skipped holidays:</span> {{ applySkipDates().size }}</p>
+            }
+            <p class="pt-1 font-semibold text-dt-secondary">
+              {{ applyPreviewCount() ?? 0 }} shifts will be created
+            </p>
+          </div>
+
+          @if (applyError()) {
+            <div
+              class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 mb-4"
+              data-testid="apply-error"
+            >
+              {{ applyError() }}
+            </div>
+          }
+        </div>
+        <div class="flex justify-between gap-2 px-6 pb-6">
+          <app-button variant="secondary" size="sm" testId="wizard-back3-btn" (clicked)="backApplyStep()">
+            Back
+          </app-button>
+          <app-button
+            variant="primary"
+            size="sm"
+            [loading]="applySubmitting()"
+            testId="confirm-apply-btn"
+            (clicked)="confirmApply()"
+          >
+            Create Shifts
+          </app-button>
+        </div>
+      }
+    </div>
+  </div>
+}

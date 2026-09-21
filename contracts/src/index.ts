@@ -29,6 +29,7 @@ export * from './entities/manager.js';
 export * from './entities/notification.js';
 export * from './entities/organization.js';
 export * from './entities/shift.js';
+export * from './entities/schedule-template.js';
 export * from './entities/swap-shift.js';
 export * from './entities/web-admin.js';
 

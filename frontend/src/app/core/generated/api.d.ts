@@ -492,6 +492,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manager/schedule-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the calling manager's schedule templates
+         * @description Backs the Templates panel in the manager shifts-needed screen (frontend/src/app/features/manager/shifts-needed). Returns all reusable location shift templates the manager has defined.
+         */
+        get: operations["listManagerScheduleTemplates"];
+        put?: never;
+        /**
+         * Create a schedule template
+         * @description Creates a reusable shift-block template for a location from the Templates panel on the shifts-needed screen.
+         */
+        post: operations["createManagerScheduleTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/schedule-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a schedule template
+         * @description Saves edits to a template name or shift blocks from the Templates panel.
+         */
+        put: operations["updateManagerScheduleTemplate"];
+        post?: never;
+        /**
+         * Delete a schedule template
+         * @description Removes a schedule template the caller owns.
+         */
+        delete: operations["deleteManagerScheduleTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manager/schedule-templates/{templateId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a template to a date range
+         * @description Bulk-creates ShiftNeeded records for every date in [start_date, end_date] whose day-of-week matches a template shift block, skipping any date in skip_dates. Backs the Apply Wizard on the shifts-needed screen.
+         */
+        post: operations["applyManagerScheduleTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org-admin/employees": {
         parameters: {
             query?: never;
@@ -1395,6 +1463,58 @@ export interface components {
             location_id?: string;
             notes?: string;
         };
+        /** @description Fields required to create a reusable location shift template. */
+        CreateScheduleTemplateBody: {
+            location_id: string;
+            name: string;
+            shift_blocks: components["schemas"]["TemplateShiftBlock"][];
+        };
+        TemplateShiftBlock: {
+            /** @description Days of the week this block applies to. */
+            days: components["schemas"]["DayKey"][];
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            /** @description Number of employees needed for this block. */
+            employee_count: number;
+        };
+        /**
+         * @description Day-of-week abbreviation, Sunday-first.
+         * @enum {string}
+         */
+        DayKey: "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+        /** @description Partial update of a template name or shift blocks. */
+        UpdateScheduleTemplateBody: {
+            name?: string;
+            shift_blocks?: components["schemas"]["TemplateShiftBlock"][];
+        };
+        /** @description Date range and optional skip-dates for bulk-creating ShiftNeeded records. */
+        ApplyScheduleTemplateBody: {
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            start_date: string;
+            /**
+             * Format: date
+             * @description Calendar date, YYYY-MM-DD.
+             * @example 2026-05-27
+             */
+            end_date: string;
+            /**
+             * @description Dates to skip when generating shifts (e.g. holidays).
+             * @default []
+             */
+            skip_dates: string[];
+        };
         /** @description Fields accepted to register a new employee via Cognito. */
         CreateEmployeeBody: {
             /**
@@ -1933,6 +2053,74 @@ export interface components {
              */
             updated_at: string;
         };
+        /** @description All schedule templates owned by the calling manager. */
+        ManagerScheduleTemplateListResponse: components["schemas"]["ManagerScheduleTemplateResponse"][];
+        /** @description A location schedule template owned by the calling manager. */
+        ManagerScheduleTemplateResponse: {
+            template_id: string;
+            org_id: string;
+            manager_id: string;
+            location_id: string;
+            /** @description Denormalised at creation time. */
+            location_name: string;
+            /** @description Manager-facing label, e.g. "Summer Weekdays". */
+            name: string;
+            shift_blocks: components["schemas"]["TemplateShiftBlockOutput"][];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp.
+             * @example 2026-02-23T18:04:11.000Z
+             */
+            updated_at: string;
+        };
+        /** @description Number of ShiftNeeded records created plus their full shapes. */
+        ApplyScheduleTemplateResult: {
+            created: number;
+            shifts: {
+                shift_id: string;
+                org_id: string;
+                manager_id: string;
+                /**
+                 * Format: date
+                 * @description Calendar date, YYYY-MM-DD.
+                 * @example 2026-05-27
+                 */
+                date: string;
+                /**
+                 * @description Wall-clock time, HH:MM 24-hour.
+                 * @example 09:00
+                 */
+                start_time: string;
+                /**
+                 * @description Wall-clock time, HH:MM 24-hour.
+                 * @example 09:00
+                 */
+                end_time: string;
+                /** @description How many employees are needed. */
+                employee_count: number;
+                location_id: string;
+                location_name: string;
+                notes?: string;
+                /**
+                 * Format: date-time
+                 * @description ISO 8601 timestamp.
+                 * @example 2026-02-23T18:04:11.000Z
+                 */
+                created_at: string;
+                /**
+                 * Format: date-time
+                 * @description ISO 8601 timestamp.
+                 * @example 2026-02-23T18:04:11.000Z
+                 */
+                updated_at: string;
+            }[];
+        };
         /** @description Every employee in the caller OrgAdmin’s organization. */
         OrgAdminEmployeeListResponse: components["schemas"]["OrgAdminEmployeeResponse"][];
         /** @description An employee record as returned to an OrgAdmin, enriched with live Cognito status. */
@@ -2314,6 +2502,22 @@ export interface components {
         /** @description Recurring weekly availability, keyed by weekday. */
         WeeklyScheduleOutput: {
             [key: string]: components["schemas"]["DayAvailabilityOutput"];
+        };
+        TemplateShiftBlockOutput: {
+            /** @description Days of the week this block applies to. */
+            days: components["schemas"]["DayKey"][];
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            start_time: string;
+            /**
+             * @description Wall-clock time, HH:MM 24-hour.
+             * @example 09:00
+             */
+            end_time: string;
+            /** @description Number of employees needed for this block. */
+            employee_count: number;
         };
     };
     responses: never;
@@ -4197,6 +4401,284 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listManagerScheduleTemplates: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calling manager's schedule templates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerScheduleTemplateListResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createManagerScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description The created template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerScheduleTemplateResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateManagerScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
+            path: {
+                /** @description The schedule template's template_id. */
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduleTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description The updated template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerScheduleTemplateResponse"];
+                };
+            };
+            /** @description Request was malformed or failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteManagerScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
+            path: {
+                /** @description The schedule template's template_id. */
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller lacks the required role, or their organization could not be resolved. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The requested record does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    applyManagerScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side. */
+                "x-impersonate-user"?: string;
+            };
+            path: {
+                /** @description The schedule template's template_id. */
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyScheduleTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description The count of created records and their full shapes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyScheduleTemplateResult"];
+                };
             };
             /** @description Request was malformed or failed validation. */
             400: {

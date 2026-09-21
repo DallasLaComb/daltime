@@ -3372,6 +3372,482 @@
         }
       }
     },
+    "/manager/schedule-templates": {
+      "get": {
+        "operationId": "listManagerScheduleTemplates",
+        "summary": "List the calling manager's schedule templates",
+        "tags": [
+          "manager"
+        ],
+        "description": "Backs the Templates panel in the manager shifts-needed screen (frontend/src/app/features/manager/shifts-needed). Returns all reusable location shift templates the manager has defined.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/schedule-templates/handler.ts",
+          "backend/src/functions/manager/schedule-templates/service.ts",
+          "backend/src/functions/manager/schedule-templates/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves org_id and manager_id."
+          },
+          {
+            "command": "Query",
+            "index": "GSI1",
+            "keyCondition": "GSI1PK = MANAGER#<managerId> AND begins_with(GSI1SK, \"TEMPLATE#\")",
+            "note": "Lists all templates owned by this manager."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The calling manager's schedule templates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerScheduleTemplateListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createManagerScheduleTemplate",
+        "summary": "Create a schedule template",
+        "tags": [
+          "manager"
+        ],
+        "description": "Creates a reusable shift-block template for a location from the Templates panel on the shifts-needed screen.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/schedule-templates/handler.ts",
+          "backend/src/functions/manager/schedule-templates/service.ts",
+          "backend/src/functions/manager/schedule-templates/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
+            "note": "Resolves org_id and manager_id."
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = LOCATION#<locationId>",
+            "note": "Confirms the location belongs to the caller's org and reads location_name."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>",
+            "note": "Writes the new template with GSI1 key for manager listing."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleTemplateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created template.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerScheduleTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/schedule-templates/{templateId}": {
+      "put": {
+        "operationId": "updateManagerScheduleTemplate",
+        "summary": "Update a schedule template",
+        "tags": [
+          "manager"
+        ],
+        "description": "Saves edits to a template name or shift blocks from the Templates panel.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/schedule-templates/handler.ts",
+          "backend/src/functions/manager/schedule-templates/service.ts",
+          "backend/src/functions/manager/schedule-templates/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA"
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>",
+            "note": "Confirms the template exists and the caller owns it."
+          },
+          {
+            "command": "Update",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>",
+            "note": "Sets supplied fields plus updated_at. Returns ALL_NEW."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "schema": {
+              "type": "string",
+              "description": "The schedule template's template_id."
+            },
+            "required": true,
+            "description": "The schedule template's template_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduleTemplateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated template.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerScheduleTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteManagerScheduleTemplate",
+        "summary": "Delete a schedule template",
+        "tags": [
+          "manager"
+        ],
+        "description": "Removes a schedule template the caller owns.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/schedule-templates/handler.ts",
+          "backend/src/functions/manager/schedule-templates/service.ts",
+          "backend/src/functions/manager/schedule-templates/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA"
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>",
+            "note": "Confirms ownership."
+          },
+          {
+            "command": "Delete",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>"
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "schema": {
+              "type": "string",
+              "description": "The schedule template's template_id."
+            },
+            "required": true,
+            "description": "The schedule template's template_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template deleted."
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manager/schedule-templates/{templateId}/apply": {
+      "post": {
+        "operationId": "applyManagerScheduleTemplate",
+        "summary": "Apply a template to a date range",
+        "tags": [
+          "manager"
+        ],
+        "description": "Bulk-creates ShiftNeeded records for every date in [start_date, end_date] whose day-of-week matches a template shift block, skipping any date in skip_dates. Backs the Apply Wizard on the shifts-needed screen.",
+        "x-implementation-path": [
+          "backend/src/functions/manager/schedule-templates/handler.ts",
+          "backend/src/functions/manager/schedule-templates/service.ts",
+          "backend/src/functions/manager/schedule-templates/db.ts"
+        ],
+        "x-dynamodb-access": [
+          {
+            "command": "Get",
+            "keyCondition": "PK = USER#<callerSub> AND SK = METADATA"
+          },
+          {
+            "command": "Get",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SCHEDULE_TEMPLATE#<templateId>",
+            "note": "Confirms ownership and loads the template shift blocks."
+          },
+          {
+            "command": "Put",
+            "keyCondition": "PK = ORG#<orgId> AND SK = SHIFT_NEEDED#<shiftId>",
+            "note": "One Put per generated ShiftNeeded record."
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "schema": {
+              "type": "string",
+              "description": "The schedule template's template_id."
+            },
+            "required": true,
+            "description": "The schedule template's template_id."
+          },
+          {
+            "in": "header",
+            "name": "x-impersonate-user",
+            "schema": {
+              "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side.",
+              "type": "string"
+            },
+            "description": "WebAdmin-only. View this route as the given user (their Cognito sub). Read-only: any non-GET is rejected with 403. Rejected with 403 if the caller is not an ACTIVE WebAdmin, 400 if the id is malformed, and 404 if the user is not a member of the role this route serves. The acting WebAdmin is recorded server-side."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyScheduleTemplateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The count of created records and their full shapes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyScheduleTemplateResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request was malformed or failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the required role, or their organization could not be resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested record does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org-admin/employees": {
       "get": {
         "operationId": "listOrgAdminEmployees",
@@ -8453,6 +8929,139 @@
         },
         "description": "Partial update of a shift-need."
       },
+      "CreateScheduleTemplateBody": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "shift_blocks": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateShiftBlock"
+            }
+          }
+        },
+        "required": [
+          "location_id",
+          "name",
+          "shift_blocks"
+        ],
+        "description": "Fields required to create a reusable location shift template."
+      },
+      "TemplateShiftBlock": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayKey"
+            },
+            "description": "Days of the week this block applies to."
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Number of employees needed for this block."
+          }
+        },
+        "required": [
+          "days",
+          "start_time",
+          "end_time",
+          "employee_count"
+        ]
+      },
+      "DayKey": {
+        "type": "string",
+        "enum": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "description": "Day-of-week abbreviation, Sunday-first."
+      },
+      "UpdateScheduleTemplateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "shift_blocks": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateShiftBlock"
+            }
+          }
+        },
+        "description": "Partial update of a template name or shift blocks."
+      },
+      "ApplyScheduleTemplateBody": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "example": "2026-05-27"
+          },
+          "skip_dates": {
+            "default": [],
+            "description": "Dates to skip when generating shifts (e.g. holidays).",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "description": "Calendar date, YYYY-MM-DD.",
+              "example": "2026-05-27"
+            }
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ],
+        "description": "Date range and optional skip-dates for bulk-creating ShiftNeeded records."
+      },
       "CreateEmployeeBody": {
         "type": "object",
         "properties": {
@@ -9736,6 +10345,167 @@
         "additionalProperties": false,
         "description": "An unfilled shift-need posted by the calling manager."
       },
+      "ManagerScheduleTemplateListResponse": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ManagerScheduleTemplateResponse"
+        },
+        "description": "All schedule templates owned by the calling manager."
+      },
+      "ManagerScheduleTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "string"
+          },
+          "org_id": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string",
+            "description": "Denormalised at creation time."
+          },
+          "name": {
+            "type": "string",
+            "description": "Manager-facing label, e.g. \"Summer Weekdays\"."
+          },
+          "shift_blocks": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateShiftBlockOutput"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp.",
+            "example": "2026-02-23T18:04:11.000Z"
+          }
+        },
+        "required": [
+          "template_id",
+          "org_id",
+          "manager_id",
+          "location_id",
+          "location_name",
+          "name",
+          "shift_blocks",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false,
+        "description": "A location schedule template owned by the calling manager."
+      },
+      "ApplyScheduleTemplateResult": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "shifts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shift_id": {
+                  "type": "string"
+                },
+                "org_id": {
+                  "type": "string"
+                },
+                "manager_id": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                  "description": "Calendar date, YYYY-MM-DD.",
+                  "example": "2026-05-27"
+                },
+                "start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "end_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  "description": "Wall-clock time, HH:MM 24-hour.",
+                  "example": "09:00"
+                },
+                "employee_count": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "How many employees are needed."
+                },
+                "location_id": {
+                  "type": "string"
+                },
+                "location_name": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "description": "ISO 8601 timestamp.",
+                  "example": "2026-02-23T18:04:11.000Z"
+                }
+              },
+              "required": [
+                "shift_id",
+                "org_id",
+                "manager_id",
+                "date",
+                "start_time",
+                "end_time",
+                "employee_count",
+                "location_id",
+                "location_name",
+                "created_at",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "created",
+          "shifts"
+        ],
+        "additionalProperties": false,
+        "description": "Number of ShiftNeeded records created plus their full shapes."
+      },
       "OrgAdminEmployeeListResponse": {
         "type": "array",
         "items": {
@@ -10674,6 +11444,44 @@
           "sunday"
         ],
         "description": "Recurring weekly availability, keyed by weekday."
+      },
+      "TemplateShiftBlockOutput": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayKey"
+            },
+            "description": "Days of the week this block applies to."
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "end_time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Wall-clock time, HH:MM 24-hour.",
+            "example": "09:00"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Number of employees needed for this block."
+          }
+        },
+        "required": [
+          "days",
+          "start_time",
+          "end_time",
+          "employee_count"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

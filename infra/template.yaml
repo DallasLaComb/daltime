@@ -273,6 +273,92 @@ Resources:
         External:
           - '@aws-sdk/*'
 
+  ManagerScheduleTemplatesFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleTemplatesFunction'
+      RetentionInDays: 1
+
+  ManagerScheduleTemplatesFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ManagerScheduleTemplatesFunctionLogGroup
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ManagerScheduleTemplatesFunction'
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleTemplatesFunction'
+      CodeUri: ../backend
+      Handler: src/functions/manager/schedule-templates/handler.handler
+      Events:
+        ListManagerScheduleTemplates:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates
+            Method: GET
+            ApiId: !Ref DalTimeHttpApi
+        CreateManagerScheduleTemplate:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        UpdateManagerScheduleTemplate:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates/{templateId}
+            Method: PUT
+            ApiId: !Ref DalTimeHttpApi
+        DeleteManagerScheduleTemplate:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates/{templateId}
+            Method: DELETE
+            ApiId: !Ref DalTimeHttpApi
+        ApplyManagerScheduleTemplate:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates/{templateId}/apply
+            Method: POST
+            ApiId: !Ref DalTimeHttpApi
+        OptionsManagerScheduleTemplates:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsManagerScheduleTemplateById:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates/{templateId}
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+        OptionsManagerScheduleTemplateApply:
+          Type: HttpApi
+          Properties:
+            Path: /manager/schedule-templates/{templateId}/apply
+            Method: OPTIONS
+            ApiId: !Ref DalTimeHttpApi
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DalTimeTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/functions/manager/schedule-templates/handler.ts
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        Target: 'es2022'
+        Sourcemap: true
+        External:
+          - '@aws-sdk/*'
+
   ManagerShiftsFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
