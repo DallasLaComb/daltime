@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–6b code complete (6b awaits the real-iPhone gate); Phase 7 is next.**
+Status: **⏸ Paused after Phase 6b (2026-09-20, at the user's request) — Phases 1–6b are done and on `dev`. Phases 7–11 are deferred until the app itself is in a good state; the user will resume toward store deployment later.**
 
 ---
 
@@ -273,14 +273,16 @@ reaches an older native shell it can't run on.
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
 | 5 | Persistent token storage (auth refactor) | Yes — relaunch check on a device/simulator | ✅ (verified on a physical iPhone) |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ✅ (iOS simulator screenshot verified by Claude; physical iPhone + Android emulator check is yours) |
-| 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | 🟡 code done; ⏸ real-iPhone check is yours |
-| 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
+| 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | ✅ (Face ID lock, login-page button and saved sign-in confirmed working on a physical iPhone by the user) |
+| 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ (paused) |
 | 8 | CI: Android signed build workflow (artifact only) | Yes — keystore secrets | ⬜ |
 | 9 | CI: Android release to Google Play | Yes — Play account + service account | ⬜ |
 | 10 | CI: iOS build + TestFlight | Yes — Apple account + secrets | ⬜ |
 | 11 | OTA live updates (optional) | Yes — vendor account | ⬜ |
 
 Phases 1–7 need no paid accounts. Phases 8–11 can be deferred without blocking anything else.
+
+**Pause (2026-09-20):** work stops after 6b. When resuming, start with phase 7 (docs + dev/qa/prod acceptance — qa/prod still need a CD deploy so their `ALLOWED_ORIGINS` picks up `https://localhost`, and the Android emulator/device checks for phases 5–6b were never done), and re-check versions in section 2 (Capacitor 8.5.2, `@capgo/capacitor-native-biometric` 8.6.11) before phase 8+. Anything still open is listed in section 9.
 
 ---
 
@@ -949,3 +951,4 @@ plan, and why.)_
 - Phase 5: added refresh-token exchange at startup (not in the original plan) so persisted login survives past the 60-minute access token. Mid-session refresh is still missing — open question whether to add an interceptor-level refresh.
 - Decision 2026-09-20: **Face ID / Touch ID is now in scope as phase 6b** (after phase 6). Original note: **Face ID / Touch ID.** Feasible on top of phase 5 as an app lock: keep tokens in Keychain, prompt biometrics on cold start (before/around `initialize()`), fall back to the password screen. Would use `@capgo/capacitor-native-biometric` (8.6.11, peer `@capacitor/core >=8`) + `NSFaceIDUsageDescription` in `Info.plist`; needs a real device to verify. Decide whether to add as a phase between 6 and 7.
 - Phase 6b: Face ID lock implemented on `feature/capacitor-face-id` with the defaults listed in its completion notes (on by default, cold-start only, password fallback). Open question: re-lock after N minutes in background, and whether disabling the lock should require a biometric.
+- Pause 2026-09-20: mobile work paused after phase 6b to work on the application itself. Never verified on Android hardware/emulator: token persistence (5), safe areas/back button (6), Face ID lock (6b). qa/prod builds untested until their environments deploy the CORS variable.
