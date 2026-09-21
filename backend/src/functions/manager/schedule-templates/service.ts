@@ -7,6 +7,7 @@ import type {
   ScheduleTemplateRecord,
   TemplateShiftBlock,
   DayKey,
+  ShiftNeededRecord,
 } from '@daltime/contracts';
 
 const DAY_KEYS: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -160,7 +161,7 @@ export async function applyTemplate(
   if (template.manager_id !== manager_id) throw new ForbiddenError('You do not own this template');
 
   const now = new Date().toISOString();
-  const created: ReturnType<typeof stripKeys>[] = [];
+  const created: ReturnType<typeof stripKeys<ShiftNeededRecord>>[] = [];
 
   let cursor = new Date(body.start_date + 'T12:00:00Z');
   const end = new Date(body.end_date + 'T12:00:00Z');
@@ -174,7 +175,7 @@ export async function applyTemplate(
 
       for (const block of matchingBlocks) {
         const shiftId = randomUUID();
-        const item = {
+        const item: ShiftNeededRecord = {
           PK: `ORG#${org_id}`,
           SK: `SHIFT_NEEDED#${shiftId}`,
           GSI1PK: `MANAGER#${manager_id}`,
