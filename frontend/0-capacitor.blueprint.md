@@ -139,10 +139,12 @@ shared UI components are introduced.
   `prerendered-routes.json` — confirm this doesn't break the shell's `index.html`)
 - `server.androidScheme: 'https'` — Android serves from `https://localhost`.
   **iOS cannot use https**: `WKWebView` already handles `http`/`https`, so Capacitor ignores an `https`
-  `iosScheme` and falls back to `capacitor://localhost` (`CAPInstanceDescriptor.swift`, and the CLI docs say
-  the scheme "can't be set to schemes that the WKWebView already handles"). So there are **two** origins to
-  whitelist: `https://localhost` (Android) and `capacitor://localhost` (iOS). *(The original plan assumed one
-  shared origin; that was wrong and was found on the first real iPhone test.)*
+  `iosScheme` and falls back to `capacitor://localhost` (`CAPInstanceDescriptor.swift`). *(The original plan
+  assumed one shared `https://localhost` origin; wrong, found on the first real iPhone test.)*
+- **`plugins.CapacitorHttp.enabled: true`** — required for iOS. API Gateway **HTTP APIs reject non-http(s)
+  origins** in `CorsConfiguration` ("Invalid format for origin capacitor://localhost" — CloudFormation rolled
+  the dev stack back when this was tried), so the API can never allow the iOS origin. `CapacitorHttp` sends
+  `fetch`/`XMLHttpRequest` through the native HTTP stack on device: no `Origin` header, no CORS. Web unaffected.
 - **No** `server.url` (that would load a remote site and defeat bundled assets), except an
   optional, clearly-labeled live-reload dev config
 
@@ -177,12 +179,12 @@ dev API, since a device/emulator cannot reach the dev machine's SAM local withou
 
 **CORS** (blocks the feature if missed). `AllowedOrigins` feeds both API Gateway
 `CorsConfiguration.AllowOrigins` and the `ALLOWED_ORIGINS` Lambda env var
-(`infra/template.yaml`). It must include `https://localhost` **and `capacitor://localhost`**. Because CD passes
+(`infra/template.yaml`). It must include `https://localhost` (Android WebView). `capacitor://localhost` (iOS) **cannot** be added — API Gateway rejects it — so iOS relies on `CapacitorHttp` (5.2) instead. Because CD passes
 `vars.ALLOWED_ORIGINS` explicitly, **changing only the template default does nothing in deployed
 environments** — the three GitHub environment variables must also be updated (a human step, and
 must happen before the next CD run or the deploy will drop the origin).
 
-- Security: `https://localhost` / `capacitor://localhost` are inside the device sandbox; every route still requires a valid
+- Security: `https://localhost` is inside the device sandbox; every route still requires a valid
   Cognito JWT. Prod inclusion is intentional.
 - Headers already allowed: `Content-Type`, `Authorization`, `X-Impersonate-User` — no change.
 - No new routes: no `env.local.json`, Lambda or LogGroup changes.
@@ -265,7 +267,7 @@ reaches an older native shell it can't run on.
 
 | Phase | Title | Human gate? | Status |
 | --- | --- | --- | --- |
-| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | 🟡 (reopened: iOS origin `capacitor://localhost` missing) |
+| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ✅ (Android origin only; iOS via CapacitorHttp — see notes) |
 | 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
 | 3 | Environment support: Android flavors, config switching, build scripts | No (Android flavor check needs SDK) | 🟡 (iOS/scripts done + verified; Android Gradle build ⏸ not verified) |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ⬜ |
@@ -283,8 +285,8 @@ Phases 1–7 need no paid accounts. Phases 8–11 can be deferred without blocki
 
 ### Phase 1 — CORS origin for the mobile WebView
 
-**Goal:** the deployed API accepts requests from the Capacitor WebView origins
-(`https://localhost` for Android, `capacitor://localhost` for iOS) in every environment, and local dev deploys keep working.
+**Goal:** the deployed API accepts requests from the Capacitor Android WebView origin
+`https://localhost` in every environment, and local dev deploys keep working. (iOS is handled by `CapacitorHttp`, see 5.2.)
 
 **Do:**
 1. `infra/template.yaml`: add `https://localhost` to the `AllowedOrigins` parameter default
@@ -340,16 +342,17 @@ gh variable set ALLOWED_ORIGINS --env main --repo DallasLaComb/daltime --body 'h
   → expect `access-control-allow-origin: https://localhost`. Result: see above.
 - Note for later phases: the Lambda `setRequestOrigin` falls back to the FIRST allowed origin when the
   request origin isn't listed, so a missing `https://localhost` shows up as a CORS mismatch, not a 403.
-- **REOPENED 2026-09-20 (found on the first iPhone test: login worked, then "Failed to load schedule").** iOS sends
-  `Origin: capacitor://localhost`, not `https://localhost` (see 5.2). The API returned preflight 200 with no matching
-  `access-control-allow-origin`, so the WebView blocked every real request (API Gateway access logs showed
-  `OPTIONS` 200 with no following `GET`). Fix: add `capacitor://localhost` to the template default, the three
-  `.vscode/tasks*.json` deploy overrides and the README (done), then append it to the `ALLOWED_ORIGINS` GitHub
-  variables in dev/qa/main and redeploy. Resulting values:
-  dev `http://localhost:4200,https://dev.daltime.com,https://localhost,capacitor://localhost`,
-  qa `https://qa.daltime.com,https://localhost,capacitor://localhost`,
-  main `https://daltime.com,https://localhost,capacitor://localhost`.
-  Status of that follow-up: _(see phase 3 notes / progress table)_.
+- **REOPENED then RESOLVED 2026-09-20 (first iPhone test: login worked, then "Failed to load schedule").**
+  iOS sends `Origin: capacitor://localhost` (not `https://localhost`). API Gateway access logs showed preflight
+  `OPTIONS` 200 with no following `GET`: the response carried no matching `access-control-allow-origin`, so the
+  WebView blocked every real request (login still worked — it goes straight to Cognito).
+  - **Attempt 1 (failed, reverted):** add `capacitor://localhost` to `AllowedOrigins` (template, tasks, README,
+    GitHub vars). CD then **failed** (`daltime-backend-dev` → `UPDATE_ROLLBACK_COMPLETE`, dev left on the previous
+    good version): `Invalid format for origin capacitor://localhost` from API Gateway V2. The three GitHub
+    variables and the template were restored to `…,https://localhost` (commit revert of `522b241`).
+    **Lesson:** never put a non-http(s) origin in `AllowedOrigins`; it breaks every deploy in that environment.
+  - **Fix that stays:** `CapacitorHttp` (5.2). Verify on device after `npm run mobile:ios:dev` → ⌘R.
+  - Note: `https://localhost` remains in the variables/template for Android's WebView origin and is harmless.
 
 ---
 
@@ -739,7 +742,7 @@ plan, and why.)_
 
 - Phase 1: implemented on new branch `feature/capacitor` (was on `dev`). CLAUDE.md's `ai/*` docs still don't exist (as noted in section 0).
 - Phase 1: README deploy command also updated (not in original plan).
-- Phase 1 (reopened): the original 'one origin for both platforms' assumption was wrong — iOS WKWebView forces `capacitor://localhost`. Both origins are now required.
+- Phase 1 (reopened): the 'one origin for both platforms' assumption was wrong — iOS WKWebView forces `capacitor://localhost`, which API Gateway HTTP APIs refuse in CORS config. Fixed with `CapacitorHttp` on native instead (unverified on device until the human gate). Open question: since `CapacitorHttp` also applies on Android, `https://localhost` in `AllowedOrigins` may be unnecessary — leave as is until Android is tested.
 - Phase 3: Android flavor for prod is `prod` (AGP forbids `main`); phase 8's `bundle<Env>Release` becomes `bundleProdRelease`. Android build unverified until a JDK + Android SDK are installed.
 - Phase 3: `mobile:build:*` syncs iOS too (pulled forward from phase 4's sync item).
 - Phase 2: lint-staged is not configured anywhere in the repo (CLAUDE.md assumes it). Decide whether to add it or update CLAUDE.md; does not block the mobile work.

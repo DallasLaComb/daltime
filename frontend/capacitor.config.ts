@@ -15,9 +15,14 @@ const config: CapacitorConfig = {
   appName,
   webDir: 'dist/frontend/browser',
   server: {
-    // Android serves from https://localhost. iOS cannot: WKWebView already handles http/https, so Capacitor
-    // ignores an https iosScheme and uses capacitor://localhost. Both origins are in the API's AllowedOrigins.
     androidScheme: 'https',
+  },
+  plugins: {
+    // iOS cannot serve from https: WKWebView already handles http/https, so Capacitor ignores an https
+    // iosScheme and the app's origin is capacitor://localhost. API Gateway HTTP APIs reject non-http(s)
+    // origins in their CORS config, so browser-style requests from iOS would be blocked. CapacitorHttp routes
+    // fetch/XMLHttpRequest through the native HTTP stack on device (no Origin header, no CORS). Web is unaffected.
+    CapacitorHttp: { enabled: true },
   },
 };
 
