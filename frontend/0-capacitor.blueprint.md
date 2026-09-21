@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–5 complete (Phase 5 awaiting its device human gate); Phase 6 (native UX polish) is next.**
+Status: **Approved for phased implementation — Phases 1–5 complete; Phase 6 (native UX polish) is next, then Phase 6b (Face ID).**
 
 ---
 
@@ -43,11 +43,11 @@ supplement the web app. Same Angular codebase, same backend, same Cognito user p
 UI framework (see section 3). The native shells are build outputs of the existing `ng build`; they
 add no new features and no new backend routes.
 
-In scope: the shell, per-environment builds (dev/qa/prod), persistent token storage, native UX
+In scope: the shell, an optional Face ID / Touch ID app lock (phase 6b), per-environment builds (dev/qa/prod), persistent token storage, native UX
 polish, GitHub Actions pipelines that build and release the apps, and (optional, last) OTA live
 updates for web-only fixes.
 
-Out of scope: push notifications, biometric login, offline mode, store listing content
+Out of scope: push notifications, offline mode, store listing content
 (screenshots, descriptions, review submission).
 
 ---
@@ -273,6 +273,7 @@ reaches an older native shell it can't run on.
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
 | 5 | Persistent token storage (auth refactor) | Yes — relaunch check on a device/simulator | ✅ (verified on a physical iPhone) |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
+| 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | ⬜ |
 | 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
 | 8 | CI: Android signed build workflow (artifact only) | Yes — keystore secrets | ⬜ |
 | 9 | CI: Android release to Google Play | Yes — Play account + service account | ⬜ |
@@ -684,6 +685,34 @@ navigation; back button behavior at a nested route and at root.
 
 ---
 
+### Phase 6b — Face ID / Touch ID app lock
+
+Added 2026-09-20 at the user's request; runs right after phase 6 and before phase 7.
+
+**Goal:** on native, a relaunched app that has a saved login asks for Face ID / Touch ID (Android: fingerprint/face)
+before showing the app; if it fails, is cancelled, or is unavailable, the user falls back to the normal password login.
+Web behavior is unchanged.
+
+**Design (proposal — confirm details when starting):** keep tokens in the Keychain/Keystore exactly as phase 5. Add a
+`core/auth/biometric-lock` service that runs *after* `TokenStorage.hydrate()` and *before* `AuthService.initialize()`
+restores the session: if native + a refresh/access token exists + biometrics are available + the lock is enabled, prompt;
+on success continue, on failure/cancel clear the in-memory session (do not delete the stored tokens, so a later successful
+prompt still works) and show login. Plugin candidate: `@capgo/capacitor-native-biometric` (8.6.11, peer
+`@capacitor/core >=8`) — re-verify Capacitor 8 support and maintenance when starting. Needs `NSFaceIDUsageDescription`
+in `ios/App/App/Info.plist`. Open choices for the user: an on/off toggle in profile settings (default on?), prompt on
+every cold start vs after N minutes in background, and whether "Sign out" or "Use password instead" is the fallback.
+Remember: never return/await a Capacitor plugin object directly from an async function (phase 5 lesson).
+
+**AI verification:** unit tests for the lock service (available/unavailable/failed/cancelled/success paths with an injected
+plugin, like `SECURE_STORAGE_LOADER`), `npm test`, `npm run lint`, `npm run build`, iOS + Android native builds.
+
+**Human gate:** on a real iPhone (the simulator can only fake Face ID): cold start prompts Face ID; success → dashboard;
+cancel/fail → login screen; disabling Face ID in Settings → falls back gracefully.
+
+**Completion notes:** _(Claude fills in)_
+
+---
+
 ### Phase 7 — Docs + verification checkpoint
 
 **Goal:** the mobile shell is documented and proven end-to-end in dev before any release
@@ -848,4 +877,4 @@ plan, and why.)_
 - Phase 4: implemented with extra build configurations + shared schemes (not duplicated targets); `Info.plist` display name now comes from `APP_DISPLAY_NAME`. Physical-device runs of `.dev`/`.qa` need those App IDs registered (Xcode automatic signing normally does this).
 - Phase 5: D2 resolved → `capacitor-secure-storage-plugin@0.13.0` (see phase 5 notes for why not the alternatives).
 - Phase 5: added refresh-token exchange at startup (not in the original plan) so persisted login survives past the 60-minute access token. Mid-session refresh is still missing — open question whether to add an interceptor-level refresh.
-- Open idea (asked 2026-09-20, out of scope per section 1): **Face ID / Touch ID.** Feasible on top of phase 5 as an app lock: keep tokens in Keychain, prompt biometrics on cold start (before/around `initialize()`), fall back to the password screen. Would use `@capgo/capacitor-native-biometric` (8.6.11, peer `@capacitor/core >=8`) + `NSFaceIDUsageDescription` in `Info.plist`; needs a real device to verify. Decide whether to add as a phase between 6 and 7.
+- Decision 2026-09-20: **Face ID / Touch ID is now in scope as phase 6b** (after phase 6). Original note: **Face ID / Touch ID.** Feasible on top of phase 5 as an app lock: keep tokens in Keychain, prompt biometrics on cold start (before/around `initialize()`), fall back to the password screen. Would use `@capgo/capacitor-native-biometric` (8.6.11, peer `@capacitor/core >=8`) + `NSFaceIDUsageDescription` in `Info.plist`; needs a real device to verify. Decide whether to add as a phase between 6 and 7.
