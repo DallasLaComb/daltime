@@ -19,6 +19,28 @@ Parameters:
     AllowedValues:
       - arm64
       - x86_64
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: 'CloudWatch log retention in days (dev 14, qa 14, prod 90)'
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - DEBUG
+      - INFO
+      - WARN
+      - ERROR
+    Description: 'Lambda ApplicationLogLevel and POWERTOOLS_LOG_LEVEL (dev DEBUG, qa/prod INFO)'
+  AppEnvironment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - prod
+    Description: 'Deployment environment name surfaced as ENVIRONMENT in Lambda env vars'
 
 Globals:
   Function:
@@ -31,6 +53,9 @@ Globals:
         NODE_ENV: development
         ALLOWED_ORIGINS: !Join [',', !Ref AllowedOrigins]
         TABLE_NAME: !Ref DalTimeTable
+        POWERTOOLS_SERVICE_NAME: daltime-backend
+        POWERTOOLS_LOG_LEVEL: !Ref LogLevel
+        ENVIRONMENT: !Ref AppEnvironment
 
 Resources:
   # Access log group for the HTTP API (API Gateway V2).
@@ -41,7 +66,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/apigateway/${AWS::StackName}/access-logs'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ApiAccessLogGroupPolicy:
     Type: AWS::Logs::ResourcePolicy
@@ -75,31 +100,31 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeesFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeesFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ProfileFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ProfileFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagersFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagersFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerProfileFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerProfileFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerProfileFunction:
     Type: AWS::Serverless::Function
@@ -108,6 +133,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerProfileFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerProfileFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/profile/handler.handler
       Events:
@@ -159,7 +187,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerLocationsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerLocationsFunction:
     Type: AWS::Serverless::Function
@@ -168,6 +196,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerLocationsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerLocationsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/locations/handler.handler
       Events:
@@ -205,7 +236,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerShiftsNeededFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerShiftsNeededFunction:
     Type: AWS::Serverless::Function
@@ -214,6 +245,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerShiftsNeededFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerShiftsNeededFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/shifts-needed/handler.handler
       Events:
@@ -277,7 +311,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleTemplatesFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerScheduleTemplatesFunction:
     Type: AWS::Serverless::Function
@@ -286,6 +320,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerScheduleTemplatesFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleTemplatesFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/schedule-templates/handler.handler
       Events:
@@ -363,7 +400,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerShiftsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerShiftsFunction:
     Type: AWS::Serverless::Function
@@ -372,6 +409,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerShiftsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerShiftsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/shifts/handler.handler
       Events:
@@ -435,7 +475,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerScheduleFunction:
     Type: AWS::Serverless::Function
@@ -444,6 +484,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerScheduleFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerScheduleFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/schedule/handler.handler
       Events:
@@ -499,31 +542,31 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerEmployeesFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   OrganizationsFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-OrganizationsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   WebAdminEmployeesFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminEmployeesFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   WebAdminProfileFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminProfileFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   WebAdminGenerateDummyDataFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-WebAdminGenerateDummyDataFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   DalTimeHttpApi:
     Type: AWS::Serverless::HttpApi
@@ -539,7 +582,7 @@ Resources:
           "responseLength":"$context.responseLength",
           "integrationError":"$context.integrationErrorMessage",
           "error":"$context.error.message",
-          "integrationStatus":"$context.integration.integrationStatus"}
+          "integrationStatus":"$context.integration.integrationStatus","responseLatency":"$context.responseLatency","callerSub":"$context.authorizer.claims.sub"}
       Auth:
         DefaultAuthorizer: CognitoJwtAuthorizer
         Authorizers:
@@ -555,6 +598,7 @@ Resources:
           - Content-Type
           - Authorization
           - X-Impersonate-User
+          - X-Correlation-Id
         AllowMethods:
           - GET
           - POST
@@ -602,6 +646,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-OrgAdminsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/org-admins/handler.handler
       Events:
@@ -680,6 +727,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagersFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagersFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/managers/handler.handler
       Events:
@@ -761,7 +811,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminLocationsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   OrgAdminLocationsFunction:
     Type: AWS::Serverless::Function
@@ -770,6 +820,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-OrgAdminLocationsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminLocationsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/locations/handler.handler
       Events:
@@ -836,6 +889,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-OrganizationsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-OrganizationsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/organizations/handler.handler
       Events:
@@ -908,6 +964,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeesFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeesFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/employees/handler.handler
       Events:
@@ -992,6 +1051,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerEmployeesFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerEmployeesFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/manager/employees/handler.handler
       Events:
@@ -1104,6 +1166,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ProfileFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ProfileFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/profile/handler.handler
       Events:
@@ -1156,7 +1221,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminOrganizationFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   OrgAdminOrganizationFunction:
     Type: AWS::Serverless::Function
@@ -1165,6 +1230,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-OrgAdminOrganizationFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminOrganizationFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/organization/handler.handler
       Events:
@@ -1208,7 +1276,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ImpersonateFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   # The impersonation PICKER only (list users, describe one). Acting as a user is done by each
   # role Lambda itself via the X-Impersonate-User header (shared/impersonation.ts).
@@ -1219,6 +1287,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ImpersonateFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ImpersonateFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/impersonate/handler.handler
       Events:
@@ -1326,6 +1397,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-WebAdminEmployeesFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-WebAdminEmployeesFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/employees/handler.handler
       Events:
@@ -1366,6 +1440,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-WebAdminProfileFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-WebAdminProfileFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/profile/handler.handler
       Events:
@@ -1420,6 +1497,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-WebAdminGenerateDummyDataFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-WebAdminGenerateDummyDataFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/web-admin/generate-dummy-data/handler.handler
       Events:
@@ -1457,7 +1537,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-ManagerLocationsAssignFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   ManagerLocationsAssignFunction:
     Type: AWS::Serverless::Function
@@ -1466,6 +1546,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-ManagerLocationsAssignFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-ManagerLocationsAssignFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/manager-locations/handler.handler
       Events:
@@ -1523,7 +1606,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeLocationsAssignFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeLocationsAssignFunction:
     Type: AWS::Serverless::Function
@@ -1532,6 +1615,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeLocationsAssignFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeLocationsAssignFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/employee-locations/handler.handler
       Events:
@@ -1589,7 +1675,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeProfileFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeProfileFunction:
     Type: AWS::Serverless::Function
@@ -1598,6 +1684,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeProfileFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeProfileFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/profile/handler.handler
       Events:
@@ -1649,7 +1738,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailabilityFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeAvailabilityFunction:
     Type: AWS::Serverless::Function
@@ -1658,6 +1747,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeAvailabilityFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailabilityFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/availability/handler.handler
       Events:
@@ -1701,7 +1793,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailabilityOverridesFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeAvailabilityOverridesFunction:
     Type: AWS::Serverless::Function
@@ -1710,6 +1802,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeAvailabilityOverridesFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailabilityOverridesFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/availability-overrides/handler.handler
       Events:
@@ -1753,7 +1848,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminShiftsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   OrgAdminShiftsFunction:
     Type: AWS::Serverless::Function
@@ -1762,6 +1857,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-OrgAdminShiftsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-OrgAdminShiftsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/org-admin/shifts/handler.handler
       Events:
@@ -1799,7 +1897,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeShiftsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeShiftsFunction:
     Type: AWS::Serverless::Function
@@ -1808,6 +1906,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeShiftsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeShiftsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/shifts/handler.handler
       Events:
@@ -1845,7 +1946,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailableShiftsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeAvailableShiftsFunction:
     Type: AWS::Serverless::Function
@@ -1854,6 +1955,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeAvailableShiftsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeAvailableShiftsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/available-shifts/handler.handler
       Events:
@@ -1891,7 +1995,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   NotificationsFunction:
     Type: AWS::Serverless::Function
@@ -1900,6 +2004,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-NotificationsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-NotificationsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/shared/notifications/handler.handler
       Events:
@@ -2059,7 +2166,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-EmployeeSwapShiftsFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   EmployeeSwapShiftsFunction:
     Type: AWS::Serverless::Function
@@ -2068,6 +2175,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-EmployeeSwapShiftsFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-EmployeeSwapShiftsFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/employee/swap-shifts/handler.handler
       Events:
@@ -2131,7 +2241,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-HealthFunction'
-      RetentionInDays: 1
+      RetentionInDays: !Ref LogRetentionDays
 
   HealthFunction:
     Type: AWS::Serverless::Function
@@ -2140,6 +2250,9 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-HealthFunction'
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/${AWS::StackName}-HealthFunction'
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref LogLevel
+        SystemLogLevel: WARN
       CodeUri: ../backend
       Handler: src/functions/shared/health/handler.handler
       Events:

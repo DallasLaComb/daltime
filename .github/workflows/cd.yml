@@ -264,7 +264,10 @@ jobs:
             --parameter-overrides \
               AllowedOrigins=${{ vars.ALLOWED_ORIGINS }} \
               CognitoUserPoolId=${{ steps.foundation.outputs.user_pool_id }} \
-              CognitoClientId=${{ steps.foundation.outputs.client_id }}
+              CognitoClientId=${{ steps.foundation.outputs.client_id }} \
+              LogRetentionDays=${{ vars.LOG_RETENTION_DAYS || '14' }} \
+              LogLevel=${{ vars.LOG_LEVEL || 'INFO' }} \
+              AppEnvironment=${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
         working-directory: backend
 
       - name: Get API URL from stack outputs
