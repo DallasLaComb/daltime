@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–2 complete; Phase 3 in progress (iOS path done, Android unverified)..**
+Status: **Approved for phased implementation — Phases 1–3 complete; Phase 4 (iOS environments) is next..**
 
 ---
 
@@ -60,7 +60,7 @@ Out of scope: push notifications, biometric login, offline mode, store listing c
 | Angular compatibility | No constraint | Capacitor is framework-agnostic; it only consumes the built `index.html` + assets. |
 | Node | 22+ required; repo uses **24** locally and in CI | No change |
 | iOS | Xcode 26.0+, deployment target 15.0, Swift Package Manager (Capacitor 8 default) | Capacitor 8 requirement |
-| Android | Android Studio 2025.2.1 (Otter)+, JDK 17+, Gradle 8.13, minSdk 24, compile/targetSdk 36 | Capacitor 8 requirement |
+| Android | Android Studio 2025.2.1 (Otter)+ (or command-line tools), **JDK 21** (JDK 17 fails: `invalid source release: 21` compiling `capacitor-android`), Gradle 8.13, minSdk 24, compile/targetSdk 36 | Capacitor 8 requirement |
 
 Pin exact Capacitor versions in `package.json` (no floating `^` between core/cli/platforms — all
 four stay on the same version). Re-check the latest 8.x on npm when phase 2 runs.
@@ -235,7 +235,7 @@ interceptor before deciding the final shape; record any deviation.
   prod release can require manual approval.
 - Build numbers: `versionCode` (Android) and `CFBundleVersion` (iOS) from `github.run_number`;
   marketing version from a single source (e.g. `frontend/package.json` version or a tag).
-- **Android** (ubuntu): JDK 17, Node 24, `npm ci`, `npm run build`, placeholder replacement,
+- **Android** (ubuntu): JDK 21, Node 24, `npm ci`, `npm run build`, placeholder replacement,
   `npx cap sync android`, Gradle `bundleRelease` for the env's flavor, sign with keystore from
   secrets, upload AAB as an artifact; later upload to Google Play (internal track for dev/qa,
   production track behind approval).
@@ -269,7 +269,7 @@ reaches an older native shell it can't run on.
 | --- | --- | --- | --- |
 | 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ✅ (Android origin only; iOS via CapacitorHttp — see notes) |
 | 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
-| 3 | Environment support: Android flavors, config switching, build scripts | No (Android flavor check needs SDK) | 🟡 (iOS/scripts done + verified; Android Gradle build ⏸ not verified) |
+| 3 | Environment support: Android flavors, config switching, build scripts | No | ✅ |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ⬜ |
 | 5 | Persistent token storage (auth refactor) | No (tests are automated) | ⬜ |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
@@ -488,17 +488,30 @@ launch and show distinct names.
   `main` → `prod`. Variants: `devDebug|qaDebug|prodDebug` (+ `…Release`); release bundle task is
   `bundleProdRelease` etc. — **phase 8 must use these names.** `cap sync android` leaves `build.gradle` untouched
   (checked with a diff).
-- **Not verified:** the Android Gradle build (`./gradlew assembleDevDebug`). This machine has **no JDK and no
-  Android SDK/Android Studio**, so flavor syntax and the `main`-name assumption are unexecuted. Verify before phase 8.
 - **Verification run:** `npm run mobile:build:dev` succeeded end to end for both platforms; the real dev API URL is
   in `ios/App/App/public/chunk-*.js` and `android/.../public/chunk-*.js`; no `__API_BASE_URL__`/`__VITE_*`
   left; `xcodebuild` Debug build for the iPhone 18 Pro simulator **BUILD SUCCEEDED** and the app launches;
   `npm run lint`, `npm test` (39 files / 538 tests) and `npm run test:scripts` pass.
-- **Human gate (pending):** (1) iPhone: `npm run mobile:ios:dev` (opens Xcode) → ⌘R to your device → log in.
-  Login needs the dev API to accept `https://localhost` (phase 1 ✅ verified). (2) Android: install JDK 17+ and
-  Android Studio (Otter+), then install `devDebug` and `qaDebug` side by side and confirm distinct names.
-  (3) For `qa`/`main`: run `npm run mobile:env:pull:qa` / `:main` after `aws sso login --sso-session daltime`.
-
+- **Android verified (2026-09-20):** installed via Homebrew — `openjdk@21`, `android-commandlinetools` (SDK root
+  `/opt/homebrew/share/android-commandlinetools`; packages `platform-tools`, `platforms;android-36`,
+  `build-tools;36.0.0`, `emulator`, `system-images;android-36;google_apis;arm64-v8a`; licenses accepted by the user)
+  and an AVD `DalTime_Pixel_API36` (Pixel 8, API 36). `frontend/android/local.properties` (`sdk.dir=…`, git-ignored)
+  points Gradle at the SDK; Gradle needs
+  `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+  `./gradlew assembleDevDebug assembleQaDebug assembleProdDebug` → **BUILD SUCCESSFUL**. `aapt2 dump badging`:
+  `com.daltime.app.dev` "DalTime Dev", `com.daltime.app.qa` "DalTime QA", `com.daltime.app` "DalTime" (so the
+  flavors coexist). `devDebug` and `qaDebug` installed side by side on the emulator; `devDebug` launches, loads
+  `https://localhost`, registers `CapacitorHttp`, and renders the landing page. (`adb shell monkey` did not
+  foreground it; `adb shell am start -n com.daltime.app.dev/com.daltime.app.MainActivity` did.)
+  **Caveat:** all flavors package whatever bundle the last `cap sync` copied. Run `npm run mobile:build:<env>`
+  for the environment you are about to install; the QA APK built above contains the **dev** bundle.
+- **iPhone verified by the user (2026-09-20):** `mobile:ios:dev` build runs on a physical iPhone 16, login works and
+  data loads after the `CapacitorHttp` fix (see phase 1 notes).
+- **Machine setup for later phases:** add to `~/.zshrc`: `export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`
+  and `export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools`; emulator:
+  `$ANDROID_HOME/emulator/emulator -avd DalTime_Pixel_API36`.
+- **Human gate:** done in effect (iPhone by the user, Android emulator by Claude). Optional: eyeball the two
+  launcher entries "DalTime Dev" / "DalTime QA" in the emulator's app drawer.
 
 ---
 
@@ -595,7 +608,7 @@ automation is built.
 
 **Do:**
 1. README section (or `docs/mobile.md` linked from README): prerequisites (Xcode 26+, Android
-   Studio Otter+, JDK 17+, Node 22+), one-time setup, the per-env build commands, how to run a
+   Studio Otter+, JDK 21, Node 22+), one-time setup, the per-env build commands, how to run a
    flavor/scheme, where env values come from, why local SAM isn't reachable from a device,
    troubleshooting (CORS 403 → CORS var missing; logged out on every launch → token storage).
 2. Regression checklist: web app via `tasks.json` "Start Full Stack (with install)" still works;
@@ -620,7 +633,7 @@ uploads it as a workflow artifact. No store upload yet.
 1. Read `.github/workflows/cd.yml` (foundation outputs, stack outputs, environment usage, action
    SHA pinning, AWS OIDC role setup) and mirror its conventions.
 2. New `.github/workflows/mobile-android.yml`: `workflow_dispatch` with `environment` input
-   (`dev|qa|main`), `environment:` set so env-scoped vars/secrets apply, JDK 17, Node 24,
+   (`dev|qa|main`), `environment:` set so env-scoped vars/secrets apply, JDK 21, Node 24,
    `npm ci`, `npm run build`, fetch the same stack outputs as `cd.yml` (same AWS role/OIDC),
    run `mobile-env.mjs`, `cap sync android`, decode keystore from secret, Gradle `bundle<Env>Release`
    with `versionCode = github.run_number`, upload AAB (and optionally APK for sideload testing).
@@ -743,7 +756,8 @@ plan, and why.)_
 - Phase 1: implemented on new branch `feature/capacitor` (was on `dev`). CLAUDE.md's `ai/*` docs still don't exist (as noted in section 0).
 - Phase 1: README deploy command also updated (not in original plan).
 - Phase 1 (reopened): the 'one origin for both platforms' assumption was wrong — iOS WKWebView forces `capacitor://localhost`, which API Gateway HTTP APIs refuse in CORS config. Fixed with `CapacitorHttp` on native instead (unverified on device until the human gate). Open question: since `CapacitorHttp` also applies on Android, `https://localhost` in `AllowedOrigins` may be unnecessary — leave as is until Android is tested.
-- Phase 3: Android flavor for prod is `prod` (AGP forbids `main`); phase 8's `bundle<Env>Release` becomes `bundleProdRelease`. Android build unverified until a JDK + Android SDK are installed.
+- Phase 3: Android flavor for prod is `prod` (AGP forbids `main`); phase 8's `bundle<Env>Release` becomes `bundleProdRelease`. Android build now verified (JDK **21**, not 17).
+- Phase 3: blueprint said JDK 17+; Capacitor 8's Android code needs **JDK 21** (17 fails to compile). Fixed in section 2 and later phases.
 - Phase 3: `mobile:build:*` syncs iOS too (pulled forward from phase 4's sync item).
 - Phase 2: lint-staged is not configured anywhere in the repo (CLAUDE.md assumes it). Decide whether to add it or update CLAUDE.md; does not block the mobile work.
 - Phase 2: `cap run ios` cannot open the simulator on Xcode 27 (Simulator.app path); use `xcrun simctl` or Xcode. Revisit if a newer Capacitor fixes it.
