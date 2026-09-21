@@ -274,7 +274,7 @@ applies: local, dev, qa, prod).
 | 1 | Backend logger foundation + pilot handler + console→logger in shared code | No | ✅ |
 | 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ✅ |
 | 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ✅ |
-| 4 | Business-event logging in services/db (4a–4e by role) | No | ⬜ |
+| 4 | Business-event logging in services/db (4a–4e by role) | No | ✅ |
 | 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ⬜ |
 | 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ⬜ |
 | 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | No | ⬜ |
@@ -417,7 +417,7 @@ not `console`); a grep shows no `console.` in the slice; review the diff for PII
 
 **Human gate:** none.
 
-**Completion notes:** _(Claude fills in, per sub-phase)_
+**Completion notes:** Added `logger.info` to every state-changing service function across all five role slices (4a–4e). Fields logged are opaque ids only (`user_id`/`sub`, `org_id`, entity ids, outcome counts) — no emails, names, bodies, or DynamoDB items. Import added to 19 service files; `shared/profile-service.ts` (factory) updated so both employee and manager profile update paths log via the singleton. TypeScript: clean. Tests: 951 pass. ESLint: clean.
 
 ---
 
