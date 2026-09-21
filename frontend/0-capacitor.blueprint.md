@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–2 complete; Phase 3 is next..**
+Status: **Approved for phased implementation — Phases 1–2 complete; Phase 3 in progress (iOS path done, Android unverified)..**
 
 ---
 
@@ -137,9 +137,12 @@ shared UI components are introduced.
 - `appId`, `appName`
 - `webDir: 'dist/frontend/browser'` (verify it contains `index.html`; the build also emits
   `prerendered-routes.json` — confirm this doesn't break the shell's `index.html`)
-- `server.androidScheme: 'https'`, `server.iosScheme: 'https'` — both platforms serve from
-  `https://localhost`, giving ONE origin to whitelist instead of `capacitor://localhost` +
-  `http://localhost`
+- `server.androidScheme: 'https'` — Android serves from `https://localhost`.
+  **iOS cannot use https**: `WKWebView` already handles `http`/`https`, so Capacitor ignores an `https`
+  `iosScheme` and falls back to `capacitor://localhost` (`CAPInstanceDescriptor.swift`, and the CLI docs say
+  the scheme "can't be set to schemes that the WKWebView already handles"). So there are **two** origins to
+  whitelist: `https://localhost` (Android) and `capacitor://localhost` (iOS). *(The original plan assumed one
+  shared origin; that was wrong and was found on the first real iPhone test.)*
 - **No** `server.url` (that would load a remote site and defeat bundled assets), except an
   optional, clearly-labeled live-reload dev config
 
@@ -174,12 +177,12 @@ dev API, since a device/emulator cannot reach the dev machine's SAM local withou
 
 **CORS** (blocks the feature if missed). `AllowedOrigins` feeds both API Gateway
 `CorsConfiguration.AllowOrigins` and the `ALLOWED_ORIGINS` Lambda env var
-(`infra/template.yaml`). It must include `https://localhost`. Because CD passes
+(`infra/template.yaml`). It must include `https://localhost` **and `capacitor://localhost`**. Because CD passes
 `vars.ALLOWED_ORIGINS` explicitly, **changing only the template default does nothing in deployed
 environments** — the three GitHub environment variables must also be updated (a human step, and
 must happen before the next CD run or the deploy will drop the origin).
 
-- Security: `https://localhost` is inside the device sandbox; every route still requires a valid
+- Security: `https://localhost` / `capacitor://localhost` are inside the device sandbox; every route still requires a valid
   Cognito JWT. Prod inclusion is intentional.
 - Headers already allowed: `Content-Type`, `Authorization`, `X-Impersonate-User` — no change.
 - No new routes: no `env.local.json`, Lambda or LogGroup changes.
@@ -262,9 +265,9 @@ reaches an older native shell it can't run on.
 
 | Phase | Title | Human gate? | Status |
 | --- | --- | --- | --- |
-| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | ✅ |
+| 1 | CORS origin for the mobile WebView (infra + local + env vars) | Yes — set 3 GitHub env vars, deploy | 🟡 (reopened: iOS origin `capacitor://localhost` missing) |
 | 2 | Capacitor scaffold (install, config, add platforms, hygiene) | Maybe — needs Xcode/CocoaPods/SPM for `cap add ios` | ✅ (simulator/emulator run still optional) |
-| 3 | Environment support: Android flavors, config switching, build scripts | No | ⬜ |
+| 3 | Environment support: Android flavors, config switching, build scripts | No (Android flavor check needs SDK) | 🟡 (iOS/scripts done + verified; Android Gradle build ⏸ not verified) |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ⬜ |
 | 5 | Persistent token storage (auth refactor) | No (tests are automated) | ⬜ |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
@@ -280,8 +283,8 @@ Phases 1–7 need no paid accounts. Phases 8–11 can be deferred without blocki
 
 ### Phase 1 — CORS origin for the mobile WebView
 
-**Goal:** the deployed API accepts requests from the Capacitor WebView origin
-`https://localhost` in every environment, and local dev deploys keep working.
+**Goal:** the deployed API accepts requests from the Capacitor WebView origins
+(`https://localhost` for Android, `capacitor://localhost` for iOS) in every environment, and local dev deploys keep working.
 
 **Do:**
 1. `infra/template.yaml`: add `https://localhost` to the `AllowedOrigins` parameter default
@@ -337,7 +340,16 @@ gh variable set ALLOWED_ORIGINS --env main --repo DallasLaComb/daltime --body 'h
   → expect `access-control-allow-origin: https://localhost`. Result: see above.
 - Note for later phases: the Lambda `setRequestOrigin` falls back to the FIRST allowed origin when the
   request origin isn't listed, so a missing `https://localhost` shows up as a CORS mismatch, not a 403.
-
+- **REOPENED 2026-09-20 (found on the first iPhone test: login worked, then "Failed to load schedule").** iOS sends
+  `Origin: capacitor://localhost`, not `https://localhost` (see 5.2). The API returned preflight 200 with no matching
+  `access-control-allow-origin`, so the WebView blocked every real request (API Gateway access logs showed
+  `OPTIONS` 200 with no following `GET`). Fix: add `capacitor://localhost` to the template default, the three
+  `.vscode/tasks*.json` deploy overrides and the README (done), then append it to the `ALLOWED_ORIGINS` GitHub
+  variables in dev/qa/main and redeploy. Resulting values:
+  dev `http://localhost:4200,https://dev.daltime.com,https://localhost,capacitor://localhost`,
+  qa `https://qa.daltime.com,https://localhost,capacitor://localhost`,
+  main `https://daltime.com,https://localhost,capacitor://localhost`.
+  Status of that follow-up: _(see phase 3 notes / progress table)_.
 
 ---
 
@@ -443,7 +455,47 @@ not verified; web `npm run build && npm test && npm run lint` still pass.
 **Human gate:** install `devDebug` and `qaDebug` side by side on an emulator; confirm both
 launch and show distinct names.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** (2026-09-20, branch `feature/capacitor`; staged, not committed) — done iPhone-first at the user's request.
+
+- **Scripts (`frontend/scripts/`, all dependency-free Node ESM):**
+  - `mobile-env.mjs <dev|qa|main> [--dist dir]` replaces the same five placeholders in `.html/.js/.txt` as `cd.yml`.
+    Values: real env vars (CI) override `frontend/.env.mobile.<env>`. Fails loudly on missing vars (lists all),
+    unknown env, unsafe characters (values are inlined into JS strings), a leftover `__…__` placeholder, a missing
+    bundle, or **zero** replacements (already-processed bundle — running it twice on one build fails on purpose).
+  - `mobile-env-pull.mjs <env>` writes `.env.mobile.<env>` from CloudFormation outputs using the `daltime-<dev|qa|prod>`
+    AWS profiles (`ApiEndpoint` from `daltime-backend-<dev|qa|prod>`; `UserPoolId`, `UserPoolClientId`,
+    `CognitoRegion`, `CognitoDomain` from `daltime-foundation-<dev|qa|main>`). Not added by the blueprint; added so
+    "where do the values come from" lives in code. The dev file was generated and matches `environment.dev.ts`.
+  - `mobile-build.mjs <env> [ios|android|all] [--open]` = `npm run build` → `mobile-env.mjs` → `cap sync <platform>`
+    with `NODE_ENV=<env>` → optional `cap open`. A Node orchestrator instead of `cross-env` (no new dependency;
+    also works on Windows).
+  - `mobile-env.test.mjs`: 8 `node:test` cases (`npm run test:scripts`), all pass.
+- **npm scripts:** `mobile:env:pull:{dev,qa,main}`, `mobile:build:{dev,qa,main}` (build + sync **both** platforms),
+  `mobile:ios:{…}` and `mobile:android:{…}` (build + sync + open that platform), `test:scripts`.
+  (Syncing iOS here pulls the "also run `cap sync ios`" item forward from phase 4; the Xcode targets/schemes
+  themselves are still phase 4.)
+- **`capacitor.config.ts`:** `appId`/`appName` switch on `NODE_ENV` (`dev` → `com.daltime.app.dev` / "DalTime Dev",
+  `qa` → `.qa` / "DalTime QA", `main` **and anything else/unset** → `com.daltime.app` / "DalTime"). Verified:
+  `mobile:build:dev` writes `com.daltime.app.dev` into both native `capacitor.config.json` files. This does **not**
+  change the iOS bundle identifier (that lives in the Xcode project — phase 4).
+- **Android flavors (`android/app/build.gradle`):** `flavorDimensions env` with `dev` (`.dev`), `qa` (`.qa`), `prod`
+  (no suffix); per-flavor `app_name`/`title_activity_main` in `android/app/src/{dev,qa}/res/values/strings.xml`.
+  **Deviation:** the production flavor is named **`prod`, not `main`** — AGP reserves `main` (the default source set),
+  so a flavor with that name is rejected. The environment is still called `main` everywhere else; scripts map
+  `main` → `prod`. Variants: `devDebug|qaDebug|prodDebug` (+ `…Release`); release bundle task is
+  `bundleProdRelease` etc. — **phase 8 must use these names.** `cap sync android` leaves `build.gradle` untouched
+  (checked with a diff).
+- **Not verified:** the Android Gradle build (`./gradlew assembleDevDebug`). This machine has **no JDK and no
+  Android SDK/Android Studio**, so flavor syntax and the `main`-name assumption are unexecuted. Verify before phase 8.
+- **Verification run:** `npm run mobile:build:dev` succeeded end to end for both platforms; the real dev API URL is
+  in `ios/App/App/public/chunk-*.js` and `android/.../public/chunk-*.js`; no `__API_BASE_URL__`/`__VITE_*`
+  left; `xcodebuild` Debug build for the iPhone 18 Pro simulator **BUILD SUCCEEDED** and the app launches;
+  `npm run lint`, `npm test` (39 files / 538 tests) and `npm run test:scripts` pass.
+- **Human gate (pending):** (1) iPhone: `npm run mobile:ios:dev` (opens Xcode) → ⌘R to your device → log in.
+  Login needs the dev API to accept `https://localhost` (phase 1 ✅ verified). (2) Android: install JDK 17+ and
+  Android Studio (Otter+), then install `devDebug` and `qaDebug` side by side and confirm distinct names.
+  (3) For `qa`/`main`: run `npm run mobile:env:pull:qa` / `:main` after `aws sso login --sso-session daltime`.
+
 
 ---
 
@@ -687,6 +739,9 @@ plan, and why.)_
 
 - Phase 1: implemented on new branch `feature/capacitor` (was on `dev`). CLAUDE.md's `ai/*` docs still don't exist (as noted in section 0).
 - Phase 1: README deploy command also updated (not in original plan).
+- Phase 1 (reopened): the original 'one origin for both platforms' assumption was wrong — iOS WKWebView forces `capacitor://localhost`. Both origins are now required.
+- Phase 3: Android flavor for prod is `prod` (AGP forbids `main`); phase 8's `bundle<Env>Release` becomes `bundleProdRelease`. Android build unverified until a JDK + Android SDK are installed.
+- Phase 3: `mobile:build:*` syncs iOS too (pulled forward from phase 4's sync item).
 - Phase 2: lint-staged is not configured anywhere in the repo (CLAUDE.md assumes it). Decide whether to add it or update CLAUDE.md; does not block the mobile work.
 - Phase 2: `cap run ios` cannot open the simulator on Xcode 27 (Simulator.app path); use `xcrun simctl` or Xcode. Revisit if a newer Capacitor fixes it.
 - Phase 2: the built app has placeholder API/Cognito values until phase 3, so a simulator run cannot log in yet.

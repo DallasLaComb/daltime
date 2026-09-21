@@ -12,7 +12,20 @@
     "contracts:types": "openapi-typescript ../contracts/openapi.json --output src/app/core/generated/api.d.ts",
     "cap:sync": "npm run build && npx cap sync",
     "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "mobile:env:pull:dev": "node scripts/mobile-env-pull.mjs dev",
+    "mobile:env:pull:qa": "node scripts/mobile-env-pull.mjs qa",
+    "mobile:env:pull:main": "node scripts/mobile-env-pull.mjs main",
+    "mobile:build:dev": "node scripts/mobile-build.mjs dev all",
+    "mobile:build:qa": "node scripts/mobile-build.mjs qa all",
+    "mobile:build:main": "node scripts/mobile-build.mjs main all",
+    "mobile:ios:dev": "node scripts/mobile-build.mjs dev ios --open",
+    "mobile:ios:qa": "node scripts/mobile-build.mjs qa ios --open",
+    "mobile:ios:main": "node scripts/mobile-build.mjs main ios --open",
+    "mobile:android:dev": "node scripts/mobile-build.mjs dev android --open",
+    "mobile:android:qa": "node scripts/mobile-build.mjs qa android --open",
+    "mobile:android:main": "node scripts/mobile-build.mjs main android --open",
+    "test:scripts": "node --test scripts/mobile-env.test.mjs"
   },
   "prettier": {
     "printWidth": 100,

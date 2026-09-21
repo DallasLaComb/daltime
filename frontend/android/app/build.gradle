@@ -16,6 +16,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // One flavor per DalTime environment so dev/qa/prod install side by side.
+    // The prod flavor is NOT called "main": AGP reserves that name (it is the default source set).
+    // Build variants: devDebug, qaDebug, prodDebug, devRelease, qaRelease, prodRelease.
+    // App names come from src/<flavor>/res/values/strings.xml (prod uses the default "DalTime").
+    flavorDimensions = ["env"]
+    productFlavors {
+        dev {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+        }
+        qa {
+            dimension = "env"
+            applicationIdSuffix = ".qa"
+        }
+        prod {
+            dimension = "env"
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
