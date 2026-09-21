@@ -276,7 +276,7 @@ applies: local, dev, qa, prod).
 | 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ✅ |
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ✅ |
 | 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ✅ |
-| 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ⬜ |
+| 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ✅ |
 | 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | No | ⬜ |
 | 8 | Client context + interaction tracking (device type, screen size, clicks, navigation, breadcrumbs) | Yes — check on desktop, phone, tablet | ⬜ |
 | 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ⬜ |
