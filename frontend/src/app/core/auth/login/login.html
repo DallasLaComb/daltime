@@ -49,6 +49,22 @@
           (enterPressed)="onSubmit()"
         />
 
+        @if (offerSaveBiometric()) {
+          <div class="mb-4 flex items-center gap-2">
+            <input
+              id="save-biometric"
+              type="checkbox"
+              class="h-5 w-5 rounded border-gray-300 text-dt-primary focus:ring-dt-secondary"
+              data-testid="save-biometric-checkbox"
+              [checked]="saveBiometricLogin()"
+              (change)="saveBiometricLogin.set($any($event.target).checked)"
+            />
+            <label for="save-biometric" class="text-sm text-gray-700"
+              >Use {{ biometricLabel() }} to sign in next time</label
+            >
+          </div>
+        }
+
         <app-button
           variant="primary"
           size="lg"
@@ -58,6 +74,19 @@
           (clicked)="onSubmit()"
           >Sign In</app-button
         >
+
+        @if (showBiometric()) {
+          <app-button
+            class="mt-3 block"
+            variant="primary-outline"
+            size="lg"
+            [fullWidth]="true"
+            [loading]="biometricBusy()"
+            testId="biometric-sign-in-btn"
+            (clicked)="onBiometricSignIn()"
+            >Sign in with {{ biometricLabel() }}</app-button
+          >
+        }
 
         <div class="text-center mt-4">
           <a

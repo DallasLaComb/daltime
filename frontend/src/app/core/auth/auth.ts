@@ -12,6 +12,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { type UserRole, isValidRole, ROLE_DASHBOARD_MAP } from './user-role.model';
 import { TokenStorage } from '../storage/token-storage';
+import { BiometricLock } from './biometric-lock';
 
 export const TOKEN_KEYS = {
   access: 'daltime_access_token',
@@ -19,9 +20,12 @@ export const TOKEN_KEYS = {
   refresh: 'daltime_refresh_token',
 } as const;
 
+/** Shown for a wrong email or password; also how a stale saved biometric login is recognised. */
+export const INCORRECT_CREDENTIALS_ERROR = 'Incorrect email or password.';
+
 const AUTH_ERROR_MAP: Record<string, string> = {
-  NotAuthorizedException: 'Incorrect email or password.',
-  UserNotFoundException: 'Incorrect email or password.',
+  NotAuthorizedException: INCORRECT_CREDENTIALS_ERROR,
+  UserNotFoundException: INCORRECT_CREDENTIALS_ERROR,
   UserNotConfirmedException: 'Account not confirmed. Contact your administrator.',
   CodeMismatchException: 'Invalid verification code.',
   ExpiredCodeException: 'Verification code has expired. Please request a new one.',
@@ -32,6 +36,7 @@ const AUTH_ERROR_MAP: Record<string, string> = {
 export class AuthService {
   private readonly router = inject(Router);
   private readonly tokens = inject(TokenStorage);
+  private readonly biometricLock = inject(BiometricLock);
   private readonly cognitoClient = new CognitoIdentityProviderClient({
     region: environment.cognito.region,
   });
@@ -67,6 +72,36 @@ export class AuthService {
   }
 
   async initialize(): Promise<void> {
+    // Native app lock: a saved session is only restored after Face ID / Touch ID succeeds. On failure the
+    // stored tokens are kept (the next launch, or the login page's biometric button, can unlock them)
+    // but this launch shows the password login.
+    if (this.hasSavedSession() && !(await this.biometricLock.unlock())) {
+      this._authReady.set(true);
+      return;
+    }
+
+    await this.restoreSession();
+    this._authReady.set(true);
+  }
+
+  /** True when tokens from an earlier login are still stored (native: Keychain/Keystore). */
+  hasSavedSession(): boolean {
+    return !!(this.tokens.get(TOKEN_KEYS.access) || this.tokens.get(TOKEN_KEYS.refresh));
+  }
+
+  /**
+   * The login page's "Sign in with Face ID" button: asks for a biometric and, on success, restores the
+   * saved session (refreshing the access token if needed). Resolves false when there is no saved session,
+   * the prompt fails, or the saved session can no longer be restored (e.g. the refresh token expired).
+   */
+  async signInWithBiometrics(): Promise<boolean> {
+    if (!this.hasSavedSession() || !(await this.biometricLock.unlock())) return false;
+
+    await this.restoreSession();
+    return this._isAuthenticated();
+  }
+
+  private async restoreSession(): Promise<void> {
     let accessToken = this.tokens.get(TOKEN_KEYS.access);
     let idToken = this.tokens.get(TOKEN_KEYS.id);
 
@@ -92,8 +127,6 @@ export class AuthService {
         this.router.navigate([ROLE_DASHBOARD_MAP[role]]);
       }
     }
-
-    this._authReady.set(true);
   }
 
   async login(

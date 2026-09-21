@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { BiometricLock } from '../../../core/auth/biometric-lock';
 import { ButtonComponent } from '../button/button';
 
 export interface ProfileData {
@@ -34,6 +43,7 @@ export class ProfilePageComponent {
   saved = output<UpdateProfileData>();
   startedEditing = output<void>();
 
+  protected readonly biometricLock = inject(BiometricLock);
   protected readonly editing = signal(false);
   protected readonly editFirstName = signal('');
   protected readonly editLastName = signal('');
@@ -41,10 +51,19 @@ export class ProfilePageComponent {
   protected readonly editSubmitted = signal(false);
 
   constructor() {
+    void this.biometricLock.refreshSupport();
     effect(() => {
       if (this.saveSuccess()) {
         this.editing.set(false);
       }
+    });
+  }
+
+  protected onBiometricToggled(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    // Enabling asks for a biometric first; if that is declined the checkbox snaps back to the saved state.
+    void this.biometricLock.setEnabled(input.checked).then((enabled) => {
+      input.checked = enabled;
     });
   }
 

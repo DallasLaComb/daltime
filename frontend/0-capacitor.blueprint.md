@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–6 complete; Phase 6b (Face ID) is next.**
+Status: **Approved for phased implementation — Phases 1–6b code complete (6b awaits the real-iPhone gate); Phase 7 is next.**
 
 ---
 
@@ -273,7 +273,7 @@ reaches an older native shell it can't run on.
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
 | 5 | Persistent token storage (auth refactor) | Yes — relaunch check on a device/simulator | ✅ (verified on a physical iPhone) |
 | 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ✅ (iOS simulator screenshot verified by Claude; physical iPhone + Android emulator check is yours) |
-| 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | ⬜ |
+| 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | 🟡 code done; ⏸ real-iPhone check is yours |
 | 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
 | 8 | CI: Android signed build workflow (artifact only) | Yes — keystore secrets | ⬜ |
 | 9 | CI: Android release to Google Play | Yes — Play account + service account | ⬜ |
@@ -739,7 +739,47 @@ plugin, like `SECURE_STORAGE_LOADER`), `npm test`, `npm run lint`, `npm run buil
 **Human gate:** on a real iPhone (the simulator can only fake Face ID): cold start prompts Face ID; success → dashboard;
 cancel/fail → login screen; disabling Face ID in Settings → falls back gracefully.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** (2026-09-20, branch `feature/capacitor-face-id` from `dev`; staged, not committed)
+
+- **Plugin:** `@capgo/capacitor-native-biometric@8.6.11` (exact pin; peer `@capacitor/core >=8`, npm latest, modified 2026-09-19). `cap sync` registers it on iOS (SPM) and Android
+  (5 plugins each).
+- **Decisions taken (the blueprint left them open — change any of these on request):** lock is **on by default** with an on/off toggle; it prompts on **every cold start only**
+  (not when returning from background); the fallback is **the normal password login** (Cancel / "Use password" on Android, and on iOS the device passcode is offered
+  after Face ID fails because `useFallback: true`); if the device has **no biometrics and no passcode** the lock is skipped; if the plugin **errors or fails to load** it **fails closed** to the password screen.
+- **`core/auth/biometric-lock.ts` (`BiometricLock`, root service) + `biometric-lock.spec.ts` (14 tests):** `unlock()` (used at startup), `refreshSupport()` / `supported` / `label`
+  (Face ID, Touch ID, fingerprint unlock…), `setEnabled()` (turning **on** requires a successful prompt first, so nobody enables a lock that can't open) and `enabled`.
+  Plugin loaded lazily via `BIOMETRIC_LOADER` returning `{ plugin }` (phase 5 rule; a spec asserts `then` is never touched). Web: everything is a no-op and `unlock()` is true.
+- **Preference storage:** key `daltime_biometric_lock` (`'off'` when disabled, absent = on) lives in `TokenStorage` (Keychain/Keystore on native), hydrated in `app.config.ts` next to the token keys.
+  It is **not** cleared on sign-out, so the choice persists across accounts on the device.
+- **`AuthService.initialize()`:** if an access/refresh token is stored, it first `await`s `BiometricLock.unlock()`; on false it sets `authReady` and returns logged out — **no refresh call, stored
+  tokens kept** — so a later launch (or successful prompt) can still restore the session. Logging in with a password replaces the tokens as usual. 3 new `auth.spec.ts` cases.
+- **Login-page button (added after the first device try, at the user's request):** "Sign in with Face ID" (`data-testid="biometric-sign-in-btn"`, `app-button` `primary-outline`, below Sign In). Shown only when a saved
+  session exists **and** the device supports biometrics **and** the lock is on — i.e. after a cancelled/failed cold-start prompt. It calls `AuthService.signInWithBiometrics()` (prompt → `restoreSession()`, which
+  refreshes an expired access token and navigates to the dashboard); on failure the login page shows "Face ID didn't work…". `initialize()` was split into `restoreSession()` (shared) + the gate; `hasSavedSession()` is now public.
+  After an explicit **Sign out** the tokens are cleared, so no button — you sign in with the password once, then Face ID works again on later launches. The same is true once the 5-day refresh token expires.
+  Tests: 5 `signInWithBiometrics` + 3 startup-gate cases in `auth.spec.ts`, new `login/login.spec.ts` (6). **Correction:** the first version of these notes claimed the 3 startup-gate `auth.spec.ts` cases existed; that edit had silently not applied and they were only written in this follow-up.
+- **Saved sign-in behind Face ID (added after the user signed out and saw no button — 2026-09-20, user approved the Keychain approach):** the session-restore button can't survive **Sign out** (tokens are cleared), so like
+  other apps the email + password can now be stored with `NativeBiometric.setCredentials({ accessControl: BIOMETRY_ANY })` (iOS Keychain access control / Android biometric-bound Keystore key; readable only via
+  `getSecureCredentials` after a biometric). `BiometricLock` gained `saveCredentials` / `getCredentials` / `clearCredentials` / `hasCredentials`; a `daltime_biometric_login = 'saved'` marker in `TokenStorage`
+  (hydrated in `app.config.ts`) lets the login page know synchronously. Login page: a **"Use Face ID to sign in next time" checkbox (checked by default — say if you want it unchecked)** appears on native when
+  biometrics work, the lock is on, and nothing is saved; a successful password login then saves it. The **"Sign in with Face ID" button** shows when a login is saved *or* a session is still stored; with a saved login it
+  prompts, then calls `AuthService.login()` (fresh tokens; survives Sign out and refresh-token expiry). A stale saved password (`INCORRECT_CREDENTIALS_ERROR`) or a new-password challenge deletes the saved login and
+  says so. Profile → the Face ID card shows a **Forget** button (`biometric-forget-btn`) while a login is saved. Sign out does **not** delete the saved login (that is the point); Forget or a stale password does.
+  Security note: the password is stored only in hardware-backed, biometric-gated storage; if Face ID enrollment is fully removed on iOS the item becomes unreadable (`BIOMETRY_ANY` survives *adding* faces) and the next
+  password login re-saves it. Tests: `biometric-lock.spec.ts` 21, `login.spec.ts` 17 tests across visibility / checkbox / tap / stale-password paths. Verification: lint clean, `ng test --no-watch` 51 files / 670 tests pass,
+  `mobile:build:dev` OK, iOS `App Dev` simulator build succeeded and the **built app's Info.plist contains `NSFaceIDUsageDescription`** (closes the earlier "not verified" item), `assembleDevDebug` succeeded. Still needs the real-iPhone check.
+- **UI:** the shared `ProfilePageComponent` (used by all four roles) shows an "Unlock with Face ID" checkbox card **only when `supported()`** (native + capable device). Tailwind only, `data-testid` `biometric-lock-toggle` / `biometric-lock-section`.
+  No new shared component, no raw buttons.
+- **Native config:** `NSFaceIDUsageDescription` added to `ios/App/App/Info.plist`; `USE_BIOMETRIC` added to `AndroidManifest.xml` (confirmed in the built APK with `aapt2`). Package/Gradle plugin wiring
+  regenerated by `cap sync` (`Package.swift`, `capacitor.settings.gradle`, `capacitor.build.gradle`).
+- **Verification (real runs):** `npm run lint` clean; `npx ng test --no-watch` 51 files / 670 tests pass (after the login-button and saved-sign-in follow-ups); `npm run mobile:build:dev` OK; `xcodebuild` "App Dev" iOS-simulator build **BUILD SUCCEEDED**;
+  `./gradlew assembleDevDebug` **BUILD SUCCESSFUL**; web `ng build` OK (initial 592.89 kB — same pre-existing >500 kB warning, under the 1 MB error budget; the plugin is a lazy chunk).
+  **Not verified:** the `NSFaceIDUsageDescription` inside the built `.app` (only the source plist was checked with `plutil`), any actual biometric prompt, and Android on an emulator/device.
+- **Known limits / follow-ups:** not re-locked when the app returns from background; turning the lock *off* does not require a biometric; on Android, `negativeButtonText` is the only "use password" path (the device
+  PIN cannot be combined with the cancel button — plugin constraint). Note `npm test` (`ng test`) runs in watch mode here; use `npx ng test --no-watch` for a one-shot run.
+- **Human gate (real iPhone, dev build):** `npm run mobile:ios:dev` → ⌘R with the `App Dev` scheme. (1) Log in, kill the app, relaunch → Face ID prompt → success lands on the dashboard.
+  (2) Relaunch and cancel / fail Face ID → password login screen; relaunch again and succeed → still restored. (3) Profile → untick "Unlock with Face ID", relaunch → no prompt, still logged in;
+  re-tick → Face ID prompt required. (4) Settings → DalTime Dev → Face ID off → relaunch behaves gracefully (passcode prompt or, if the device has no passcode, no prompt).
 
 ---
 
@@ -908,3 +948,4 @@ plan, and why.)_
 - Phase 5: D2 resolved → `capacitor-secure-storage-plugin@0.13.0` (see phase 5 notes for why not the alternatives).
 - Phase 5: added refresh-token exchange at startup (not in the original plan) so persisted login survives past the 60-minute access token. Mid-session refresh is still missing — open question whether to add an interceptor-level refresh.
 - Decision 2026-09-20: **Face ID / Touch ID is now in scope as phase 6b** (after phase 6). Original note: **Face ID / Touch ID.** Feasible on top of phase 5 as an app lock: keep tokens in Keychain, prompt biometrics on cold start (before/around `initialize()`), fall back to the password screen. Would use `@capgo/capacitor-native-biometric` (8.6.11, peer `@capacitor/core >=8`) + `NSFaceIDUsageDescription` in `Info.plist`; needs a real device to verify. Decide whether to add as a phase between 6 and 7.
+- Phase 6b: Face ID lock implemented on `feature/capacitor-face-id` with the defaults listed in its completion notes (on by default, cold-start only, password fallback). Open question: re-lock after N minutes in background, and whether disabling the lock should require a biometric.

@@ -6,6 +6,8 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock DalTime with Face ID instead of typing your password.</string>
 	<key>CFBundleDisplayName</key>
 	<string>$(APP_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
