@@ -1,6 +1,7 @@
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { ok, setRequestOrigin } from '../response.js';
 import type { HealthResponse } from '@daltime/contracts';
+import { withLogging } from '../with-logging.js';
 
 const HEALTHY: HealthResponse = { status: 'ok' };
 
@@ -17,7 +18,7 @@ const HEALTHY: HealthResponse = { status: 'ok' };
  * Lambda propagate an error response that would cause smoke tests to fail
  * for a reason unrelated to the application being down.
  */
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   // Set CORS origin from the incoming request so the response headers
   // match the caller's origin (or the default allowed origin).
   setRequestOrigin(event.headers?.['origin']);
@@ -36,3 +37,5 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
     return ok<HealthResponse>(HEALTHY);
   }
 };
+
+export const handler = withLogging(handleRequest, 'shared-health');

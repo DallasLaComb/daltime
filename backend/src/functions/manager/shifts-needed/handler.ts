@@ -7,6 +7,7 @@ import {
 import { createShiftCrudHandler } from '../../shared/handler-factories.js';
 import * as service from './service.js';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 const handleRequest = createShiftCrudHandler<ManagerShiftNeededResponse>(
   service,
@@ -19,4 +20,4 @@ const handleRequest = createShiftCrudHandler<ManagerShiftNeededResponse>(
 );
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'manager-shifts-needed');

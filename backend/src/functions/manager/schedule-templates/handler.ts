@@ -8,6 +8,7 @@ import { getCallerSub } from '../../shared/auth.js';
 import { ok, badRequest, setRequestOrigin } from '../../shared/response.js';
 import { mapHandlerError } from '../../shared/errors.js';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 import * as service from './service.js';
 
 const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
@@ -64,4 +65,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
   }
 };
 
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'manager-schedule-templates');

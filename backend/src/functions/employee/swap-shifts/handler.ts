@@ -14,6 +14,7 @@ import { mapHandlerError, ForbiddenError } from '../../shared/errors.js';
 import { listSwapShifts, postSwapShift, claimSwapShift, cancelSwapShift } from './service.js';
 import type { SwapShiftListing, SwapShiftsListResponse } from '@daltime/contracts';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 /**
  * Lambda handler for all /employee/swap-shifts routes:
@@ -97,4 +98,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
 };
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'employee-swap-shifts');

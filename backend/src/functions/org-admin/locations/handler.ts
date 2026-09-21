@@ -7,6 +7,7 @@ import { parseWithContract } from '../../shared/contract-validation.js';
 import { getLocations, createLocation, updateLocation, removeLocation } from './service.js';
 import type { OrgAdminLocationListResponse, OrgAdminLocationResponse } from '@daltime/contracts';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 async function handlePost(callerSub: string, rawBody: string | undefined) {
   const parsed = parseBody<Record<string, unknown>>(rawBody);
@@ -50,4 +51,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
 };
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'org-admin-locations');

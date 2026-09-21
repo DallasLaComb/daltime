@@ -4,8 +4,9 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listEmployees } from './service.js';
 import type { WebAdminEmployeeListResponse } from '@daltime/contracts';
+import { withLogging } from '../../shared/with-logging.js';
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   if (method === 'OPTIONS') {
@@ -31,3 +32,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(error, 'web-admin employees handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-employees');

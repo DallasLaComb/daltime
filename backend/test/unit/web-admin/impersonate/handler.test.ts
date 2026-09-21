@@ -10,6 +10,10 @@ import { contractErrorMessage } from '../../helpers/contract-error.js';
 // The impersonate Lambda is only the PICKER now (list users, describe one user). Acting as a
 // user is `withImpersonation` in every role Lambda — see test/unit/shared/impersonation.test.ts.
 
+vi.mock('../../../../src/functions/shared/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), addContext: vi.fn(), appendKeys: vi.fn(), resetKeys: vi.fn() },
+  serializeError: vi.fn((e: unknown) => ({ error: String(e) })),
+}));
 vi.mock('../../../../src/functions/web-admin/impersonate/service.js', () => ({
   listImpersonatableUsers: vi.fn(),
   getUserContext: vi.fn(),
@@ -24,6 +28,8 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 // WebAdmin; individual auth tests override it.
 vi.mock('../../../../src/functions/shared/auth.js', () => ({
   requireWebAdminWithLookup: vi.fn(),
+  getCallerSub: vi.fn(() => ''),
+  getCallerGroups: vi.fn(() => []),
 }));
 
 vi.mock('../../../../src/functions/web-admin/impersonate/db.js', () => ({

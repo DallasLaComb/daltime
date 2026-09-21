@@ -20,6 +20,7 @@ import {
   deleteOrganization,
 } from './service.js';
 import type { WebAdminOrganizationListResponse, WebAdminOrganizationResponse } from '@daltime/contracts';
+import { withLogging } from '../../shared/with-logging.js';
 
 /** Handle POST /organizations — create a new organization. */
 async function handlePost(rawBody: string | undefined, webAdminId: string) {
@@ -70,7 +71,7 @@ async function handleResourceRoute(
   return badRequest(`Unhandled route: ${method} ${rawPath}`);
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const orgId = event.pathParameters?.orgId;
 
@@ -95,3 +96,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'web-admin organizations handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-organizations');

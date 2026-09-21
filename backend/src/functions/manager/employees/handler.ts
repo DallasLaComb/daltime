@@ -23,6 +23,7 @@ import {
 } from './service.js';
 import type { ManagerEmployeeAvailabilityOverridesResponse, ManagerEmployeeAvailabilityResponse, ManagerEmployeeListResponse, ManagerEmployeeResponse } from '@daltime/contracts';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -91,4 +92,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
 };
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'manager-employees');

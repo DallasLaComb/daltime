@@ -4,6 +4,10 @@ import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 
 // Mock the service module before importing the handler
+vi.mock('../../../../src/functions/shared/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), addContext: vi.fn(), appendKeys: vi.fn(), resetKeys: vi.fn() },
+  serializeError: vi.fn((e: unknown) => ({ error: String(e) })),
+}));
 vi.mock('../../../../src/functions/web-admin/organizations/service.js', () => ({
   listOrganizations: vi.fn(),
   getOrganization: vi.fn(),
@@ -16,6 +20,8 @@ vi.mock('../../../../src/functions/web-admin/organizations/service.js', () => ({
 // Default resolves to an ACTIVE WebAdmin caller; individual tests override as needed.
 vi.mock('../../../../src/functions/shared/auth.js', () => ({
   requireWebAdminWithLookup: vi.fn(),
+  getCallerSub: vi.fn(() => ''),
+  getCallerGroups: vi.fn(() => []),
   setRequestOrigin: vi.fn(),
 }));
 

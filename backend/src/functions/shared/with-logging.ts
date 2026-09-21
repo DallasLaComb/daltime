@@ -6,6 +6,7 @@ import type {
 } from 'aws-lambda';
 import { logger } from './logger.js';
 import { getCallerSub, getCallerGroups } from './auth.js';
+import { parseUaContext } from './ua-context.js';
 
 type EventHandler<R> = (event: APIGatewayProxyEventV2WithJWTAuthorizer) => Promise<R>;
 type LambdaHandler<R> = (
@@ -49,6 +50,15 @@ export function withLogging<R extends APIGatewayProxyResultV2>(
 
     const callerGroups = getCallerGroups(event);
     if (callerGroups.length > 0) keys['caller_role'] = callerGroups[0] as string;
+
+    const ua = event.headers?.['user-agent'] ?? '';
+    if (ua) {
+      const ctx = parseUaContext(ua, event.headers?.['x-platform']);
+      keys['device_type'] = ctx.device_type;
+      keys['os'] = ctx.os;
+      keys['browser'] = ctx.browser;
+      keys['platform'] = ctx.platform;
+    }
 
     logger.appendKeys(keys);
 

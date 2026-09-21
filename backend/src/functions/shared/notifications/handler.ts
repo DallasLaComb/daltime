@@ -7,6 +7,7 @@ import { parseWithContract } from '../contract-validation.js';
 import { listNotifications, markOneAsRead, markAllAsRead } from './service.js';
 import type { MarkAllNotificationsReadResponse, NotificationListResponse, NotificationResponse } from '@daltime/contracts';
 import { withImpersonation } from '../impersonation.js';
+import { withLogging } from '../with-logging.js';
 
 const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -43,4 +44,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
 };
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'shared-notifications');

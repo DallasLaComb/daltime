@@ -14,6 +14,7 @@ import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listOrgAdmins, createOrgAdmin, disableOrgAdmin, enableOrgAdmin } from './service.js';
 import type { WebAdminOrgAdminListResponse, WebAdminOrgAdminResponse } from '@daltime/contracts';
+import { withLogging } from '../../shared/with-logging.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -25,7 +26,7 @@ async function handlePost(orgId: string, rawBody: string | undefined, webAdminId
   return created<WebAdminOrgAdminResponse>(await createOrgAdmin(orgId, body, cognitoClient, webAdminId));
 }
 
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const orgId = event.pathParameters?.orgId;
   const userId = event.pathParameters?.userId;
@@ -63,3 +64,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'web-admin org-admins handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-org-admins');

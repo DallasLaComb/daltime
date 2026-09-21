@@ -20,6 +20,7 @@ import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { generateDummyData } from './service.js';
 import type { GenerateDummyDataResponse } from '@daltime/contracts';
+import { withLogging } from '../../shared/with-logging.js';
 
 /**
  * Handle POST /web-admin/generate-dummy-data.
@@ -40,7 +41,7 @@ async function handlePost(rawBody: string | undefined): Promise<ReturnType<typeo
  * via requireWebAdminWithLookup (Cognito group + DynamoDB ACTIVE status) before
  * any routing or business logic runs.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   if (method === 'OPTIONS') {
@@ -67,3 +68,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'web-admin generate-dummy-data handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-generate-dummy-data');

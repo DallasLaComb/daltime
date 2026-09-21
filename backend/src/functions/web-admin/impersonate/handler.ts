@@ -17,6 +17,7 @@ import { parseWithContract } from '../../shared/contract-validation.js';
 import { requireWebAdminWithLookup } from '../../shared/auth.js';
 import { listImpersonatableUsers, getUserContext } from './service.js';
 import { createSession, deleteSession, isRoleMember } from './db.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 const cognitoClient = new CognitoIdentityProviderClient({});
 
@@ -70,7 +71,7 @@ async function handleEndSession(event: APIGatewayProxyEventV2WithJWTAuthorizer) 
  * `withImpersonation` (shared/impersonation.ts) — so impersonated calls land on real, documented
  * routes instead of a `{proxy+}` catch-all this Lambda used to re-dispatch in-process.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
   const rawPath = event.rawPath;
 
@@ -102,3 +103,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'web-admin impersonate handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-impersonate');

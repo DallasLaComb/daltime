@@ -2,6 +2,7 @@ import { UpdateManagerProfileBody, type ManagerProfileResponse } from '@daltime/
 import { createProfileHandler } from '../../shared/handler-factories.js';
 import * as service from './service.js';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 // Pass 'Manager' so the factory rejects non-Manager callers with 403 before
 // any DynamoDB lookup — prevents an Employee JWT from reaching a 404 code path.
@@ -17,4 +18,4 @@ const handleRequest = createProfileHandler<ManagerProfileResponse>(
 );
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'manager-profile');

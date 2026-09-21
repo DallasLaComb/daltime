@@ -16,12 +16,18 @@ import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 
 // ─── Mocks (must be declared before dynamic imports) ─────────────────────────
 
+vi.mock('../../../../src/functions/shared/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), addContext: vi.fn(), appendKeys: vi.fn(), resetKeys: vi.fn() },
+  serializeError: vi.fn((e: unknown) => ({ error: String(e) })),
+}));
 vi.mock('../../../../src/functions/web-admin/generate-dummy-data/service.js', () => ({
   generateDummyData: vi.fn(),
 }));
 
 vi.mock('../../../../src/functions/shared/auth.js', () => ({
   requireWebAdminWithLookup: vi.fn(),
+  getCallerSub: vi.fn(() => ''),
+  getCallerGroups: vi.fn(() => []),
   setRequestOrigin: vi.fn(),
 }));
 

@@ -7,6 +7,7 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { getAvailabilityOverrides, upsertAvailabilityOverrides } from './service.js';
 import type { EmployeeAvailabilityOverridesResponse } from '@daltime/contracts';
 import { withImpersonation } from '../../shared/impersonation.js';
+import { withLogging } from '../../shared/with-logging.js';
 
 const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
@@ -43,4 +44,4 @@ const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => 
 };
 
 /** A WebAdmin may call this route as another user via `X-Impersonate-User` (read-only). */
-export const handler = withImpersonation(handleRequest);
+export const handler = withLogging(withImpersonation(handleRequest), 'employee-availability-overrides');

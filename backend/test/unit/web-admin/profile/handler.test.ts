@@ -19,6 +19,10 @@ import { ForbiddenError } from '../../../../src/functions/shared/errors.js';
 import { contractErrorMessage } from '../../helpers/contract-error.js';
 
 // Mock CognitoIdentityProviderClient — handler instantiates it at module load time.
+vi.mock('../../../../src/functions/shared/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), addContext: vi.fn(), appendKeys: vi.fn(), resetKeys: vi.fn() },
+  serializeError: vi.fn((e: unknown) => ({ error: String(e) })),
+}));
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
   CognitoIdentityProviderClient: class MockCognitoClient {},
 }));
@@ -32,6 +36,8 @@ vi.mock('../../../../src/functions/web-admin/profile/service.js', () => ({
 // Mock requireWebAdminWithLookup — default resolves to an ACTIVE WebAdmin caller.
 vi.mock('../../../../src/functions/shared/auth.js', () => ({
   requireWebAdminWithLookup: vi.fn(),
+  getCallerSub: vi.fn(() => ''),
+  getCallerGroups: vi.fn(() => []),
 }));
 
 import { handler } from '../../../../src/functions/web-admin/profile/handler.js';

@@ -20,6 +20,7 @@ import { mapHandlerError } from '../../shared/errors.js';
 import { parseWithContract } from '../../shared/contract-validation.js';
 import { getProfile, updateProfile } from './service.js';
 import type { WebAdminProfileResponse } from '@daltime/contracts';
+import { withLogging } from '../../shared/with-logging.js';
 
 /** Shared Cognito client — initialised once per Lambda cold start. */
 const cognitoClient = new CognitoIdentityProviderClient({});
@@ -39,7 +40,7 @@ async function handlePut(rawBody: string | undefined, sub: string) {
  * Main Lambda entrypoint — routes GET and PUT to service functions after
  * verifying the caller is an ACTIVE WebAdmin.
  */
-export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+const handleRequest = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const method = event.requestContext.http.method;
 
   // OPTIONS short-circuit: return CORS headers without auth so browsers can
@@ -70,3 +71,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return mapHandlerError(err, 'web-admin profile handler');
   }
 };
+
+export const handler = withLogging(handleRequest, 'web-admin-profile');

@@ -14,7 +14,7 @@ function corsHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': requestOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Impersonate-User,X-Correlation-Id',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Impersonate-User,X-Correlation-Id,X-Platform',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   };
 }
