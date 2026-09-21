@@ -272,7 +272,7 @@ applies: local, dev, qa, prod).
 | Phase | Title | Human gate? | Status |
 | --- | --- | --- | --- |
 | 1 | Backend logger foundation + pilot handler + console→logger in shared code | No | ✅ |
-| 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ⬜ |
+| 2 | Infra: retention, log level, JSON LoggingConfig, correlation header (CORS) | Yes — 2 GitHub vars per env, deploy dev | ✅ |
 | 3 | Roll out `withLogging` to every handler (3a–3e by role) | No (deploy dev to sanity check) | ⬜ |
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ⬜ |
 | 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ⬜ |
@@ -354,7 +354,7 @@ deploy dev; invoke any API route; in CloudWatch Logs Insights run
 `fields @timestamp, level, message, request_id | sort @timestamp desc | limit 20` on the function's log group.
 Record the result. Note: changing retention on an existing log group updates it in place (no data loss).
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Added `LogRetentionDays`, `LogLevel`, `AppEnvironment` SAM parameters with safe defaults (so a missing GitHub var never breaks a deploy). Replaced all 30 hardcoded `RetentionInDays: 1` with `!Ref LogRetentionDays`. Added `LogFormat: JSON`, `ApplicationLogLevel: !Ref LogLevel`, `SystemLogLevel: WARN` to all 29 function `LoggingConfig` blocks. Added `POWERTOOLS_SERVICE_NAME`, `POWERTOOLS_LOG_LEVEL`, `ENVIRONMENT` to `Globals.Function.Environment.Variables`. Added `X-Correlation-Id` to HTTP API `AllowHeaders` and to `Access-Control-Allow-Headers` in `response.ts`. Added `responseLatency` and `callerSub` to API Gateway access log format. Updated `cd.yml` with fallback `||` defaults. Updated all three `.vscode/tasks*.json` deploy commands with `dev` values. GitHub vars set via `gh variable set`: dev (14d/DEBUG), qa (14d/INFO), main (90d/INFO). Human gate: deploy dev and run a Logs Insights query to confirm JSON structured logs appear.
 
 ---
 
