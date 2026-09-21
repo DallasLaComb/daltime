@@ -5,8 +5,8 @@ Description: DalTime Scheduling Application Backend
 Parameters:
   AllowedOrigins:
     Type: CommaDelimitedList
-    Default: 'http://localhost:4200,https://localhost'
-    Description: 'Comma-separated frontend origins for CORS (https://localhost is the Capacitor mobile WebView origin)'
+    Default: 'http://localhost:4200,https://localhost,capacitor://localhost'
+    Description: 'Comma-separated frontend origins for CORS (https://localhost = Capacitor Android WebView, capacitor://localhost = Capacitor iOS WebView)'
   CognitoUserPoolId:
     Type: String
     Default: 'us-east-1_LVp3uUQ5l'
