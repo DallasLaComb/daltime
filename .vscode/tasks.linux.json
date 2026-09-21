@@ -4,7 +4,7 @@
     {
       "label": "Backend: Deploy to Dev",
       "type": "shell",
-      "command": "sam build --template-file ../infra/template.yaml && sam deploy --template-file .aws-sam/build/template.yaml --stack-name daltime-backend-dev --s3-bucket daltime-sam-artifacts --capabilities CAPABILITY_IAM --no-confirm-changeset --no-fail-on-empty-changeset --region us-east-1 --profile daltime-dev --parameter-overrides 'AllowedOrigins=http://localhost:4200,https://dev.daltime.com,https://localhost,capacitor://localhost' CognitoUserPoolId=us-east-1_kzQ806uSv CognitoClientId=1nl13tbaqb47s8f0tfc07lc24m",
+      "command": "sam build --template-file ../infra/template.yaml && sam deploy --template-file .aws-sam/build/template.yaml --stack-name daltime-backend-dev --s3-bucket daltime-sam-artifacts --capabilities CAPABILITY_IAM --no-confirm-changeset --no-fail-on-empty-changeset --region us-east-1 --profile daltime-dev --parameter-overrides 'AllowedOrigins=http://localhost:4200,https://dev.daltime.com,https://localhost' CognitoUserPoolId=us-east-1_kzQ806uSv CognitoClientId=1nl13tbaqb47s8f0tfc07lc24m",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
