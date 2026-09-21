@@ -3,6 +3,17 @@ module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: {
     extend: {
+      // Notch / home-indicator insets. Resolve to 0 in a normal browser (viewport-fit=cover is only
+      // meaningful inside the Capacitor shell), so web layout is unchanged.
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      maxHeight: {
+        'safe-dvh': 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+      },
       colors: {
         'dt-primary': '#0369A1',
         'dt-secondary': '#0EA5E9',

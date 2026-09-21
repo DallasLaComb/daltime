@@ -300,14 +300,14 @@
   @if (postModalOpen()) {
     <div class="fixed inset-0 z-40 bg-black/50" aria-hidden="true"></div>
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+      class="fixed inset-0 z-50 flex items-end pt-safe-top pb-safe-bottom justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="post-modal-title"
       data-testid="post-shift-modal"
     >
       <div
-        class="w-full bg-white shadow-xl sm:max-w-lg sm:rounded-xl max-h-dvh sm:max-h-[90vh] overflow-y-auto"
+        class="w-full bg-white shadow-xl sm:max-w-lg sm:rounded-xl max-h-safe-dvh sm:max-h-[90vh] overflow-y-auto"
       >
         <!-- Modal header -->
         <div class="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
@@ -316,7 +316,7 @@
           </h3>
           <button
             type="button"
-            class="text-neutral-400 hover:text-neutral-600 text-2xl leading-none transition-colors"
+            class="text-neutral-400 hover:text-neutral-600 text-2xl leading-none -m-2.5 min-w-11 p-2.5 transition-colors"
             aria-label="Close post shift modal"
             data-testid="post-modal-close"
             (click)="closePostModal()"

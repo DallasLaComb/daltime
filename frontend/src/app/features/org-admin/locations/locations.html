@@ -82,7 +82,7 @@
     @if (showCreateModal()) {
       <div class="fixed inset-0 z-40 bg-black/50"></div>
       <div
-        class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+        class="fixed inset-0 z-50 flex items-end pt-safe-top pb-safe-bottom justify-center sm:items-center sm:p-4"
         tabindex="-1"
         data-testid="create-modal"
         (click)="closeCreateModal()"
@@ -94,12 +94,14 @@
           (click)="$event.stopPropagation()"
           (keydown)="$event.stopPropagation()"
         >
-          <div class="max-h-dvh overflow-y-auto bg-white shadow-xl sm:max-h-[90vh] sm:rounded-xl">
+          <div
+            class="max-h-safe-dvh overflow-y-auto bg-white shadow-xl sm:max-h-[90vh] sm:rounded-xl"
+          >
             <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h5 class="text-lg font-semibold text-gray-900">Add Location</h5>
               <button
                 type="button"
-                class="text-2xl leading-none text-gray-400 transition-colors hover:text-gray-600"
+                class="text-2xl leading-none -m-2.5 min-w-11 p-2.5 text-gray-400 transition-colors hover:text-gray-600"
                 data-testid="close-create-modal-btn"
                 (click)="closeCreateModal()"
               >
@@ -176,7 +178,7 @@
     @if (showEditModal()) {
       <div class="fixed inset-0 z-40 bg-black/50"></div>
       <div
-        class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+        class="fixed inset-0 z-50 flex items-end pt-safe-top pb-safe-bottom justify-center sm:items-center sm:p-4"
         tabindex="-1"
         data-testid="edit-modal"
         (click)="closeEditModal()"
@@ -188,12 +190,14 @@
           (click)="$event.stopPropagation()"
           (keydown)="$event.stopPropagation()"
         >
-          <div class="max-h-dvh overflow-y-auto bg-white shadow-xl sm:max-h-[90vh] sm:rounded-xl">
+          <div
+            class="max-h-safe-dvh overflow-y-auto bg-white shadow-xl sm:max-h-[90vh] sm:rounded-xl"
+          >
             <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h5 class="text-lg font-semibold text-gray-900">Edit Location</h5>
               <button
                 type="button"
-                class="text-2xl leading-none text-gray-400 transition-colors hover:text-gray-600"
+                class="text-2xl leading-none -m-2.5 min-w-11 p-2.5 text-gray-400 transition-colors hover:text-gray-600"
                 data-testid="close-edit-modal-btn"
                 (click)="closeEditModal()"
               >

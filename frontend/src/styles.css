@@ -31,6 +31,12 @@
   .btn-dt-lg {
     @apply px-6 py-3 text-base;
   }
+  /* Touch devices: keep every button at least 44px tall (Apple HIG / Material). Desktop is unchanged. */
+  @media (pointer: coarse) {
+    .btn-dt {
+      @apply min-h-11;
+    }
+  }
 
   /* ── Form validation ── */
   .input-error {

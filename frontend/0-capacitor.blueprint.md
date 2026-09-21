@@ -1,6 +1,6 @@
 # Capacitor Mobile Shell (Frontend) — Blueprint
 
-Status: **Approved for phased implementation — Phases 1–5 complete; Phase 6 (native UX polish) is next, then Phase 6b (Face ID).**
+Status: **Approved for phased implementation — Phases 1–6 complete; Phase 6b (Face ID) is next.**
 
 ---
 
@@ -272,7 +272,7 @@ reaches an older native shell it can't run on.
 | 3 | Environment support: Android flavors, config switching, build scripts | No | ✅ |
 | 4 | iOS environment targets/schemes | Yes — verify in Xcode | ✅ (simulator side-by-side verified by Claude; Xcode eyeball optional) |
 | 5 | Persistent token storage (auth refactor) | Yes — relaunch check on a device/simulator | ✅ (verified on a physical iPhone) |
-| 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ⬜ |
+| 6 | Native UX polish (safe areas, status bar, back button, splash) | Yes — visual check | ✅ (iOS simulator screenshot verified by Claude; physical iPhone + Android emulator check is yours) |
 | 6b | Face ID / Touch ID app lock (added 2026-09-20 at the user's request) | Yes — real device | ⬜ |
 | 7 | Docs + verification checkpoint (regression + device acceptance) | Yes — device testing | ⬜ |
 | 8 | CI: Android signed build workflow (artifact only) | Yes — keystore secrets | ⬜ |
@@ -681,7 +681,37 @@ no component CSS files or inline styles introduced.
 **Human gate:** visual check on a notched iPhone simulator and an Android emulator with gesture
 navigation; back button behavior at a nested route and at root.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:**
+- **Safe areas (the "content behind the clock/battery" bug).** `viewport-fit=cover` added to `index.html`, `index.dev.html`,
+  `index.qa.html`. Tailwind tokens added in `tailwind.config.js`: spacing `safe-top|bottom|left|right` (→ `env(safe-area-inset-*)`)
+  and `max-h-safe-dvh`. They resolve to 0 in a normal browser, so web layout is unchanged.
+  - `app.ts` host: **web** keeps its small gutter (`max(0.5rem, inset)` sides, top gap `max(0, 0.5rem - inset-top)`, `md:` 0.75rem).
+    **Native** (`IS_NATIVE_PLATFORM`) is edge-to-edge — no gutter, no top gap, only `pl-safe-left pr-safe-right` for landscape notches
+    (changed at the user's request after seeing white side strips on device). The navbar paints under the status bar.
+  - `navbar.html`: `pt-safe-top` on the `<nav>`; the mobile dropdown offset is `top-[calc(4rem+env(safe-area-inset-top))]`.
+  - `footer.html`: bottom bar `pb-[calc(1.25rem+env(safe-area-inset-bottom))]` (clears the home indicator).
+  - 9 modal files (10 bottom-sheet containers): container `pt-safe-top pb-safe-bottom`, panel `max-h-dvh` → `max-h-safe-dvh`.
+    (`sm:p-4` / `sm:max-h-[90vh]` still override at ≥640px.) The centered schedule shift modal already has `p-4` and was left alone.
+- **Plugins** (exact pins, all peer `@capacitor/core >=8`): `@capacitor/status-bar` 8.0.3, `@capacitor/splash-screen` 8.0.2,
+  `@capacitor/app` 8.1.1. `cap sync` found all 4 plugins on iOS and Android.
+- **`core/native/native-shell.ts` (+ spec, 11 tests):** native-only, plugins lazy-loaded via `NATIVE_SHELL_LOADER` (returns a wrapper
+  object — phase 5 lesson). Sets status bar `Style.Dark` (light text; the navbar is always dark blue, including logged-out). Registers the
+  Android `backButton` listener: `Location.back()` when `canGoBack` and the current path is not a root page; otherwise `App.exitApp()`.
+  Root pages: `/`, `/login`, `/web-admin`, `/org-admin`, `/manager`, `/employee`, `/employee/schedule`. Started fire-and-forget from
+  `provideAppInitializer` in `app.config.ts` so it can never delay or fail bootstrap. No signals needed (no state).
+- **Android edge-to-edge:** Capacitor 8's built-in `SystemBars` handles insets: with `viewport-fit=cover`, `env(safe-area-inset-*)` is
+  correct on WebView ≥ 140 and is 0 (webview padded natively) on older ones — so the same Tailwind classes work on both. `@capacitor/status-bar`'s
+  `overlaysWebView`/`backgroundColor` are ignored on Android 15+.
+- **Touch targets (Tailwind/CSS only, no layout change on desktop):** `.btn-dt` gets `min-h-11` under `@media (pointer: coarse)` in
+  `styles.css` (was 36px, `sm` 28px) — covers `<app-button>` incl. the notification bell. Navbar hamburger `p-2` → `p-2.5` (44px).
+  Modal close "×" (10 files) got `-m-2.5 min-w-11 p-2.5` (44px hit area, same visual size/position). Raw `<button>` "×" is pre-existing.
+- **Splash / icons:** skipped — no source image provided. Splash uses the plugin defaults (auto-hide after 500 ms).
+- **Verification:** `npm run lint` clean, `npm test` 41 files / 568 tests pass, `npm run mobile:build:dev` (build + placeholders + sync
+  both platforms) OK, `xcodebuild` scheme `App Dev` for iPhone 18 Pro simulator BUILD SUCCEEDED, screenshot confirms the navbar sits below
+  the status bar with light text. Android native build / emulator **not run** this phase.
+- **Human gate:** `npm run mobile:ios:dev` → Run on your iPhone; check the top of a logged-in screen, a bottom-sheet modal, the footer and
+  a landscape orientation. Android emulator (gesture nav): back at a nested route goes back, at the dashboard exits.
+
 
 ---
 
