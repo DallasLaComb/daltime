@@ -545,12 +545,12 @@
 
         <!-- Column headers -->
         <div
-          class="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 border-b border-gray-100 bg-gray-50 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400"
+          class="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 border-b border-gray-100 bg-gray-50 px-3 sm:px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400"
         >
           <span>Employee</span>
-          <span class="text-right">Availability</span>
-          <span class="text-right w-20">Week Hours</span>
-          <span class="text-right w-16">OT Risk</span>
+          <span class="hidden sm:block text-right">Availability</span>
+          <span class="hidden sm:block text-right w-20">Week Hours</span>
+          <span class="hidden sm:block text-right w-16">OT Risk</span>
           <span class="w-20"></span>
         </div>
 
@@ -558,27 +558,58 @@
         <div class="divide-y divide-gray-100">
           @for (c of fillShiftCandidates(); track c.employee.employee_id) {
             <div
-              class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 px-5 py-3"
+              class="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto_auto] items-start sm:items-center gap-x-3 sm:gap-x-4 px-3 sm:px-5 py-3"
               [class.bg-green-50]="c.available"
               [attr.data-testid]="'fill-candidate-' + c.employee.employee_id"
             >
-              <!-- Name + available indicator -->
-              <div class="flex items-center gap-2 min-w-0">
-                @if (c.available) {
-                  <span class="h-2 w-2 shrink-0 rounded-full bg-green-500" title="Available"></span>
-                } @else {
+              <!-- Name + available indicator + mobile secondary info -->
+              <div class="flex flex-col gap-1 min-w-0">
+                <div class="flex items-center gap-2 min-w-0">
+                  @if (c.available) {
+                    <span class="h-2 w-2 shrink-0 rounded-full bg-green-500" title="Available"></span>
+                  } @else {
+                    <span
+                      class="h-2 w-2 shrink-0 rounded-full bg-gray-300"
+                      title="Not available"
+                    ></span>
+                  }
+                  <span class="truncate text-sm font-medium text-gray-800">
+                    {{ c.employee.first_name }} {{ c.employee.last_name }}
+                  </span>
+                </div>
+                <!-- Mobile-only: availability slots + hours + OT inline -->
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pl-4 sm:hidden">
+                  @if (c.availableSlots && c.availableSlots.length > 0) {
+                    @for (s of c.availableSlots; track $index) {
+                      <span
+                        class="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700"
+                      >
+                        {{ shortTime(s.from) }}–{{ shortTime(s.to) }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="text-xs text-gray-300">No availability</span>
+                  }
                   <span
-                    class="h-2 w-2 shrink-0 rounded-full bg-gray-300"
-                    title="Not available"
-                  ></span>
-                }
-                <span class="truncate text-sm font-medium text-gray-800">
-                  {{ c.employee.first_name }} {{ c.employee.last_name }}
-                </span>
+                    [class]="
+                      c.wouldExceed
+                        ? 'text-xs font-bold text-amber-600'
+                        : 'text-xs text-gray-400'
+                    "
+                  >
+                    {{ c.weekHours.toFixed(1) }}h
+                  </span>
+                  @if (c.wouldExceed) {
+                    <span
+                      class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+                      >⚠ OT</span
+                    >
+                  }
+                </div>
               </div>
 
-              <!-- Availability slots for that day -->
-              <div class="flex flex-wrap justify-end gap-1">
+              <!-- Availability slots (desktop only) -->
+              <div class="hidden sm:flex flex-wrap justify-end gap-1">
                 @if (c.availableSlots && c.availableSlots.length > 0) {
                   @for (s of c.availableSlots; track $index) {
                     <span
@@ -592,8 +623,8 @@
                 }
               </div>
 
-              <!-- Week hours -->
-              <div class="w-20 text-right">
+              <!-- Week hours (desktop only) -->
+              <div class="hidden sm:block w-20 text-right">
                 <span
                   [class]="
                     c.wouldExceed ? 'text-sm font-bold text-amber-600' : 'text-sm text-gray-600'
@@ -603,8 +634,8 @@
                 </span>
               </div>
 
-              <!-- OT flag -->
-              <div class="w-16 text-right">
+              <!-- OT flag (desktop only) -->
+              <div class="hidden sm:block w-16 text-right">
                 @if (c.wouldExceed) {
                   <span
                     class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700"
