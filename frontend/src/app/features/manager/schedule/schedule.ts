@@ -185,8 +185,10 @@ export class ManagerSchedule extends ScheduleBaseComponent implements OnInit {
 
   protected readonly unfilledSlots = computed<UnfilledSlot[]>(() => {
     const shifts = this.allShifts();
+    const locationFilter = this.filterLocation();
     const result: UnfilledSlot[] = [];
     for (const sn of this.allShiftsNeeded()) {
+      if (locationFilter && sn.location_id !== locationFilter) continue;
       const filled = shifts.filter(
         (s) =>
           s.date === sn.date &&

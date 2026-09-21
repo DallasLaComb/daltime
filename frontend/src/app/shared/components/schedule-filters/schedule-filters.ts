@@ -123,17 +123,16 @@ export class ScheduleFiltersComponent {
   }
 
   /**
-   * Handles a click on a named status chip (Published / Unfilled / Draft Failed).
-   * Toggles the chip on or off within the current selection — adds it if absent,
-   * removes it if already present. Emits the updated Set to the parent.
+   * Handles a click on a named status chip (Filled / Unfilled).
+   * Radio behavior: clicking a chip selects it exclusively. Clicking the
+   * already-active chip deselects it, reverting to "All".
    */
   protected toggleChip(key: ShiftStatusFilter): void {
-    const current = new Set(this.activeStatusChips());
-    if (current.has(key)) {
-      current.delete(key);
+    const current = this.activeStatusChips();
+    if (current.size === 1 && current.has(key)) {
+      this.statusChipsChange.emit(new Set());
     } else {
-      current.add(key);
+      this.statusChipsChange.emit(new Set([key]));
     }
-    this.statusChipsChange.emit(current);
   }
 }
