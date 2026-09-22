@@ -13,6 +13,7 @@ import {
 import { type UserRole, isValidRole, ROLE_DASHBOARD_MAP } from './user-role.model';
 import { TokenStorage } from '../storage/token-storage';
 import { BiometricLock } from './biometric-lock';
+import { PosthogService } from '../analytics/posthog.service';
 
 export const TOKEN_KEYS = {
   access: 'daltime_access_token',
@@ -37,6 +38,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly tokens = inject(TokenStorage);
   private readonly biometricLock = inject(BiometricLock);
+  private readonly posthog = inject(PosthogService);
   private readonly cognitoClient = new CognitoIdentityProviderClient({
     region: environment.cognito.region,
   });
@@ -122,6 +124,7 @@ export class AuthService {
       this._role.set(role);
 
       await this.getUserAttributes();
+      this.identifyAnalytics(accessToken, role);
 
       if (role && ['/', '/login'].includes(globalThis.location.pathname)) {
         this.router.navigate([ROLE_DASHBOARD_MAP[role]]);
@@ -208,6 +211,7 @@ export class AuthService {
     this.challengeEmail = null;
 
     void this.clearStoredTokens();
+    this.posthog.reset();
 
     this.router.navigate(['/']);
   }
@@ -327,6 +331,7 @@ export class AuthService {
     this._role.set(role);
 
     await this.getUserAttributes();
+    this.identifyAnalytics(this.accessToken, role);
 
     if (role) {
       this.router.navigate([ROLE_DASHBOARD_MAP[role]]);
@@ -347,6 +352,30 @@ export class AuthService {
 
     console.warn('No valid Cognito group found in access token.');
     return null;
+  }
+
+  /** Links the PostHog identity to the caller's opaque Cognito `sub` only — never email or name. */
+  private identifyAnalytics(accessToken: string | null, role: UserRole | null): void {
+    const sub = this.extractSub(accessToken);
+    if (!sub) return;
+
+    const properties: Record<string, string> = {};
+    if (role) properties['role'] = role;
+    const orgId = this._orgId();
+    if (orgId) properties['org_id'] = orgId;
+
+    this.posthog.identify(sub, properties);
+  }
+
+  private extractSub(accessToken: string | null): string | null {
+    if (!accessToken) return null;
+
+    try {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      return typeof payload.sub === 'string' ? payload.sub : null;
+    } catch {
+      return null;
+    }
   }
 
   private isTokenExpired(token: string): boolean {

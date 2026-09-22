@@ -105,6 +105,13 @@ Blueprint location:
 
 See `docs/logging.md` for the full policy, field dictionary, PII rules, and ready-to-paste Logs Insights queries.
 
+## UX analytics (PostHog)
+
+Session replay, heatmaps, click/pageview analytics and feature flags — separate from the CloudWatch logger above,
+off by default, no PII (session replay masks all text, not just inputs; identity is the opaque Cognito `sub`
+only). See `docs/posthog-guide.md` for sign-up, config, and privacy defaults; `docs/0-logging.blueprint.md`
+decision D13 and Phase 8b for the build-vs-buy rationale.
+
 ---
 
 ## Agent sub-task close requirement

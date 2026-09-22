@@ -25,6 +25,16 @@ export const PLACEHOLDERS = {
   COGNITO_DOMAIN: '__VITE_COGNITO_DOMAIN__',
 };
 
+/**
+ * Same idea as PLACEHOLDERS, but substituted with an empty string when unset instead of failing the
+ * build — PosthogService treats a blank apiKey as disabled, so a mobile build never breaks over a
+ * PostHog project that hasn't been set up yet.
+ */
+export const OPTIONAL_PLACEHOLDERS = {
+  POSTHOG_KEY: '__VITE_POSTHOG_KEY__',
+  POSTHOG_HOST: '__VITE_POSTHOG_HOST__',
+};
+
 const REPLACED_EXTENSIONS = new Set(['.html', '.js', '.txt']);
 const LEFTOVER_PATTERN = /__(?:API_BASE_URL|VITE_[A-Z0-9_]+)__/;
 // Values are inlined into JS string literals, so keep them to plain, quote-free text.
@@ -56,7 +66,7 @@ export function parseEnvFile(text) {
   return result;
 }
 
-/** Resolve the five values for an environment: process env first, then .env.mobile.<env>. */
+/** Resolve the placeholder values for an environment: process env first, then .env.mobile.<env>. */
 export function loadValues(env, processEnv = process.env, dir = frontendDir) {
   if (!ENVIRONMENTS.includes(env)) {
     throw new Error(`Unknown environment "${env}". Expected one of: ${ENVIRONMENTS.join(', ')}`);
@@ -78,8 +88,12 @@ export function loadValues(env, processEnv = process.env, dir = frontendDir) {
         `(see .env.mobile.example, or run: npm run mobile:env:pull:${env}).`,
     );
   }
+  // Optional: default to '' (disabled) rather than failing the build when not yet set up.
+  for (const key of Object.keys(OPTIONAL_PLACEHOLDERS)) {
+    values[key] = processEnv[key] || fromFile[key] || '';
+  }
   for (const [key, value] of Object.entries(values)) {
-    if (!SAFE_VALUE.test(value)) {
+    if (value && !SAFE_VALUE.test(value)) {
       throw new Error(`Value for ${key} contains unsupported characters (quotes, spaces or backslashes).`);
     }
   }
@@ -111,7 +125,7 @@ export function replacePlaceholders(distDir, values) {
     if (!REPLACED_EXTENSIONS.has(extname(file))) continue;
     const original = readFileSync(file, 'utf8');
     let updated = original;
-    for (const [key, placeholder] of Object.entries(PLACEHOLDERS)) {
+    for (const [key, placeholder] of Object.entries({ ...PLACEHOLDERS, ...OPTIONAL_PLACEHOLDERS })) {
       const parts = updated.split(placeholder);
       if (parts.length > 1) {
         replacements += parts.length - 1;
@@ -149,6 +163,7 @@ export function run(argv = process.argv.slice(2)) {
   const { filesChanged, replacements } = replacePlaceholders(distDir, values);
   console.log(`✓ ${env}: ${replacements} placeholder(s) replaced in ${filesChanged} file(s)`);
   console.log(`  API: ${values.API_BASE_URL}  |  Cognito pool: ${values.COGNITO_USER_POOL_ID}`);
+  console.log(`  PostHog: ${values.POSTHOG_KEY ? 'configured' : 'not set (disabled)'}`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

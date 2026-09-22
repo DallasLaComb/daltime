@@ -11,4 +11,11 @@ export const environment = {
   api: {
     baseUrl: '__API_BASE_URL__', // Replaced by pipeline with deployed API Gateway URL
   },
+  posthog: {
+    // Not secret — this key is designed to ship inside a public web bundle. Empty string (an unset
+    // GitHub var) is treated as disabled by PosthogService, so a missing value never breaks a deploy.
+    apiKey: '__VITE_POSTHOG_KEY__',
+    apiHost: '__VITE_POSTHOG_HOST__',
+    enabled: true,
+  },
 };

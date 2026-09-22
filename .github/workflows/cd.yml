@@ -297,12 +297,18 @@ jobs:
           COGNITO_CLIENT_ID: ${{ steps.foundation.outputs.client_id }}
           COGNITO_REGION: ${{ steps.foundation.outputs.cognito_region }}
           COGNITO_DOMAIN: ${{ steps.foundation.outputs.cognito_domain }}
+          # Not secret (ships in the public bundle either way) — vars, not secrets. Empty when unset
+          # is fine: PosthogService treats a blank apiKey as disabled, so a missing var never breaks a deploy.
+          POSTHOG_KEY: ${{ vars.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
         run: |
           find frontend/dist/frontend/browser \( -name "*.html" -o -name "*.js" -o -name "*.txt" \) -type f -exec sed -i \
             -e "s|__API_BASE_URL__|${API_BASE_URL}|g" \
             -e "s|__VITE_COGNITO_USER_POOL_ID__|${COGNITO_USER_POOL_ID}|g" \
             -e "s|__VITE_COGNITO_CLIENT_ID__|${COGNITO_CLIENT_ID}|g" \
             -e "s|__VITE_COGNITO_REGION__|${COGNITO_REGION}|g" \
+            -e "s|__VITE_POSTHOG_KEY__|${POSTHOG_KEY}|g" \
+            -e "s|__VITE_POSTHOG_HOST__|${POSTHOG_HOST}|g" \
             -e "s|__VITE_COGNITO_DOMAIN__|${COGNITO_DOMAIN}|g" \
             {} +
 
@@ -312,6 +318,12 @@ jobs:
           echo "  COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:0:10}..."
           echo "  COGNITO_REGION: ${COGNITO_REGION}"
           echo "  COGNITO_DOMAIN: ${COGNITO_DOMAIN}"
+          if [ -n "${POSTHOG_KEY}" ]; then
+            echo "  POSTHOG_KEY: set (${#POSTHOG_KEY} chars)"
+          else
+            echo "  POSTHOG_KEY: <unset, PostHog disabled>"
+          fi
+          echo "  POSTHOG_HOST: ${POSTHOG_HOST}"
 
       - name: Sync frontend to S3
         run: |

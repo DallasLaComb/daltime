@@ -11,4 +11,10 @@ export const environment = {
   api: {
     baseUrl: 'https://ddy3hzd0ef.execute-api.us-east-1.amazonaws.com',
   },
+  posthog: {
+    // Do not commit a real key here (see docs/posthog-guide.md) — edit locally and leave unstaged.
+    apiKey: '',
+    apiHost: 'https://us.i.posthog.com',
+    enabled: false,
+  },
 };

@@ -11,4 +11,9 @@ export const environment = {
   api: {
     baseUrl: 'https://9tbhgs85yk.execute-api.us-east-1.amazonaws.com',
   },
+  posthog: {
+    apiKey: '',
+    apiHost: 'https://us.i.posthog.com',
+    enabled: false,
+  },
 };

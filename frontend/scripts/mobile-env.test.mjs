@@ -4,7 +4,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadValues, parseEnvFile, replacePlaceholders, PLACEHOLDERS } from './mobile-env.mjs';
+import {
+  loadValues,
+  parseEnvFile,
+  replacePlaceholders,
+  PLACEHOLDERS,
+  OPTIONAL_PLACEHOLDERS,
+} from './mobile-env.mjs';
 
 const VALUES = {
   API_BASE_URL: 'https://api.example.com',
@@ -66,6 +72,28 @@ test('loadValues reads .env.mobile.<env> and lets real env vars override it', ()
   }
 });
 
+test('loadValues does not require POSTHOG_KEY/POSTHOG_HOST and defaults them to empty string', () => {
+  const dir = tempDir();
+  try {
+    const values = loadValues('dev', VALUES, dir);
+    assert.equal(values.POSTHOG_KEY, '');
+    assert.equal(values.POSTHOG_HOST, '');
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+test('loadValues reads POSTHOG_KEY/POSTHOG_HOST when set, without requiring them', () => {
+  const dir = tempDir();
+  try {
+    const values = loadValues('dev', { ...VALUES, POSTHOG_KEY: 'phc_abc', POSTHOG_HOST: 'https://eu.i.posthog.com' }, dir);
+    assert.equal(values.POSTHOG_KEY, 'phc_abc');
+    assert.equal(values.POSTHOG_HOST, 'https://eu.i.posthog.com');
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
 test('loadValues rejects unknown environments and unsafe values', () => {
   const dir = tempDir();
   try {
@@ -94,6 +122,22 @@ test('replacePlaceholders replaces html/js/txt files and leaves other files alon
     assert.equal(replacements, 7);
     const main = readFileSync(join(dir, 'main.js'), 'utf8');
     assert.ok(main.includes('https://api.example.com') && main.includes('us-east-1_ABC123'));
+    assert.ok(!main.includes('__'));
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+test('replacePlaceholders substitutes optional PostHog placeholders too, even with an empty default', () => {
+  const dir = bundle({
+    'index.html': `<html>${PLACEHOLDERS.API_BASE_URL}</html>`,
+    'main.js': `const p={key:'${OPTIONAL_PLACEHOLDERS.POSTHOG_KEY}',host:'${OPTIONAL_PLACEHOLDERS.POSTHOG_HOST}'};`,
+  });
+  try {
+    const values = { ...VALUES, POSTHOG_KEY: '', POSTHOG_HOST: '' };
+    replacePlaceholders(dir, values);
+    const main = readFileSync(join(dir, 'main.js'), 'utf8');
+    assert.equal(main, "const p={key:'',host:''};");
     assert.ok(!main.includes('__'));
   } finally {
     rmSync(dir, { recursive: true });

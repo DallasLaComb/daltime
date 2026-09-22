@@ -135,7 +135,8 @@ Sources are listed in section 10. Claims marked **(verify)** must be re-checked 
 | D9 | Who is logged in | Log opaque `sub`, `role`, `org_id` (+ `impersonating: true` and the actor `sub` when a WebAdmin impersonates). **No email/name in logs** (PII, long retention, App Store privacy labels). Add a documented "resolve sub → user" lookup in `docs/logging.md` instead. **Your call** — see Q5 | Phase 6/7 |
 | D10 | Click logging volume | Log every tagged click (`data-testid` only), batched; separate rate cap (≤120/min); breadcrumbs always attached to errors. A per-env switch in `environment*.ts` (`clickLogging: 'all' \| 'breadcrumbs' \| 'off'`) lets prod be turned down without a code change. Rough cost: 1,000 users × 200 clicks/day × ~300 B ≈ 1.8 GB/month ≈ **~$1/month** ingestion at $0.50/GB (estimate; plus batch Lambda invocations) | Phase 8 |
 | D11 | Device classification | In-house classifier, no new dependency: `device_type` = `mobile` / `tablet` / `desktop` from `navigator.userAgentData` (else UA), touch points and screen size (iPadOS reports as "Macintosh" + touch, handled). Also `platform` (`web`/`ios`/`android` via `Capacitor.getPlatform()`), `os`, coarse `browser` + major version. Native model names (`@capacitor/device`) are **not** added now — a new native plugin means a store release; Android UAs already include the model, iOS does not | Phase 8 |
-| D12 | Screen size fields | `viewport` `{w,h}` (on every entry), Tailwind `breakpoint` (`base/sm/md/lg/xl/2xl`), `orientation`; once per session `screen` `{w,h}`, `dpr`. A `viewport changed` entry is logged only when the breakpoint or orientation changes (not every pixel) | Phase 8 |
+| D12 | Screen size fields | `viewport` `{w,h}` (on every entry), Tailwind `breakpoint` (`base/sm/md/lg/xl/2xl`), `orientation`; once per session `screen` `{w,h}`, `dpr`. A `viewport changed` entry is logged only when the breakpoint or orientation changes (not every pixel) | Phase 8a |
+| D13 | UX analytics: build vs. buy | **PostHog** (posthog-js, cloud free tier: 1M events/mo, 5K session replays/mo, feature flags, surveys — all free at DalTime's scale) replaces the interaction-tracker part of the original Phase 8 (delegated click listener, navigation logging, rage-click detection, breadcrumb ring buffer). Session replay/heatmaps/funnels/feature-flags are things Phase 8's own design explicitly could not do (id-only breadcrumbs, no visual replay) — a hand-built equivalent is significant, ongoing-maintenance surface for something a free tool already does better. **Does not replace** the backend logger (Phases 1–6) or `LoggerService`/`AppErrorHandler` (Phase 7) — those stay the operational/error source of truth in CloudWatch; PostHog is a separate, UX-analytics-only destination. D10 (click volume) and the `interaction-tracker.ts` file in section 5.1's plan are **dropped** — PostHog's own dashboard controls sampling. See Phase 8b and `docs/posthog-guide.md` | Phase 8b |
 
 ---
 
@@ -277,13 +278,16 @@ applies: local, dev, qa, prod).
 | 4 | Business-event logging in services/db (4a–4e by role) | No | ✅ |
 | 5 | Guardrails + docs (lint rule, arch test, `docs/logging.md`, CLAUDE.md) | No | ✅ |
 | 6 | Backend `POST /client-logs` route (contract, handler, SAM, tests) | Yes — deploy dev, curl check | ✅ |
-| 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | No | ⬜ |
-| 8 | Client context + interaction tracking (device type, screen size, clicks, navigation, breadcrumbs) | Yes — check on desktop, phone, tablet | ⬜ |
+| 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | Yes — run app against dev, trigger error, confirm in Logs Insights | ✅ |
+| 8a | Client context: device type + screen size for CloudWatch client-logs entries | Yes — check on desktop, phone, tablet | 🟡 |
+| 8b | PostHog integration (session replay, heatmaps, autocapture — replaces the custom interaction-tracker) | Yes — sign up, add key, verify a real session | 🟡 |
 | 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ⬜ |
 | 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | ⬜ |
 | 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | ⬜ |
 
-Phases 1–5 are backend-only and independently valuable; 6–9 add the client (7 = logger + errors + identity, 8 = device/screen/click context). 10–11 can be deferred.
+Phases 1–5 are backend-only and independently valuable; 6–9 add the client (7 = logger + errors + identity, 8a =
+device/screen context). **8b (PostHog) is a build-vs-buy substitution for the interaction-tracking part of the
+original Phase 8** — see D13 and the Phase 8b section below. 10–11 can be deferred.
 
 ---
 
@@ -469,7 +473,19 @@ authorizer, asserted via template).
 CORS preflight from `https://dev.daltime.com` **and** `https://localhost` (mobile origin). CLAUDE.md
 feature-completeness applies: also confirm locally via SAM local and, after promotion, qa and prod.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Verified 2026-09-21 against dev (`daltime-backend-dev`). Obtained a real manager JWT via
+Cognito `USER_PASSWORD_AUTH` (`morgan.manager@sunsetcafe.dev`) and confirmed end-to-end: (1) `GET /manager/locations`
+with `X-Correlation-Id` produced a `request completed` line in `ManagerLocationsFunction` with matching
+`correlation_id`, `caller_sub`, `caller_role: "Manager"`, `status: 200`. (2) `POST /shared/client-logs` with a
+typed batch (`context` + one `log` entry) returned `204` and produced two lines in `ClientLogsFunction`: the
+per-entry line (`source: "client"`, `event_type: "log"`, `client_session_id`, `client_ts`, `seq`) and the
+`request completed` line — both scoped to the caller's real correlation id. Identity-spoofing check: sent
+`context.role: "manager"` (lowercase, client-supplied) but the logged `caller_role` was `"Manager"` — confirms
+the server ignores client identity and stamps from verified JWT claims only, per D9/5.5. CORS preflight from a
+browser origin and SAM local were **not** re-verified this pass (no browser client exists yet — that's phase 7);
+qa/prod promotion not re-checked (dev only, per the immediate ask). Phase 6 backend behavior confirmed working;
+remaining human-gate items (CORS preflight, local/qa/prod) are effectively superseded once phase 7 ships a real
+client to test against.
 
 ---
 
@@ -492,42 +508,205 @@ bundle further past the existing 500 kB warning — report the delta); e2e smoke
 **Human gate:** run the app against dev API, trigger an error (e.g. throw from a button in dev), confirm the entry
 in Logs Insights with `source: "client"` and matching `correlation_id`.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Implemented on `feature/logging-phase7` (branched from `dev`, which already had phases 1–6).
+New files: `core/models/client-log.model.ts` (types derived from the generated `paths['/shared/client-logs']`
+contract, no hand-maintained shapes), `core/logging/client-context.ts` (coarse `detectPlatform`/`detectDeviceType`/
+`detectOs`/`detectBrowser` — only what the required `context` fields need; Phase 8 extends this file with
+breakpoint/viewport/orientation/the reactive signal rather than duplicating it), `core/logging/logger.service.ts`
+(`LoggerService`, `providedIn: 'root'`), `core/logging/error-handler.ts` (`AppErrorHandler`),
+`core/interceptors/logging.interceptor.ts`. Registered both in `app.config.ts` (`ErrorHandler` provider;
+`loggingInterceptor` appended after `authInterceptor`/`impersonationInterceptor`).
 
----
+`LoggerService`: batches `log`/`error` entries via `fetch(..., { keepalive: true })` (not `HttpClient`, so a flush
+on page-hide/app-pause survives navigation/teardown, and because `sendBeacon` can't carry `Authorization`).
+Flushes every 10s, at 10 queued entries, on `visibilitychange → hidden`, and on Capacitor `App` `pause` (lazy
+`import('@capacitor/app')`, mirrors `NativeShell`'s plugin-loading pattern). Rate-capped at 30 entries/min: with 35
+rapid calls, exactly 30 are sent (test-verified) and the rest silently dropped, not queued. Consecutive identical
+errors are de-duplicated. `message`/`stack` are truncated to the contract's 500/2000-char caps client-side (belt
+and suspenders — the server also validates). **D5 enforced**: `flush()` is a no-op whenever
+`auth.isAuthenticatedSignal()` is false or there's no access token — entries queue (capped at 50, oldest dropped)
+and are only ever sent after the caller authenticates; a session that never logs in never has its buffered entries
+leave the browser. Batch `context` carries `client_session_id` (random per launch), `platform`/`device_type`/`os`/
+`browser` (coarse, from `client-context.ts`), `is_native`, and identity (`authenticated`, `role`, `org_id`,
+`impersonating`) from `AuthService`/`ImpersonationService` signals — no email or name, per D9.
 
-### Phase 8 — Client context + interaction tracking
+`AppErrorHandler` replaces the default `ErrorHandler` and routes every uncaught error (still caught at the window
+level too, via the existing `provideBrowserGlobalErrorListeners()`) to `logger.error()`.
 
-**Goal:** every client log says what device class and screen size it came from, and the log shows what the user
-clicked and where they navigated, so a UI bug report can be reproduced.
+`loggingInterceptor`: adds `X-Correlation-Id` (fresh per request) and `X-Platform` to every API call — the latter
+was flagged as owed to Phase 7 in Phase 3's completion notes, since `shared/ua-context.ts` on the backend has
+used it (as the tie-breaker over the UA string) since Phase 3 but nothing sent it yet. Logs a 4xx/5xx once via
+`LoggerService.logHttpFailure()` (method, path with query stripped, status; the original request's correlation id
+is folded into the log entry's `message`, since `ClientLogEntry` has no dedicated correlation-id field — a real
+constraint of the Phase-6 contract, not an oversight).
 
-**Do (from `frontend/`):**
-1. `core/logging/client-context.ts`: pure, unit-testable functions — `detectDeviceType(ua, touchPoints, screen)`
-   (`mobile|tablet|desktop`, iPadOS "Macintosh + touch" case, Android tablets without "Mobile"), `detectOs`,
-   `detectBrowser` (coarse name + major version), `getBreakpoint(width)` (must mirror `tailwind.config.js`
-   screens), `getOrientation()`, `getViewport()`. No new dependency (D11; if one is later preferred, check its
-   license first). Expose current context as a signal updated on debounced `resize`/`orientationchange`.
-2. Feed the context into `LoggerService` (per-batch and per-entry fields from 5.4); send one `session_start`
-   entry per launch; log `viewport_change` only when breakpoint or orientation changes (D12).
-3. `core/logging/interaction-tracker.ts`: the delegated click listener, navigation logging with route patterns,
-   breadcrumb buffer attached to errors, rage-click detection (5.4). Started via `provideAppInitializer` in
-   `app.config.ts`. Honour `environment.clickLogging` (`all|breadcrumbs|off`, D10) and the click rate cap.
-4. Privacy checks in tests: no element text, no input values, no query strings, no route params, `ua` truncated.
-5. Add `clickLogging` to `environment.ts` / `environment.*.ts` (placeholder-safe: it is not a secret and must not
-   be part of the `__PLACEHOLDER__` replacement — plain literal per environment; confirm CD/`mobile-env.mjs` are
-   unaffected).
+**Tests:** 4 new spec files, 35 new tests, all passing: `logger.service.spec.ts` (buffering while unauthenticated,
+batch shape/headers, 10-entry auto-flush, 30/min rate cap, error de-dup, message truncation, never logs a raw
+error object — only `message`/`stack`, flush on `visibilitychange`, buffer-then-send once authenticated mid-session),
+`client-context.spec.ts` (real UA strings per device/OS/browser, reusing the same fixtures as the backend's
+`ua-context.test.ts`), `error-handler.spec.ts`, `logging.interceptor.spec.ts` (headers, per-request unique
+correlation id, failure logging, query-string stripping, no double-logging on success, other-origin passthrough).
+Full frontend suite: 704 pass, 1 pre-existing failure unrelated to this work (`schedule-filters.spec.ts` "OR
+logic" test — confirmed still fails identically on `dev` before this branch's changes; not touched here).
+`npm run lint`: clean (0 errors) across the whole `frontend/src`, not just the new files. `npm run build`
+(development config): succeeds; initial `main.js` grew from 73.17 kB to 81.11 kB (+7.94 kB raw), no bundle-budget
+warning triggered.
+
+**Human gate — done, by the user.** No browser-automation tool (Chrome extension, Playwright/Puppeteer) is
+available in this environment, so I could not drive the browser myself; I gave the user the exact steps and they
+ran them against the **local** stack (`Start Full Stack (with install)`: SAM local on :47200, `ng serve` on :4200,
+`environment.local.ts`). Two real findings from that live session:
+
+1. Their first attempt — typing `throw new Error('phase 7 test')` directly into the DevTools console — produced
+   no request. Root cause: most browsers exclude console-evaluated code from the `window.onerror` event, so
+   `provideBrowserGlobalErrorListeners()` never saw it and `AppErrorHandler` was never invoked. Not a bug —
+   diagnosed live and the user re-ran it as `setTimeout(() => { throw new Error('phase 7 test') }, 0)`, which
+   schedules the throw as a real page task and does fire the event.
+2. That produced a real `POST /shared/client-logs` request. Its body (captured from the Network tab):
+   `{"context":{"client_session_id":"543ffc67-...","platform":"web","device_type":"desktop","os":"macos","browser":"firefox","is_native":false,"authenticated":true,"role":"Manager","impersonating":false},"entries":[{"type":"error","level":"error","message":"phase 7 test: phase 7 test","stack":"@debugger eval code:1:27\nsetTimeout handler*@debugger eval code:1:12\n","route":"/manager","ts":"...","seq":0}]}`.
+   This confirmed the whole chain works (`AppErrorHandler` → `LoggerService` → flush → real request with the
+   correct `context`/`entries` shape, real identity fields, real route) but surfaced a genuine bug: **the message
+   was duplicated** (`"phase 7 test: phase 7 test"`). Cause: `AppErrorHandler` extracted `error.message` and
+   passed it as the `message` argument to `logger.error(message, err)`, which *also* appends `err.message`
+   internally — the same string appeared on both sides of the colon. **Fixed**: `AppErrorHandler.handleError` now
+   always passes a fixed label (`'Unhandled error'`) and lets `LoggerService.error()` be the only place that
+   appends the error's own message/stack — `error-handler.spec.ts` updated to match, and a regression test added
+   to `logger.service.spec.ts` locking in `'Unhandled error: phase 7 test'` (no duplication) for exactly this
+   call shape. Re-ran lint/build/tests after the fix: lint clean, build succeeds, 705/706 pass (the one failure is
+   still the pre-existing unrelated `schedule-filters.spec.ts` case).
+
+CORS preflight and SAM local are now verified (this session, both directly by me via curl against the local
+stack, and indirectly by the user's real browser session succeeding against it). qa and prod remain unverified —
+no promotion has happened yet.
+
+### Phase 8a — Client context: device type + screen size
+
+**Goal:** every client log entry (the CloudWatch `client-logs` pipeline from Phases 6–7, not PostHog) says what
+device class and screen size it came from.
+
+**Do (from `frontend/`):** extend the existing `core/logging/client-context.ts` (Phase 7 already added
+`detectPlatform`/`detectDeviceType`/`detectOs`/`detectBrowser` — coarse, UA-based, no viewport/touch args yet):
+1. Upgrade `detectDeviceType` to the full signature (`ua, touchPoints, screen`) — iPadOS "Macintosh + touch" case,
+   Android tablets without "Mobile" in the UA. Add `getBreakpoint(width)` (must mirror `tailwind.config.js`
+   screens), `getOrientation()`, `getViewport()`. No new dependency (D11).
+2. Expose current context as a signal updated on debounced `resize`/`orientationchange`.
+3. Feed it into `LoggerService` (per-batch and per-entry fields from 5.4); send one `session_start` entry per
+   launch; log `viewport_change` only when breakpoint or orientation changes (D12).
+4. Privacy checks in tests: no element text, no input values, no query strings, `ua` truncated.
+
+Dropped from the original Phase 8 plan (see D13, Phase 8b): `core/logging/interaction-tracker.ts`, the delegated
+click listener, breadcrumb ring buffer, rage-click detection, and the `environment.clickLogging` switch (D10) —
+PostHog's session replay and autocapture now cover this, with a visual replay our id-only breadcrumbs never could.
 
 **AI verification:** `npm test`, `npm run lint`, `npm run build` pass; specs cover the classifier with real UA
 strings (iPhone, iPad/iPadOS, Android phone, Android tablet, Windows Chrome, macOS Safari, Capacitor iOS/Android
-WebView), breakpoint boundaries, tap on a nested child of a `data-testid` element, untagged click ignored,
-rage-click threshold, breadcrumb cap = 20, `off`/`breadcrumbs` modes; report the bundle-size delta.
+WebView) and breakpoint boundaries; report the bundle-size delta.
 
 **Human gate:** on dev, use the app on (a) a desktop browser, (b) your iPhone (browser or Capacitor build),
-(c) a tablet or an iPad simulator; resize a desktop window across a breakpoint; click a few buttons; throw a
-test error. In Logs Insights confirm `device_type`, `viewport`, `breakpoint`, the click trail and the error's
-`breadcrumbs` for one `client_session_id`. Record the queries used.
+(c) a tablet or an iPad simulator; resize a desktop window across a breakpoint. In Logs Insights confirm
+`device_type`, `viewport`, `breakpoint` on entries for one `client_session_id`. Record the queries used.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Implemented on `feature/logging-phase7` (continuing the same branch). Extended the Phase-7
+`core/logging/client-context.ts` rather than replacing it: upgraded `detectDeviceType` to the full
+`(ua, touchPoints, screen)` signature (iPadOS 13+ Macintosh-UA-with-touch → tablet vs. a real Mac with no touch →
+desktop; a touch+large-screen fallback for WebViews with no recognisable OS token in the UA — Capacitor's own
+UA sometimes omits one); added `getBreakpoint(width)` (mirrors `tailwind.config.js`'s default, unoverridden
+`screens`: sm 640/md 768/lg 1024/xl 1280/2xl 1536), `getOrientation(width, height)`, `getViewport()`. Deliberately
+**did not** add a separate reactive "signal" service as section 5.1/the original Do-list item 1 suggested —
+folded the debounced `resize`/`orientationchange` listener directly into `LoggerService` (the only consumer)
+instead, to avoid an abstraction with a single caller (see CLAUDE.md: don't introduce abstractions beyond what
+the task requires).
+
+`LoggerService` changes: every entry now carries `viewport`/`breakpoint`/`orientation` (read fresh per entry, not
+cached); one `session_start` entry is queued at construction with `user_agent` (truncated to the contract's
+200-char cap), `screen`, `dpr`, `touch`, `lang`, `tz`; a debounced (250ms) resize/orientationchange listener logs
+one `viewport_change` entry only on an actual breakpoint or orientation transition (a baseline is recorded first
+so app launch itself never logs a false "change"). `session_start`/`viewport_change` are exempt from the existing
+30/min rate limit (that budget is for user-triggered log/error spam, not one-off or already-debounced system
+events).
+
+**Tests:** `client-context.spec.ts` +19 tests (iPadOS-with-touch, real-Mac-no-touch, WebView touch/screen
+fallback in both directions, `getBreakpoint` boundary table, `getOrientation`, `getViewport`), 38 total, all
+passing. `logger.service.spec.ts` rewritten to account for the automatic `session_start` entry shifting every
+batch's entry count/ordering by one (added a `nonSessionEntries()` test helper rather than asserting on raw
+indices everywhere) plus 4 new tests (session_start shape, viewport/breakpoint/orientation present on every
+entry, viewport_change logged on a real breakpoint change, **not** logged on a no-op resize). Full frontend
+suite: 736/737 pass (the one failure is still the pre-existing unrelated `schedule-filters.spec.ts` case, reran
+twice to confirm not flaky). `npm run lint`: clean. `npm run build`: succeeds; `main.js` grew from 81.11 kB to
+84.27 kB (+3.16 kB raw), no bundle-budget warning.
+
+**Human gate — not yet done:** needs a human to check the app on a desktop browser, a phone, and a tablet (or
+simulator), resize a desktop window across a breakpoint, and confirm in CloudWatch Logs Insights on
+`/aws/lambda/daltime-backend-dev-ClientLogsFunction` that `device_type`, `viewport`, `breakpoint` appear
+correctly and a `viewport_change` entry shows up after an actual resize, for one `client_session_id`.
+
+---
+
+### Phase 8b — PostHog integration (build vs. buy)
+
+**Goal:** session replay, heatmaps, click/pageview analytics and feature flags, without hand-building and
+maintaining an in-house equivalent (see D13). A separate concern from the backend logger — PostHog never touches
+CloudWatch, and `LoggerService`/`AppErrorHandler` (Phase 7) are unchanged and remain the operational error source
+of truth.
+
+**Do (from `frontend/`):**
+1. `npm install posthog-js`.
+2. `core/analytics/posthog.service.ts` (`PosthogService`, `providedIn: 'root'`): `init()` (call once from an
+   `provideAppInitializer` in `app.config.ts`, outside the Angular zone — session recording's DOM observation
+   otherwise triggers change detection on every mutation), `identify(distinctId, properties)`, `reset()`,
+   `capture(event, properties)`. No-ops entirely when `environment.posthog.enabled` is false or `apiKey` is empty
+   — including the literal placeholder string itself, so unit tests (which use the base `environment.ts`
+   unresolved) never make a real call.
+3. Privacy config, matching D9's no-PII policy: `person_profiles: 'identified_only'` (no anonymous pre-login
+   profile); `mask_all_text: true` (strips autocapture's `$el_text`); `session_recording: { maskAllInputs: true,
+   maskTextSelector: '*' }` (masks **all** replay text, not just inputs — this app's scheduling data, employee
+   names/phone numbers, renders as plain page text, and posthog-js's own default only masks inputs).
+   `mask_all_element_attributes` stays at its default (`false`) so autocapture can still read this repo's
+   existing `data-testid` values — already required on every interactive element (CLAUDE.md) and already
+   non-PII by convention, a direct reuse of an existing constraint rather than new instrumentation.
+4. Wire identity into `AuthService`: `identifyAnalytics()` runs after both `storeTokens` (fresh login) and
+   `restoreSession` (relaunch/refresh), extracting the Cognito `sub` from the access-token JWT payload and
+   passing `{ role, org_id }` — never email or name. `logout()` calls `posthog.reset()`.
+5. `environment.posthog: { apiKey, apiHost, enabled }` added to all five environment files. `environment.ts` and
+   `environment.main.ts` (which already used the `__PLACEHOLDER__`/CD-substitution pattern for `api.baseUrl`) use
+   `__VITE_POSTHOG_KEY__`/`__VITE_POSTHOG_HOST__` placeholders, `enabled: true`. `environment.local/dev/qa.ts`
+   (literal, used for `ng serve` against a real API) default to `enabled: false` with an empty key — safe,
+   no-op until a real project key is set.
+6. `.github/workflows/cd.yml`: the existing "Replace environment placeholders" sed step extended with
+   `POSTHOG_KEY`/`POSTHOG_HOST` from `vars.POSTHOG_KEY`/`vars.POSTHOG_HOST` (a `vars`, not `secrets` — the key is
+   designed to ship in a public bundle, same threat model as the Cognito client ID already there). Empty when
+   the GitHub var is unset — `PosthogService` treats that as disabled, so a deploy never breaks over it.
+7. `frontend/scripts/mobile-env.mjs`: added `OPTIONAL_PLACEHOLDERS` (distinct from the five required
+   `PLACEHOLDERS`) so `POSTHOG_KEY`/`POSTHOG_HOST` default to `''` instead of failing a mobile build when unset —
+   the existing required-placeholder behavior for the other five is untouched. `.env.mobile.example` documents
+   the two new optional keys.
+8. `docs/posthog-guide.md`: sign-up steps, where the project key goes, how to read session replay/heatmaps,
+   privacy defaults and how to loosen them, feature flags, cost/limits monitoring.
+
+**AI verification:** `npm test` (71 new/changed specs across `posthog.service.spec.ts`, `auth.spec.ts` additions,
+`mobile-env.test.mjs` additions), `npm run lint`, `npm run build`, `npm run test:scripts` all pass.
+
+**Human gate:** sign up for a free PostHog project (`docs/posthog-guide.md`), set `POSTHOG_KEY` (and `POSTHOG_HOST`
+if not using US cloud) as a GitHub variable per environment, run the app with a real key, confirm a session
+appears in the PostHog dashboard with replay/autocapture working and text properly masked.
+
+**Completion notes:** Implemented on `feature/logging-phase7` (continuing the same branch). Caught and fixed one
+real bug during development: `PosthogService`'s first test implementation used `vi.mock('posthog-js', …)`, which
+passed when that spec file ran alone but failed when run with the full suite (`posthog.init`/`identify`/`reset`
+were never called — a different, real, unmocked module instance was in play, most likely because this project's
+test runner doesn't isolate module mocks per-file the way `vi.mock` assumes). Fixed by following the pattern
+already established in `auth.spec.ts` for `CognitoIdentityProviderClient`: hold the SDK client as a private
+instance property (`PosthogService.client`) and have specs override it directly via `@ts-expect-error` instead of
+mocking the module — reproduced the failure, applied the fix, reran the full suite twice to confirm it was not
+flaky (711/712 pass both times; the one failure is the pre-existing unrelated `schedule-filters.spec.ts` case).
+Also caught during config: the `enabled` gate initially only checked `apiKey.length > 0`, which would have
+treated the **unsubstituted CD placeholder** (`'__VITE_POSTHOG_KEY__'`, present verbatim in `environment.ts` as
+used unresolved by unit tests) as a real key — fixed with an explicit `!apiKey.startsWith('__')` check, tested.
+The user independently signed up for a PostHog project during this work and pasted a real project key into
+`environment.local.ts`/`environment.dev.ts` while I was implementing — confirms the sign-up flow in the guide is
+accurate. `enabled` is still `false` everywhere pending the user's decision on when to turn it on and which
+environments (see the guide's "Turning it on" section). GitHub variables (`POSTHOG_KEY`, `POSTHOG_HOST`) have
+**not** been set — human step, listed above.
 
 ---
 

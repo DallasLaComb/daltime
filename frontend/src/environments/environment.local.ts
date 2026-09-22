@@ -11,4 +11,10 @@ export const environment = {
   api: {
     baseUrl: 'http://localhost:47200',
   },
+  posthog: {
+    // Do not commit a real key here (see docs/posthog-guide.md) — edit locally and leave unstaged.
+    apiKey: '',
+    apiHost: 'https://us.i.posthog.com',
+    enabled: false,
+  },
 };

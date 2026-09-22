@@ -57,6 +57,7 @@
     "@capacitor/status-bar": "8.0.3",
     "@capgo/capacitor-native-biometric": "8.6.11",
     "capacitor-secure-storage-plugin": "0.13.0",
+    "posthog-js": "^1.434.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -11,4 +11,9 @@ export const environment = {
   api: {
     baseUrl: '__API_BASE_URL__', // Replaced by pipeline with deployed API Gateway URL
   },
+  posthog: {
+    apiKey: '__VITE_POSTHOG_KEY__',
+    apiHost: '__VITE_POSTHOG_HOST__',
+    enabled: true,
+  },
 };
