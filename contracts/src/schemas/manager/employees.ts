@@ -68,6 +68,9 @@ export const UpdateManagerEmployeeBody = z
     first_name: z.string().trim().min(1).optional(),
     last_name: z.string().trim().min(1).optional(),
     phone: z.string().trim().optional(),
+    employee_number: z.string().trim().max(50).optional().meta({
+      description: 'Human-assigned employee number. Empty string clears the value.',
+    }),
   })
   .refine(
     (body) => Object.values(body).some((value) => value !== undefined),
@@ -75,7 +78,7 @@ export const UpdateManagerEmployeeBody = z
   )
   .meta({
     id: 'UpdateManagerEmployeeBody',
-    description: "Partial update of an employee's name or phone.",
+    description: "Partial update of an employee's name, phone, or employee number.",
   });
 
 /** Path parameters for the by-id routes. */
@@ -95,13 +98,13 @@ registerRoleOperation('get', '/manager/employees', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and manager_id.',
+      note: 'Resolves the caller\'s org_id and manager_id.',
     },
     {
       command: 'Query',
       keyCondition: 'PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)',
       filter: 'manager_id = <managerId>',
-      note: 'Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup.',
+      note: 'Key attributes are stripped and each row\'s status is then replaced by a live Cognito AdminGetUser lookup.',
     },
   ],
   responses: {
@@ -120,13 +123,13 @@ registerRoleOperation('post', '/manager/employees', {
   tags: ['manager'],
   purpose:
     'Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the ' +
-    'manager employee roster screen’s "Add employee" action.',
+    'manager employee roster screen\'s "Add employee" action.',
   implementation: IMPLEMENTATION,
   dynamodb: [
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and manager_id.',
+      note: 'Resolves the caller\'s org_id and manager_id.',
     },
     {
       command: 'Put',
@@ -171,7 +174,7 @@ registerRoleOperation('put', '/manager/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and manager_id.',
+      note: 'Resolves the caller\'s org_id and manager_id.',
     },
     {
       command: 'Get',
@@ -218,7 +221,7 @@ registerRoleOperation('delete', '/manager/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and manager_id.',
+      note: 'Resolves the caller\'s org_id and manager_id.',
     },
     {
       command: 'Get',
@@ -253,7 +256,7 @@ registerRoleOperation('patch', '/manager/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id and manager_id.',
+      note: 'Resolves the caller\'s org_id and manager_id.',
     },
     {
       command: 'Get',

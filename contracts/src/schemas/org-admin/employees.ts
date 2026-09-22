@@ -20,7 +20,7 @@ export const OrgAdminEmployeeResponse = EmployeeApiFields.meta({
 
 export const OrgAdminEmployeeListResponse = z.array(OrgAdminEmployeeResponse).meta({
   id: 'OrgAdminEmployeeListResponse',
-  description: 'Every employee in the caller OrgAdmin’s organization.',
+  description: "Every employee in the caller OrgAdmin's organization.",
 });
 
 /**
@@ -84,7 +84,10 @@ export const UpdateEmployeeBody = z
     last_name: z.string().trim().min(1).optional(),
     phone: z.string().trim().optional(),
     manager_id: z.string().trim().optional().meta({
-      description: 'Empty string clears the employee’s manager assignment.',
+      description: "Empty string clears the employee's manager assignment.",
+    }),
+    employee_number: z.string().trim().max(50).optional().meta({
+      description: 'Human-assigned employee number. Empty string clears the value.',
     }),
   })
   .refine(
@@ -93,7 +96,7 @@ export const UpdateEmployeeBody = z
   )
   .meta({
     id: 'UpdateEmployeeBody',
-    description: 'Partial update of an employee’s name, phone, or manager assignment.',
+    description: "Partial update of an employee's name, phone, manager assignment, or employee number.",
   });
 
 /**
@@ -109,22 +112,22 @@ const EmployeeIdPathParams = z.object({
 
 registerRoleOperation('get', '/org-admin/employees', {
   operationId: 'listOrgAdminEmployees',
-  summary: 'List employees in the caller’s organization',
+  summary: 'List employees in the caller\'s organization',
   tags: ['org-admin'],
   purpose:
     'Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). ' +
-    'Resolves the caller’s org_id from their JWT sub and lists every employee in that org.',
+    'Resolves the caller\'s org_id from their JWT sub and lists every employee in that org.',
   implementation: IMPLEMENTATION,
   dynamodb: [
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id.',
+      note: 'Resolves the caller\'s org_id.',
     },
     {
       command: 'Query',
       keyCondition: 'PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)',
-      note: 'Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup.',
+      note: 'Key attributes are stripped and each row\'s status is then replaced by a live Cognito AdminGetUser lookup.',
     },
   ],
   responses: {
@@ -143,13 +146,13 @@ registerRoleOperation('post', '/org-admin/employees', {
   tags: ['org-admin'],
   purpose:
     'Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the ' +
-    'org-admin employee roster screen’s "Add employee" action.',
+    'org-admin employee roster screen\'s "Add employee" action.',
   implementation: IMPLEMENTATION,
   dynamodb: [
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id. Runs after the Cognito user is created.',
+      note: 'Resolves the caller\'s org_id. Runs after the Cognito user is created.',
     },
     {
       command: 'Put',
@@ -190,12 +193,12 @@ registerRoleOperation('put', '/org-admin/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id.',
+      note: 'Resolves the caller\'s org_id.',
     },
     {
       command: 'Get',
       keyCondition: 'PK = USER#<employeeId> AND SK = METADATA',
-      note: 'Reverse lookup, used to confirm the employee belongs to the caller’s org.',
+      note: 'Reverse lookup, used to confirm the employee belongs to the caller\'s org.',
     },
     {
       command: 'Update',
@@ -234,12 +237,12 @@ registerRoleOperation('delete', '/org-admin/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id.',
+      note: 'Resolves the caller\'s org_id.',
     },
     {
       command: 'Get',
       keyCondition: 'PK = USER#<employeeId> AND SK = METADATA',
-      note: 'Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito.',
+      note: 'Reverse lookup, used to confirm the employee belongs to the caller\'s org and to get their email for Cognito.',
     },
     {
       command: 'Update',
@@ -274,12 +277,12 @@ registerRoleOperation('patch', '/org-admin/employees/{employeeId}', {
     {
       command: 'Get',
       keyCondition: 'PK = USER#<callerSub> AND SK = METADATA',
-      note: 'Resolves the caller’s org_id.',
+      note: 'Resolves the caller\'s org_id.',
     },
     {
       command: 'Get',
       keyCondition: 'PK = USER#<employeeId> AND SK = METADATA',
-      note: 'Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito.',
+      note: 'Reverse lookup, used to confirm the employee belongs to the caller\'s org and to get their email for Cognito.',
     },
     {
       command: 'Update',

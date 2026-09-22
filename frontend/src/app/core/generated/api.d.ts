@@ -235,7 +235,7 @@ export interface paths {
         put?: never;
         /**
          * Register a new employee
-         * @description Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen’s "Add employee" action.
+         * @description Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen's "Add employee" action.
          */
         post: operations["createManagerEmployee"];
         delete?: never;
@@ -568,14 +568,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List employees in the caller’s organization
-         * @description Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). Resolves the caller’s org_id from their JWT sub and lists every employee in that org.
+         * List employees in the caller's organization
+         * @description Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). Resolves the caller's org_id from their JWT sub and lists every employee in that org.
          */
         get: operations["listOrgAdminEmployees"];
         put?: never;
         /**
          * Register a new employee
-         * @description Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the org-admin employee roster screen’s "Add employee" action.
+         * @description Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the org-admin employee roster screen's "Add employee" action.
          */
         post: operations["createOrgAdminEmployee"];
         delete?: never;
@@ -1394,11 +1394,13 @@ export interface components {
             /** @description Temporary Cognito password. Sent verbatim — never trimmed. */
             temp_password: string;
         };
-        /** @description Partial update of an employee's name or phone. */
+        /** @description Partial update of an employee's name, phone, or employee number. */
         UpdateManagerEmployeeBody: {
             first_name?: string;
             last_name?: string;
             phone?: string;
+            /** @description Human-assigned employee number. Empty string clears the value. */
+            employee_number?: string;
         };
         /** @description Partial update of the calling manager’s own profile. */
         UpdateManagerProfileBody: {
@@ -1550,13 +1552,15 @@ export interface components {
             /** @description Manager this employee reports to. Stored as an empty string if omitted. */
             manager_id?: string;
         };
-        /** @description Partial update of an employee’s name, phone, or manager assignment. */
+        /** @description Partial update of an employee's name, phone, manager assignment, or employee number. */
         UpdateEmployeeBody: {
             first_name?: string;
             last_name?: string;
             phone?: string;
-            /** @description Empty string clears the employee’s manager assignment. */
+            /** @description Empty string clears the employee's manager assignment. */
             manager_id?: string;
+            /** @description Human-assigned employee number. Empty string clears the value. */
+            employee_number?: string;
         };
         /** @description Fields accepted to create a new location. */
         CreateOrgAdminLocationBody: {
@@ -1736,6 +1740,8 @@ export interface components {
             org_id: string;
             /** @description Manager this employee reports to. */
             manager_id: string;
+            /** @description Optional human-assigned employee number. */
+            employee_number?: string;
             status: components["schemas"]["UserStatus"];
             /**
              * Format: date-time
@@ -1896,6 +1902,8 @@ export interface components {
             org_id: string;
             /** @description Manager this employee reports to. */
             manager_id: string;
+            /** @description Optional human-assigned employee number. */
+            employee_number?: string;
             status: components["schemas"]["UserStatus"];
             /**
              * Format: date-time
@@ -2141,7 +2149,7 @@ export interface components {
                 updated_at: string;
             }[];
         };
-        /** @description Every employee in the caller OrgAdmin’s organization. */
+        /** @description Every employee in the caller OrgAdmin's organization. */
         OrgAdminEmployeeListResponse: components["schemas"]["OrgAdminEmployeeResponse"][];
         /** @description An employee record as returned to an OrgAdmin, enriched with live Cognito status. */
         OrgAdminEmployeeResponse: {
@@ -2156,6 +2164,8 @@ export interface components {
             org_id: string;
             /** @description Manager this employee reports to. */
             manager_id: string;
+            /** @description Optional human-assigned employee number. */
+            employee_number?: string;
             status: components["schemas"]["UserStatus"];
             /**
              * Format: date-time
@@ -2342,6 +2352,8 @@ export interface components {
             /** @description Empty string if not provided. */
             phone: string;
             org_id: string;
+            /** @description Optional human-assigned employee number. */
+            employee_number?: string;
             status: components["schemas"]["UserStatus"];
             /**
              * Format: date-time

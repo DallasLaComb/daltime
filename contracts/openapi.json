@@ -1449,13 +1449,13 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and manager_id."
+            "note": "Resolves the caller's org_id and manager_id."
           },
           {
             "command": "Query",
             "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)",
             "filter": "manager_id = <managerId>",
-            "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
+            "note": "Key attributes are stripped and each row's status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
         "parameters": [
@@ -1508,7 +1508,7 @@
         "tags": [
           "manager"
         ],
-        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen’s \"Add employee\" action.",
+        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the manager employee roster screen's \"Add employee\" action.",
         "x-implementation-path": [
           "backend/src/functions/manager/employees/handler.ts",
           "backend/src/functions/manager/employees/service.ts",
@@ -1519,7 +1519,7 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and manager_id."
+            "note": "Resolves the caller's org_id and manager_id."
           },
           {
             "command": "Put",
@@ -1625,7 +1625,7 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and manager_id."
+            "note": "Resolves the caller's org_id and manager_id."
           },
           {
             "command": "Get",
@@ -1744,7 +1744,7 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and manager_id."
+            "note": "Resolves the caller's org_id and manager_id."
           },
           {
             "command": "Get",
@@ -1841,7 +1841,7 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id and manager_id."
+            "note": "Resolves the caller's org_id and manager_id."
           },
           {
             "command": "Get",
@@ -3851,11 +3851,11 @@
     "/org-admin/employees": {
       "get": {
         "operationId": "listOrgAdminEmployees",
-        "summary": "List employees in the caller’s organization",
+        "summary": "List employees in the caller's organization",
         "tags": [
           "org-admin"
         ],
-        "description": "Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). Resolves the caller’s org_id from their JWT sub and lists every employee in that org.",
+        "description": "Backs the org-admin employee roster screen (frontend/src/app/features/org-admin/employees). Resolves the caller's org_id from their JWT sub and lists every employee in that org.",
         "x-implementation-path": [
           "backend/src/functions/org-admin/employees/handler.ts",
           "backend/src/functions/org-admin/employees/service.ts",
@@ -3868,12 +3868,12 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id."
+            "note": "Resolves the caller's org_id."
           },
           {
             "command": "Query",
             "keyCondition": "PK = ORG#<orgId> AND begins_with(SK, EMPLOYEE#)",
-            "note": "Key attributes are stripped and each row’s status is then replaced by a live Cognito AdminGetUser lookup."
+            "note": "Key attributes are stripped and each row's status is then replaced by a live Cognito AdminGetUser lookup."
           }
         ],
         "parameters": [
@@ -3926,7 +3926,7 @@
         "tags": [
           "org-admin"
         ],
-        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the org-admin employee roster screen’s \"Add employee\" action.",
+        "description": "Creates a Cognito user in the Employee group and the corresponding DynamoDB records, from the org-admin employee roster screen's \"Add employee\" action.",
         "x-implementation-path": [
           "backend/src/functions/org-admin/employees/handler.ts",
           "backend/src/functions/org-admin/employees/service.ts",
@@ -3939,7 +3939,7 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id. Runs after the Cognito user is created."
+            "note": "Resolves the caller's org_id. Runs after the Cognito user is created."
           },
           {
             "command": "Put",
@@ -4047,12 +4047,12 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id."
+            "note": "Resolves the caller's org_id."
           },
           {
             "command": "Get",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org."
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller's org."
           },
           {
             "command": "Update",
@@ -4168,12 +4168,12 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id."
+            "note": "Resolves the caller's org_id."
           },
           {
             "command": "Get",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito."
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller's org and to get their email for Cognito."
           },
           {
             "command": "Update",
@@ -4272,12 +4272,12 @@
           {
             "command": "Get",
             "keyCondition": "PK = USER#<callerSub> AND SK = METADATA",
-            "note": "Resolves the caller’s org_id."
+            "note": "Resolves the caller's org_id."
           },
           {
             "command": "Get",
             "keyCondition": "PK = USER#<employeeId> AND SK = METADATA",
-            "note": "Reverse lookup, used to confirm the employee belongs to the caller’s org and to get their email for Cognito."
+            "note": "Reverse lookup, used to confirm the employee belongs to the caller's org and to get their email for Cognito."
           },
           {
             "command": "Update",
@@ -9062,9 +9062,14 @@
           },
           "phone": {
             "type": "string"
+          },
+          "employee_number": {
+            "description": "Human-assigned employee number. Empty string clears the value.",
+            "type": "string",
+            "maxLength": 50
           }
         },
-        "description": "Partial update of an employee's name or phone."
+        "description": "Partial update of an employee's name, phone, or employee number."
       },
       "UpdateManagerProfileBody": {
         "type": "object",
@@ -9434,11 +9439,16 @@
             "type": "string"
           },
           "manager_id": {
-            "description": "Empty string clears the employee’s manager assignment.",
+            "description": "Empty string clears the employee's manager assignment.",
             "type": "string"
+          },
+          "employee_number": {
+            "description": "Human-assigned employee number. Empty string clears the value.",
+            "type": "string",
+            "maxLength": 50
           }
         },
-        "description": "Partial update of an employee’s name, phone, or manager assignment."
+        "description": "Partial update of an employee's name, phone, manager assignment, or employee number."
       },
       "CreateOrgAdminLocationBody": {
         "type": "object",
@@ -9876,6 +9886,11 @@
             "type": "string",
             "description": "Manager this employee reports to."
           },
+          "employee_number": {
+            "description": "Optional human-assigned employee number.",
+            "type": "string",
+            "maxLength": 50
+          },
           "status": {
             "$ref": "#/components/schemas/UserStatus"
           },
@@ -10237,6 +10252,11 @@
           "manager_id": {
             "type": "string",
             "description": "Manager this employee reports to."
+          },
+          "employee_number": {
+            "description": "Optional human-assigned employee number.",
+            "type": "string",
+            "maxLength": 50
           },
           "status": {
             "$ref": "#/components/schemas/UserStatus"
@@ -10831,7 +10851,7 @@
         "items": {
           "$ref": "#/components/schemas/OrgAdminEmployeeResponse"
         },
-        "description": "Every employee in the caller OrgAdmin’s organization."
+        "description": "Every employee in the caller OrgAdmin's organization."
       },
       "OrgAdminEmployeeResponse": {
         "type": "object",
@@ -10861,6 +10881,11 @@
           "manager_id": {
             "type": "string",
             "description": "Manager this employee reports to."
+          },
+          "employee_number": {
+            "description": "Optional human-assigned employee number.",
+            "type": "string",
+            "maxLength": 50
           },
           "status": {
             "$ref": "#/components/schemas/UserStatus"
@@ -11290,6 +11315,11 @@
           },
           "org_id": {
             "type": "string"
+          },
+          "employee_number": {
+            "description": "Optional human-assigned employee number.",
+            "type": "string",
+            "maxLength": 50
           },
           "status": {
             "$ref": "#/components/schemas/UserStatus"
