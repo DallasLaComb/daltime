@@ -267,7 +267,8 @@ jobs:
               CognitoClientId=${{ steps.foundation.outputs.client_id }} \
               LogRetentionDays=${{ vars.LOG_RETENTION_DAYS || '14' }} \
               LogLevel=${{ vars.LOG_LEVEL || 'INFO' }} \
-              AppEnvironment=${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
+              AppEnvironment=${{ github.ref_name == 'main' && 'prod' || github.ref_name }} \
+              AlertEmail=${{ vars.AlertEmail || '' }}
         working-directory: backend
 
       - name: Get API URL from stack outputs

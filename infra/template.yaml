@@ -41,6 +41,10 @@ Parameters:
       - qa
       - prod
     Description: 'Deployment environment name surfaced as ENVIRONMENT in Lambda env vars'
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: 'Email address for the ERROR-rate CloudWatch alarm (SNS subscription). Empty disables the subscription only — the SNS topic and alarm deploy either way, so a missing value never breaks a deploy.'
 
 Globals:
   Function:
@@ -56,6 +60,9 @@ Globals:
         POWERTOOLS_SERVICE_NAME: daltime-backend
         POWERTOOLS_LOG_LEVEL: !Ref LogLevel
         ENVIRONMENT: !Ref AppEnvironment
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
 
 Resources:
   # Access log group for the HTTP API (API Gateway V2).
@@ -2341,6 +2348,441 @@ Resources:
         Sourcemap: true
         External:
           - '@aws-sdk/*'
+
+  # --- Phase 10: observability payoff ---
+  # One metric filter per function log group, all emitting to the same un-dimensioned metric so a
+  # single alarm's Sum statistic aggregates ERROR-level lines across every function.
+  OrgAdminsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrgAdminsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeesFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeesFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ProfileFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ProfileFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagersFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagersFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerProfileFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerProfileFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerLocationsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerLocationsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerShiftsNeededFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerShiftsNeededFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerScheduleTemplatesFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerScheduleTemplatesFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerShiftsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerShiftsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerScheduleFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerScheduleFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerEmployeesFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerEmployeesFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  OrganizationsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrganizationsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  WebAdminEmployeesFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref WebAdminEmployeesFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  WebAdminProfileFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref WebAdminProfileFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  WebAdminGenerateDummyDataFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref WebAdminGenerateDummyDataFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  OrgAdminLocationsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrgAdminLocationsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  OrgAdminOrganizationFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrgAdminOrganizationFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  OrgAdminShiftsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrgAdminShiftsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ImpersonateFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ImpersonateFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ManagerLocationsAssignFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ManagerLocationsAssignFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeLocationsAssignFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      # The existing LogGroup resource's logical ID drops "Assign" (a pre-existing template
+      # inconsistency, not introduced here) even though the Function resource itself is
+      # EmployeeLocationsAssignFunction.
+      LogGroupName: !Ref EmployeeLocationsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeProfileFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeProfileFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeAvailabilityFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeAvailabilityFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeAvailabilityOverridesFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeAvailabilityOverridesFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeShiftsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeShiftsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  NotificationsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref NotificationsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeAvailableShiftsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeAvailableShiftsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  EmployeeSwapShiftsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref EmployeeSwapShiftsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  HealthFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref HealthFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ClientLogsFunctionErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ClientLogsFunctionLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: DalTime/Logging
+          MetricName: ErrorCount
+          DefaultValue: 0
+
+  ErrorAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-error-alarm'
+
+  ErrorAlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref ErrorAlarmTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-error-rate'
+      AlarmDescription: 'Fires when the backend logs an ERROR-level line (Sum across all Lambda functions, 5-minute window).'
+      Namespace: DalTime/Logging
+      MetricName: ErrorCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ErrorAlarmTopic
+
+  # Saved Logs Insights queries -- docs/logging.md section 7 (7.1-7.7; 7.8 is an ops procedure, not a
+  # query). ClickTrail/RageClicks were designed around a custom interaction-tracker that Phase 8b
+  # (decision D13) replaced with PostHog -- kept as valid saved queries, but expect little/no data
+  # until/unless the app starts emitting 'click'/'rage_click' client-log entries again.
+  ErrorsByRouteQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Errors by route (last 24h)
+      QueryString: |
+        filter level = "ERROR"
+        | stats count(*) as errors by route, handler
+        | sort errors desc
+
+  SlowRequestsQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Slow requests (over 500ms)
+      QueryString: |
+        filter message = "request completed" and duration_ms > 500
+        | stats avg(duration_ms) as avg_ms, max(duration_ms) as max_ms, count(*) as count by route
+        | sort max_ms desc
+
+  CallerActivityQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Activity for one caller (sub)
+      QueryString: |
+        filter caller_sub = "<paste sub here>"
+        | fields timestamp, level, message, route, status, duration_ms
+        | sort timestamp asc
+
+  ClientErrorsQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Client errors (frontend)
+      QueryString: |
+        filter source = "client" and level in ["ERROR", "WARN"]
+        | fields timestamp, event_type, message, device_type, os, platform, breakpoint
+        | sort timestamp desc
+        | limit 200
+
+  ClickTrailQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Click trail for a session
+      QueryString: |
+        filter source = "client" and client_session_id = "<paste id here>"
+        | fields timestamp, event_type, target, route, message
+        | sort timestamp asc
+
+  ErrorsByDeviceQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Errors by device type and OS
+      QueryString: |
+        filter level = "ERROR"
+        | stats count(*) as errors by device_type, os, platform
+        | sort errors desc
+
+  RageClicksQueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: DalTime/Rage clicks by target
+      QueryString: |
+        filter source = "client" and event_type = "rage_click"
+        | stats count(*) as rage_clicks by target
+        | sort rage_clicks desc
+        | limit 50
+
 
 Outputs:
   ApiEndpoint:

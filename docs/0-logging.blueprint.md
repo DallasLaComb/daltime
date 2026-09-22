@@ -282,7 +282,7 @@ applies: local, dev, qa, prod).
 | 8a | Client context: device type + screen size for CloudWatch client-logs entries | Yes — check on desktop, phone, tablet | 🟡 |
 | 8b | PostHog integration (session replay, heatmaps, autocapture — replaces the custom interaction-tracker) | Yes — sign up, add key, verify a real session | 🟡 |
 | 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ✅ |
-| 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | ⬜ |
+| 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | 🟡 |
 | 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | ⬜ |
 
 Phases 1–5 are backend-only and independently valuable; 6–9 add the client (7 = logger + errors + identity, 8a =
@@ -782,7 +782,43 @@ CloudWatch dashboard (5xx by route, p95 duration, client errors).
 
 **Human gate:** confirm the SNS subscription email; force an error in dev and see the alarm fire.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Implemented in `infra/template.yaml`: 30 `AWS::Logs::MetricFilter` resources, one per
+function log group (`{ $.level = "ERROR" }` — the JSON metric-filter pattern matches Powertools' JSON log lines
+from Phase 2/3), all emitting to the same un-dimensioned `DalTime/Logging` / `ErrorCount` metric so one alarm's
+`Sum` statistic aggregates across every function without a metric-math expression. One `AWS::SNS::Topic`
+(`ErrorAlarmTopic`) always deploys; a new `AlertEmail` parameter (default `''`, same safe-default convention as
+`LogRetentionDays`/`LogLevel`) gates a `AWS::SNS::Subscription` via a new top-level `Conditions:` block
+(`HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]`) — an empty/unset value never breaks a deploy, it just
+means nobody's subscribed yet. One `AWS::CloudWatch::Alarm` (`ErrorRateAlarm`, `GreaterThanOrEqualToThreshold` 1
+over a 5-minute `Sum`, `TreatMissingData: notBreaching`) → the topic. Seven `AWS::Logs::QueryDefinition`
+resources for `docs/logging.md` section 7.1–7.7 (7.8 is an ops procedure, not a query, so there are 7 queries not
+8). Two of them — the click-trail and rage-clicks queries — were designed around the custom interaction-tracker
+that Phase 8b (decision D13) replaced with PostHog; kept as valid saved queries since the fields they filter on
+still exist in the contract, but expect little/no data until/unless the app emits `click`/`rage_click` client-log
+entries again. Skipped the optional CloudWatch dashboard — disproportionate effort for an already-optional phase
+whose core deliverable (alarm + queries) was the priority; the metric filters/namespace are in place if someone
+wants to add one later.
+
+One pre-existing template inconsistency found and worked around (not introduced by this phase): the
+`EmployeeLocationsAssignFunction`'s `LogGroup` resource is logically named `EmployeeLocationsFunctionLogGroup`
+(no "Assign"), unlike its `ManagerLocationsAssignFunction` sibling which does have a distinct
+`ManagerLocationsAssignFunctionLogGroup` — `cfn-lint` caught the mismatch immediately when I first guessed the
+"Assign" naming for both.
+
+**Verification:** `sam validate --lint --template ../infra/template.yaml` passes. `sam build
+--parameter-overrides LambdaArchitecture=arm64 --template-file ../infra/template.yaml` succeeds (needed
+`PATH="$PATH:$(pwd)/node_modules/.bin"` for esbuild to resolve in this isolated worktree — matches the same
+prefix `backend/package.json`'s own `start` script already uses, not a new requirement). Backend `npm test`:
+984/984 pass. `npm run lint`: clean. Did **not** run `sam deploy` or subscribe a real email — per this session's
+established pattern, actual deployment happens via the normal CD pipeline once this branch is pushed, not by an
+agent running deploy commands directly.
+
+**New human step:** set the `AlertEmail` GitHub environment variable (per environment: `dev`/`qa`/`main`) if/when
+you want the alarm to actually notify someone — `gh variable set AlertEmail --env dev --body "you@example.com"`.
+`.github/workflows/cd.yml`'s `--parameter-overrides` now passes it through (`AlertEmail=${{ vars.AlertEmail ||
+'' }}`, same fallback style as `LogLevel`/`LogRetentionDays`), so setting the GitHub variable is the only step
+left — no further code change needed. Until it's set, deploys use the default (`''`): the alarm/topic still
+deploy, there's just no subscriber yet.
 
 ---
 
