@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { ButtonComponent, ConfirmationModalComponent } from '@common-daltime';
 import { AuthService } from '../../core/auth/auth';
 import { ImpersonationService } from '../../core/services/impersonation.service';
@@ -24,10 +26,22 @@ export class Navbar {
   protected readonly authService = inject(AuthService);
   protected readonly impersonationService = inject(ImpersonationService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly menuOpen = signal(false);
   protected readonly showSignOutModal = signal(false);
   protected readonly signingOut = signal(false);
+
+  constructor() {
+    // Close the mobile menu on every navigation so it never stays open after a touch-triggered
+    // route change where the (click)="closeMenu()" binding on the link fires too late or not at all.
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.menuOpen.set(false));
+  }
 
   /**
    * When impersonating, show the impersonated user's role in the nav so

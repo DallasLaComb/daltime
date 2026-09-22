@@ -253,6 +253,10 @@ jobs:
 
       - name: Deploy SAM stack
         run: |
+          PARAM_OVERRIDES="AllowedOrigins=${{ vars.ALLOWED_ORIGINS }} CognitoUserPoolId=${{ steps.foundation.outputs.user_pool_id }} CognitoClientId=${{ steps.foundation.outputs.client_id }} LogRetentionDays=${{ vars.LOG_RETENTION_DAYS || '14' }} LogLevel=${{ vars.LOG_LEVEL || 'INFO' }} AppEnvironment=${{ github.ref_name == 'main' && 'prod' || github.ref_name }}"
+          if [ -n "${{ vars.AlertEmail }}" ]; then
+            PARAM_OVERRIDES="$PARAM_OVERRIDES AlertEmail=${{ vars.AlertEmail }}"
+          fi
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
             --stack-name ${{ vars.SAM_STACK_NAME }} \
@@ -261,14 +265,7 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --region us-east-1 \
-            --parameter-overrides \
-              AllowedOrigins=${{ vars.ALLOWED_ORIGINS }} \
-              CognitoUserPoolId=${{ steps.foundation.outputs.user_pool_id }} \
-              CognitoClientId=${{ steps.foundation.outputs.client_id }} \
-              LogRetentionDays=${{ vars.LOG_RETENTION_DAYS || '14' }} \
-              LogLevel=${{ vars.LOG_LEVEL || 'INFO' }} \
-              AppEnvironment=${{ github.ref_name == 'main' && 'prod' || github.ref_name }} \
-              AlertEmail=${{ vars.AlertEmail || '' }}
+            --parameter-overrides $PARAM_OVERRIDES
         working-directory: backend
 
       - name: Get API URL from stack outputs
