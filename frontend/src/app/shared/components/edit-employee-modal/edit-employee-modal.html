@@ -8,7 +8,9 @@
       (click)="cancel()"
       (keydown.escape)="cancel()"
     >
-      <dialog
+      <div
+        role="dialog"
+        aria-modal="true"
         class="w-full sm:max-w-lg"
         tabindex="-1"
         (click)="$event.stopPropagation()"
@@ -143,7 +145,7 @@
             >
           </div>
         </div>
-      </dialog>
+      </div>
     </div>
   }
 </div>
