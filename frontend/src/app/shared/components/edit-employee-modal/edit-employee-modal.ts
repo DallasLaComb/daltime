@@ -7,6 +7,7 @@ export interface EditEmployeeData {
   last_name: string;
   phone: string;
   manager_id?: string;
+  employee_number?: string;
 }
 
 export interface EditEmployeeInitial {
@@ -15,6 +16,7 @@ export interface EditEmployeeInitial {
   last_name: string;
   phone?: string;
   manager_id?: string;
+  employee_number?: string;
 }
 
 @Component({
@@ -39,6 +41,7 @@ export class EditEmployeeModalComponent {
   protected readonly editLastName = signal('');
   protected readonly editPhone = signal('');
   protected readonly editManagerId = signal('');
+  protected readonly editEmployeeNumber = signal('');
   protected readonly editSubmitted = signal(false);
 
   constructor() {

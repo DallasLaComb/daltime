@@ -24,6 +24,7 @@ export const EmployeeRecord = SingleTableKeys.extend({
   phone: z.string().meta({ description: 'Empty string if not provided.' }),
   org_id: z.string(),
   manager_id: z.string().meta({ description: 'Manager this employee reports to.' }),
+  employee_number: z.string().max(50).optional().meta({ description: 'Optional human-assigned employee number.' }),
   status: UserStatus,
   created_at: IsoTimestamp,
   updated_at: IsoTimestamp,

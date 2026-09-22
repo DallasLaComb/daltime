@@ -47,7 +47,7 @@ export { createEmployeeRecord as createEmployee } from '../../shared/dynamo.js';
 export async function updateEmployee(
   orgId: string,
   employeeId: string,
-  fields: { first_name?: string; last_name?: string; phone?: string },
+  fields: { first_name?: string; last_name?: string; phone?: string; employee_number?: string },
   updatedAt: string,
 ): Promise<Employee | null> {
   return updateOrgAndMetadataRecord<Employee>(

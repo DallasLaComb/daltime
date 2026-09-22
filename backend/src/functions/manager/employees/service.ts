@@ -77,10 +77,11 @@ export async function updateEmployee(
   if (employee.manager_id !== manager_id)
     throw new ForbiddenError('Not authorized to manage this employee');
 
-  const fields: { first_name?: string; last_name?: string; phone?: string } = {};
+  const fields: { first_name?: string; last_name?: string; phone?: string; employee_number?: string } = {};
   if (body.first_name !== undefined) fields.first_name = body.first_name.trim();
   if (body.last_name !== undefined) fields.last_name = body.last_name.trim();
   if (body.phone !== undefined) fields.phone = body.phone.trim();
+  if (body.employee_number !== undefined) fields.employee_number = body.employee_number.trim();
 
   const updated = await db.updateEmployee(org_id, employeeId, fields, new Date().toISOString());
   logger.info('employee updated', { org_id, employee_id: employeeId });

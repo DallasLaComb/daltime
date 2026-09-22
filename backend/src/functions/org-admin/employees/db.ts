@@ -38,7 +38,7 @@ export async function getEmployeeReverseLookup(
 export async function updateEmployee(
   orgId: string,
   employeeId: string,
-  fields: { first_name?: string; last_name?: string; phone?: string; manager_id?: string },
+  fields: { first_name?: string; last_name?: string; phone?: string; manager_id?: string; employee_number?: string },
   updatedAt: string,
 ): Promise<EmployeeRecord | null> {
   return updateOrgAndMetadataRecord<EmployeeRecord>(
