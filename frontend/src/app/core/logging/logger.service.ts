@@ -92,20 +92,24 @@ export class LoggerService {
     this.enqueue({ type: 'log', level: 'info', message });
   }
 
-  warn(message: string): void {
-    this.enqueue({ type: 'log', level: 'warn', message });
+  /** `err` is never logged raw — only its message/stack, never a full object, token or body. */
+  warn(message: string, err?: unknown): void {
+    this.enqueue({ type: 'log', level: 'warn', message: this.withDetail(message, err) });
   }
 
   /** `err` is never logged raw — only its message/stack, never a full object, token or body. */
   error(message: string, err?: unknown): void {
-    const stack = err instanceof Error ? err.stack : undefined;
-    const detail = err instanceof Error ? err.message : err !== undefined ? String(err) : undefined;
     this.enqueue({
       type: 'error',
       level: 'error',
-      message: detail ? `${message}: ${detail}` : message,
-      stack,
+      message: this.withDetail(message, err),
+      stack: err instanceof Error ? err.stack : undefined,
     });
+  }
+
+  private withDetail(message: string, err: unknown): string {
+    const detail = err instanceof Error ? err.message : err !== undefined ? String(err) : undefined;
+    return detail ? `${message}: ${detail}` : message;
   }
 
   /** Used by the logging interceptor to record a failed API call without the response body. */

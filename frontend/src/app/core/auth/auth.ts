@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { LoggerService } from '../logging/logger.service';
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
@@ -39,6 +40,9 @@ export class AuthService {
   private readonly tokens = inject(TokenStorage);
   private readonly biometricLock = inject(BiometricLock);
   private readonly posthog = inject(PosthogService);
+  // LoggerService injects AuthService, so LoggerService cannot be a constructor-time field here
+  // without a circular DI error — resolved lazily instead.
+  private readonly injector = inject(Injector);
   private readonly cognitoClient = new CognitoIdentityProviderClient({
     region: environment.cognito.region,
   });
@@ -244,8 +248,7 @@ export class AuthService {
       if (firstNameAttr?.Value) this._firstName.set(firstNameAttr.Value);
       if (lastNameAttr?.Value) this._lastName.set(lastNameAttr.Value);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('GetUser failed:', message);
+      this.injector.get(LoggerService).error('GetUser failed', error);
     }
   }
 
@@ -261,8 +264,7 @@ export class AuthService {
       );
       return true;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('UpdateUserAttributes failed:', message);
+      this.injector.get(LoggerService).error('UpdateUserAttributes failed', error);
       return false;
     }
   }
@@ -350,7 +352,7 @@ export class AuthService {
       // malformed token
     }
 
-    console.warn('No valid Cognito group found in access token.');
+    this.injector.get(LoggerService).warn('No valid Cognito group found in access token');
     return null;
   }
 

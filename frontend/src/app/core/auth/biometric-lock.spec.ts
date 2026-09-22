@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { IS_NATIVE_PLATFORM, SECURE_STORAGE_LOADER, TokenStorage } from '../storage/token-storage';
+import { LoggerService } from '../logging/logger.service';
 import {
   BIOMETRIC_LOADER,
   BIOMETRIC_LOCK_KEY,
@@ -24,6 +25,7 @@ const secureStorage = {
 };
 
 const FACE_ID = 2;
+const logger = { warn: vi.fn(), error: vi.fn() };
 
 function createService(native: boolean): BiometricLock {
   TestBed.resetTestingModule();
@@ -32,6 +34,7 @@ function createService(native: boolean): BiometricLock {
       { provide: IS_NATIVE_PLATFORM, useValue: native },
       { provide: BIOMETRIC_LOADER, useValue: async () => ({ plugin }) },
       { provide: SECURE_STORAGE_LOADER, useValue: async () => ({ plugin: secureStorage }) },
+      { provide: LoggerService, useValue: logger },
     ],
   });
   return TestBed.inject(BiometricLock);

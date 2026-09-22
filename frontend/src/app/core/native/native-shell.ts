@@ -3,6 +3,7 @@ import { Injectable, InjectionToken, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IS_NATIVE_PLATFORM } from '../storage/token-storage';
 import { ROLE_DASHBOARD_MAP } from '../auth/user-role.model';
+import { LoggerService } from '../logging/logger.service';
 
 type AppPlugin = typeof import('@capacitor/app').App;
 type StatusBarPlugin = typeof import('@capacitor/status-bar').StatusBar;
@@ -58,6 +59,7 @@ export class NativeShell {
   private readonly loadPlugins = inject(NATIVE_SHELL_LOADER);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
+  private readonly logger = inject(LoggerService);
 
   async init(): Promise<void> {
     if (!this.native) return;
@@ -66,7 +68,7 @@ export class NativeShell {
     try {
       plugins = await this.loadPlugins();
     } catch (error: unknown) {
-      console.error('Native shell plugins failed to load:', this.describe(error));
+      this.logger.error('Native shell plugins failed to load', error);
       return;
     }
 
@@ -76,7 +78,7 @@ export class NativeShell {
       // `Style.Dark` means "light text for a dark background".
       await statusBar.setStyle({ style: statusBarStyle.Dark });
     } catch (error: unknown) {
-      console.error('Status bar style failed:', this.describe(error));
+      this.logger.error('Status bar style failed', error);
     }
 
     try {
@@ -86,20 +88,16 @@ export class NativeShell {
           return;
         }
         void app.exitApp().catch((error: unknown) => {
-          console.error('exitApp failed:', this.describe(error));
+          this.logger.error('exitApp failed', error);
         });
       });
     } catch (error: unknown) {
-      console.error('Back button listener failed:', this.describe(error));
+      this.logger.error('Back button listener failed', error);
     }
   }
 
   private isRootPath(): boolean {
     const path = this.router.url.split(/[?#]/)[0];
     return ROOT_PATHS.has(path);
-  }
-
-  private describe(error: unknown): string | unknown {
-    return error instanceof Error ? error.message : error;
   }
 }

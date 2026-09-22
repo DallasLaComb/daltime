@@ -1,6 +1,7 @@
-import { Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { Injectable, InjectionToken, Injector, inject, signal } from '@angular/core';
 import type { AccessControl, NativeBiometricPlugin } from '@capgo/capacitor-native-biometric';
 import { IS_NATIVE_PLATFORM, TokenStorage } from '../storage/token-storage';
+import { LoggerService } from '../logging/logger.service';
 
 /** Secure-storage key for the user's choice. Absent means "on" (the default); 'off' disables the lock. */
 export const BIOMETRIC_LOCK_KEY = 'daltime_biometric_lock';
@@ -58,6 +59,9 @@ export class BiometricLock {
   private readonly native = inject(IS_NATIVE_PLATFORM);
   private readonly tokens = inject(TokenStorage);
   private readonly loadPlugin = inject(BIOMETRIC_LOADER);
+  // LoggerService depends (transitively, via AuthService) on this service, so it cannot be a
+  // constructor-time field here without a circular DI error — resolved lazily instead.
+  private readonly injector = inject(Injector);
 
   // TokenStorage is hydrated by an app initializer before anything can inject this service.
   private readonly _enabled = signal(this.tokens.get(BIOMETRIC_LOCK_KEY) !== 'off');
@@ -84,7 +88,7 @@ export class BiometricLock {
       this._supported.set(result.isAvailable);
       this._label.set(BIOMETRY_LABELS[result.biometryType] ?? 'biometric unlock');
     } catch (error: unknown) {
-      console.error('Biometric availability check failed:', this.describe(error));
+      this.injector.get(LoggerService).error('Biometric availability check failed', error);
       this._supported.set(false);
     }
   }
@@ -107,7 +111,7 @@ export class BiometricLock {
       return true;
     } catch (error: unknown) {
       // Cancel and failed-match are routine; the message is only useful when debugging.
-      console.warn('Biometric unlock not granted:', this.describe(error));
+      this.injector.get(LoggerService).warn('Biometric unlock not granted', error);
       return false;
     }
   }
@@ -124,7 +128,7 @@ export class BiometricLock {
         const { plugin } = await this.loadPlugin();
         await this.prompt(plugin);
       } catch (error: unknown) {
-        console.warn('Biometric lock not enabled:', this.describe(error));
+        this.injector.get(LoggerService).warn('Biometric lock not enabled', error);
         return this._enabled();
       }
     }
@@ -152,7 +156,7 @@ export class BiometricLock {
         negativeButtonText: 'Not now',
       });
     } catch (error: unknown) {
-      console.warn('Saving biometric sign-in failed:', this.describe(error));
+      this.injector.get(LoggerService).warn('Saving biometric sign-in failed', error);
       return false;
     }
 
@@ -175,7 +179,7 @@ export class BiometricLock {
       });
       return { username, password };
     } catch (error: unknown) {
-      console.warn('Biometric sign-in not granted:', this.describe(error));
+      this.injector.get(LoggerService).warn('Biometric sign-in not granted', error);
       return null;
     }
   }
@@ -191,7 +195,7 @@ export class BiometricLock {
       await plugin.deleteCredentials({ server: CREDENTIALS_SERVER });
     } catch (error: unknown) {
       // Nothing stored (or already gone) is the goal state anyway.
-      console.warn('Deleting biometric sign-in failed:', this.describe(error));
+      this.injector.get(LoggerService).warn('Deleting biometric sign-in failed', error);
     }
   }
 
@@ -203,9 +207,5 @@ export class BiometricLock {
       // iOS only: offer the device passcode after Face ID fails. Android ignores it.
       useFallback: true,
     });
-  }
-
-  private describe(error: unknown): string | unknown {
-    return error instanceof Error ? error.message : error;
   }
 }

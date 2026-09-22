@@ -281,7 +281,7 @@ applies: local, dev, qa, prod).
 | 7 | Frontend logger core (service, ErrorHandler, interceptor, config) | Yes — run app against dev, trigger error, confirm in Logs Insights | ✅ |
 | 8a | Client context: device type + screen size for CloudWatch client-logs entries | Yes — check on desktop, phone, tablet | 🟡 |
 | 8b | PostHog integration (session replay, heatmaps, autocapture — replaces the custom interaction-tracker) | Yes — sign up, add key, verify a real session | 🟡 |
-| 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ⬜ |
+| 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ✅ |
 | 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | ⬜ |
 | 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | ⬜ |
 
@@ -727,7 +727,50 @@ where an error is caught and swallowed (non-HTTP). Never log tokens, form values
 
 **AI verification:** tests, lint (with `no-console`), build pass; grep shows no `console.` outside the logger.
 
-**Completion notes:** _(Claude fills in, per sub-phase)_
+**Completion notes:** Implemented on `feature/logging-phase7` (continuing the same branch). The app had grown to
+20 `console.*` call sites across 7 files (the blueprint's original ~10 estimate was from before Phases 7-8b added
+`native-shell.ts`, `biometric-lock.ts`, `token-storage.ts`) — all replaced:
+
+- **`core/auth/auth.ts` (3 calls, 9a):** `GetUser failed`, `UpdateUserAttributes failed`, `No valid Cognito group
+  found` → `logger.error`/`logger.warn`.
+- **`core/native/native-shell.ts` (4 calls), `core/auth/biometric-lock.ts` (6 calls), `core/storage/token-storage.ts`
+  (2 calls):** all caught-and-swallowed native/storage failures → `logger.error`/`logger.warn`. Removed each
+  file's now-redundant private `describe(error)` helper (LoggerService does that extraction itself).
+- **`features/web-admin/organizations/organizations.ts` (4 calls, 9b):** all four were inside HTTP
+  `subscribe({error})` handlers — removed the `console.error` entirely per the Do list's rule (interceptor already
+  logs the HTTP failure once; UI error state via `.set(...)` is untouched).
+- **`features/employee/schedule/schedule.ts` (2 calls, 9d):** removed both, including the explicitly-flagged "raw
+  error object" debug line; kept the UI `error.set(...)` message.
+- **9c (`features/manager`):** already clean, no console.* calls found there.
+
+**A real, non-obvious blocker found and fixed:** `LoggerService` already injects `AuthService` (for
+`isAuthenticatedSignal`/`getAccessToken`/`role`). `AuthService` itself, and two of its own dependencies
+(`TokenStorage`, `BiometricLock`, both injected by `AuthService`), all had `console.*` calls to retrofit — adding
+`inject(LoggerService)` as a normal constructor-time field to any of the three would create a circular DI chain
+(LoggerService → AuthService → TokenStorage/BiometricLock → LoggerService) and Angular throws `NG0200: Circular
+dependency in DI detected` at runtime. Fixed by injecting `Injector` in those three services instead and
+resolving `injector.get(LoggerService)` lazily at each call site (inside the catch block, not the constructor) —
+by the time a method actually runs, the service's own constructor has already completed, so the cycle never
+forms. `core/native/native-shell.ts` doesn't sit in that dependency chain, so it uses ordinary constructor
+injection.
+
+**Also extended `LoggerService.warn(message, err?)`** to accept an optional error, matching `error()`'s signature
+(it only had a bare `message` before) — several of the swallowed-error sites above are `warn`-level (routine,
+e.g. a cancelled biometric prompt) but still wanted the caught error's detail. Extracted the shared
+message-formatting logic into a private `withDetail()` helper used by both.
+
+**Final guardrail:** added `'no-console': 'error'` to `frontend/eslint.config.js` (mirrors the backend's Phase 5
+guardrail), exempting `**/*.spec.ts` (a few tests still legitimately stub `console` for Capacitor plugin-proxy
+checks) and `src/main.ts` — `bootstrapApplication().catch()` runs *before* Angular's injector exists, so
+`LoggerService` (or anything DI-based) isn't reachable there; `console.error` is the only option for a bootstrap
+failure and stays as a deliberate, documented exception, not a miss.
+
+**Tests:** updated `native-shell.spec.ts`, `biometric-lock.spec.ts`, `token-storage.spec.ts`, `auth.spec.ts` to
+provide a mock `LoggerService` (same pattern as the existing `auth.spec.ts` Cognito-client stub) and assert on
+`logger.error`/`logger.warn` calls instead of `console` spies. Full suite: 736/737 pass (the one failure is the
+same pre-existing unrelated `schedule-filters.spec.ts` case tracked since Phase 7). `npm run lint`: clean,
+including the new rule. `npm run build`: succeeds. Final grep (`grep -rn 'console\.' src/app --include='*.ts' |
+grep -v '.spec.ts'`): zero results outside the one documented `main.ts` exemption.
 
 ---
 

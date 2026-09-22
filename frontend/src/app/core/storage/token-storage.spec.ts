@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { IS_NATIVE_PLATFORM, SECURE_STORAGE_LOADER, TokenStorage } from './token-storage';
+import { LoggerService } from '../logging/logger.service';
 
 // A fake plugin. `then` mimics Capacitor's plugin proxy, which forwards ANY property read
 // (including `then`) to native: if TokenStorage ever resolves a promise with the plugin itself,
@@ -11,6 +12,7 @@ const plugin = {
   then: vi.fn(),
 };
 const pluginThen = plugin.then;
+const logger = { error: vi.fn() };
 
 function createService(native: boolean): TokenStorage {
   TestBed.resetTestingModule();
@@ -18,6 +20,7 @@ function createService(native: boolean): TokenStorage {
     providers: [
       { provide: IS_NATIVE_PLATFORM, useValue: native },
       { provide: SECURE_STORAGE_LOADER, useValue: async () => ({ plugin }) },
+      { provide: LoggerService, useValue: logger },
     ],
   });
   return TestBed.inject(TokenStorage);
@@ -115,23 +118,21 @@ describe('TokenStorage', () => {
 
     it('keeps the in-memory value when the plugin write fails', async () => {
       plugin.set.mockRejectedValue(new Error('keychain unavailable'));
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const storage = createService(true);
 
       await expect(storage.set('k', 'v')).resolves.toBeUndefined();
 
       expect(storage.get('k')).toBe('v');
-      expect(consoleError).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith('Secure storage set failed', expect.any(Error));
     });
 
     it('remove of a key that was never stored does not log an error', async () => {
       plugin.remove.mockRejectedValue(new Error('Item with given key does not exist'));
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const storage = createService(true);
 
       await expect(storage.remove('never-set')).resolves.toBeUndefined();
 
-      expect(consoleError).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
     });
   });
 });

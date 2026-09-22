@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { AuthService, TOKEN_KEYS } from './auth';
 import { BiometricLock } from './biometric-lock';
+import { LoggerService } from '../logging/logger.service';
 
 // The shared APP_TEST_PROVIDERS replace AuthService with a mock, so this spec wires the real
 // service (and the real TokenStorage, i.e. sessionStorage on web) with a stubbed Router.
@@ -19,6 +20,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let send: ReturnType<typeof vi.fn>;
   let unlock: ReturnType<typeof vi.fn>;
+  const logger = { warn: vi.fn(), error: vi.fn() };
 
   function create(): AuthService {
     TestBed.resetTestingModule();
@@ -26,6 +28,7 @@ describe('AuthService', () => {
       providers: [
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: BiometricLock, useValue: { unlock } },
+        { provide: LoggerService, useValue: logger },
       ],
     });
     const auth = TestBed.inject(AuthService);
@@ -38,6 +41,8 @@ describe('AuthService', () => {
     sessionStorage.clear();
     send = vi.fn().mockResolvedValue({ UserAttributes: [] });
     unlock = vi.fn().mockResolvedValue(true);
+    logger.warn.mockClear();
+    logger.error.mockClear();
     service = create();
   });
 

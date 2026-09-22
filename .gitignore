@@ -186,3 +186,6 @@ google-services.json
 GoogleService-Info.plist
 .env.mobile.*
 !.env.mobile.example
+
+# Claude Code local settings + agent scratch worktrees
+.claude/

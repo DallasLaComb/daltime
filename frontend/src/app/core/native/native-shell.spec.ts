@@ -2,6 +2,7 @@ import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { IS_NATIVE_PLATFORM } from '../storage/token-storage';
+import { LoggerService } from '../logging/logger.service';
 import { NATIVE_SHELL_LOADER, NativeShell } from './native-shell';
 
 type BackButtonListener = (event: { canGoBack: boolean }) => void;
@@ -21,6 +22,7 @@ const statusBarStyle = { Dark: 'DARK', Light: 'LIGHT', Default: 'DEFAULT' };
 
 const router = { url: '/' };
 const location = { back: vi.fn() };
+const logger = { error: vi.fn() };
 
 function createService(native: boolean, loader?: () => Promise<unknown>): NativeShell {
   TestBed.resetTestingModule();
@@ -33,6 +35,7 @@ function createService(native: boolean, loader?: () => Promise<unknown>): Native
       },
       { provide: Router, useValue: router },
       { provide: Location, useValue: location },
+      { provide: LoggerService, useValue: logger },
     ],
   });
   return TestBed.inject(NativeShell);
@@ -129,18 +132,15 @@ describe('NativeShell', () => {
     });
 
     it('still registers the back button when the status bar call fails', async () => {
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       statusBar.setStyle.mockRejectedValue(new Error('not implemented'));
 
       await createService(true).init();
 
       expect(app.addListener).toHaveBeenCalledWith('backButton', expect.any(Function));
-      expect(consoleError).toHaveBeenCalled();
-      consoleError.mockRestore();
+      expect(logger.error).toHaveBeenCalledWith('Status bar style failed', expect.any(Error));
     });
 
     it('never throws when the plugins fail to load', async () => {
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const service = createService(true, async () => {
         throw new Error('chunk load failed');
       });
@@ -148,7 +148,7 @@ describe('NativeShell', () => {
       await expect(service.init()).resolves.toBeUndefined();
 
       expect(app.addListener).not.toHaveBeenCalled();
-      consoleError.mockRestore();
+      expect(logger.error).toHaveBeenCalledWith('Native shell plugins failed to load', expect.any(Error));
     });
   });
 });

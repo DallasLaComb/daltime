@@ -65,8 +65,7 @@ export class OrganizationsComponent {
         this.organizations.set(orgs);
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('Failed to load organizations:', err);
+      error: () => {
         this.error.set('Failed to load organizations');
         this.loading.set(false);
       },
@@ -107,8 +106,7 @@ export class OrganizationsComponent {
             this.closeModal();
             this.loadOrganizations();
           },
-          error: (err) => {
-            console.error('Failed to update organization:', err);
+          error: () => {
             this.saving.set(false);
           },
         });
@@ -119,8 +117,7 @@ export class OrganizationsComponent {
           this.closeModal();
           this.loadOrganizations();
         },
-        error: (err) => {
-          console.error('Failed to create organization:', err);
+        error: () => {
           this.saving.set(false);
         },
       });
@@ -152,8 +149,7 @@ export class OrganizationsComponent {
         this.closeDeleteModal();
         this.loadOrganizations();
       },
-      error: (err) => {
-        console.error('Failed to delete organization:', err);
+      error: () => {
         this.saving.set(false);
       },
     });

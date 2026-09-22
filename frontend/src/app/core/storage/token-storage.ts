@@ -1,5 +1,6 @@
-import { Injectable, InjectionToken, inject } from '@angular/core';
+import { Injectable, InjectionToken, Injector, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
+import { LoggerService } from '../logging/logger.service';
 
 type SecureStorage = typeof import('capacitor-secure-storage-plugin').SecureStoragePlugin;
 
@@ -44,6 +45,9 @@ export class TokenStorage {
   private readonly native = inject(IS_NATIVE_PLATFORM);
   private readonly loadPlugin = inject(SECURE_STORAGE_LOADER);
   private readonly cache = new Map<string, string>();
+  // LoggerService depends (transitively, via AuthService) on this service, so it cannot be a
+  // constructor-time field here without a circular DI error — resolved lazily instead.
+  private readonly injector = inject(Injector);
 
   /** Loads the given keys from native storage into memory. No-op on web. Never throws. */
   async hydrate(keys: readonly string[]): Promise<void> {
@@ -80,7 +84,7 @@ export class TokenStorage {
       await plugin.set({ key, value });
     } catch (error: unknown) {
       // Memory copy still works for this session; the user just won't stay logged in after a restart.
-      console.error('Secure storage set failed:', error instanceof Error ? error.message : error);
+      this.injector.get(LoggerService).error('Secure storage set failed', error);
     }
   }
 
@@ -97,7 +101,7 @@ export class TokenStorage {
     } catch (error: unknown) {
       // Removing a key that was never stored rejects; only worth reporting when we expected it.
       if (hadValue) {
-        console.error('Secure storage remove failed:', error instanceof Error ? error.message : error);
+        this.injector.get(LoggerService).error('Secure storage remove failed', error);
       }
     }
   }

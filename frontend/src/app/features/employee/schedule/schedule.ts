@@ -326,18 +326,7 @@ export class EmployeeScheduleComponent {
         this.shifts.set(shifts);
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('[EmployeeSchedule] shifts request failed', {
-          mode,
-          date: date.toISOString(),
-          status: err?.status,
-          statusText: err?.statusText,
-          url: err?.url,
-          error: err?.error,
-          errorMessage: err?.error?.message,
-          errorName: err?.error?.name,
-        });
-        console.error('[EmployeeSchedule] raw error object:', err);
+      error: () => {
         this.error.set('Failed to load your schedule. Please try again.');
         this.loading.set(false);
       },

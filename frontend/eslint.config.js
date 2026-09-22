@@ -36,6 +36,18 @@ export default tseslint.config(
       ],
     },
   },
+  // App code must route through LoggerService (core/logging/logger.service.ts), not console.*
+  // directly, so entries carry the standard fields and land in CloudWatch (docs/logging.md).
+  // Specs are exempt: they still legitimately spy on/stub console in a few plugin-proxy tests.
+  // main.ts is exempt: its bootstrapApplication().catch() runs before Angular's injector exists,
+  // so LoggerService (or anything else DI-based) isn't reachable there — console is the only option.
+  {
+    files: ['**/*.ts'],
+    ignores: ['**/*.spec.ts', 'src/main.ts'],
+    rules: {
+      'no-console': 'error',
+    },
+  },
   {
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
