@@ -77,6 +77,7 @@ describe('LoggerService', () => {
     expect(batch.context.authenticated).toBe(true);
     expect(batch.context.role).toBe('Manager');
     expect(batch.context.org_id).toBe('org-1');
+    expect(batch.context.app_version).toBeUndefined();
 
     const logEntry = nonSessionEntries(batch);
     expect(logEntry).toHaveLength(1);

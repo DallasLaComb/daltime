@@ -283,7 +283,7 @@ applies: local, dev, qa, prod).
 | 8b | PostHog integration (session replay, heatmaps, autocapture — replaces the custom interaction-tracker) | Yes — sign up, add key, verify a real session | 🟡 |
 | 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ✅ |
 | 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | 🟡 |
-| 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | ⬜ |
+| 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | 🟡 |
 
 Phases 1–5 are backend-only and independently valuable; 6–9 add the client (7 = logger + errors + identity, 8a =
 device/screen context). **8b (PostHog) is a build-vs-buy substitution for the interaction-tracking part of the
@@ -832,7 +832,58 @@ policy, cost per 100k events); present a recommendation and **wait for approval*
 
 **Human gate:** device check that logs from the iOS build appear with `platform: "ios"`.
 
-**Completion notes:** _(Claude fills in)_
+**Completion notes:** Most of this phase's items were already satisfied by earlier phases; verified rather than
+re-implemented:
+- **Flush on `pause`**: already done in Phase 7 — `LoggerService.registerNativeFlush()` calls
+  `App.addListener('pause', () => this.flush())`. Confirmed by reading the code, not re-added.
+- **`https://localhost` CORS**: already in place — `infra/template.yaml`'s `AllowedOrigins` parameter defaults to
+  `'http://localhost:4200,https://localhost'`, and `X-Platform`/`X-Correlation-Id` are in both the HTTP API's
+  `AllowHeaders` and `shared/response.ts`'s `Access-Control-Allow-Headers`. Confirmed, not re-added.
+- **`app_version` tag**: was declared optional in the contract but never sent — added. `LoggerService`'s existing
+  `registerNativeFlush()` (the same lazy `@capacitor/app` import used for the pause listener, not a second one)
+  now also calls `App.getInfo()` once and caches `info.version` in a new `appVersion` field, which `buildContext()`
+  passes through. Stays `undefined` (omitted from the JSON body, not sent as an empty string) on web, since
+  `registerNativeFlush()` returns early when `!Capacitor.isNativePlatform()`. Test added confirming
+  `batch.context.app_version` is `undefined` in the (web) test environment; the native-path assertion (a real
+  version string present) is not unit-tested — mocking `Capacitor.isNativePlatform()` to `true` plus the dynamic
+  `@capacitor/app` import would need the same kind of module mock this blueprint's Phase 7 notes already found
+  unreliable across the full suite (see Phase 7's completion notes on `vi.mock('posthog-js')`), so it's left to
+  the real-device human gate below rather than adding a second flaky-mock risk for one field.
+- **`@capacitor/device` (native model/OS version/`isVirtual`)**: not added. Per D11, this needs a new native
+  plugin (a store release) and the UA-based `device_type`/`os` classifier already exists; no concrete need for
+  the extra precision has come up. Revisit only if a specific bug report needs the native model name.
+- **Native crash reporting (Crashlytics/ADOT)**: confirmed still explicitly out of scope, listed here as a
+  follow-up per the original plan — not evaluated further in this pass.
+
+**CloudWatch RUM evaluation — recommendation: do not add it.**
+RUM's unique value over what's already shipped (CloudWatch structured logs, Phases 1–7; PostHog session replay/
+heatmaps, Phase 8b) is real-browser Core Web Vitals (LCP, INP, CLS, TTFB). Weighing that against the cost:
+- **Infra**: DalTime's `foundation.yaml` has no Cognito Identity Pool today (verified — grepped for
+  `Identity Pool`/`IdentityPool` in `infra/`, no matches). RUM needs one (or a resource-based policy, the
+  alternative this blueprint's research section already flagged) purely to authorize an unauthenticated web
+  client to write telemetry — new infra whose only job is feeding a metrics pipeline.
+- **Cost**: ~$1 per 100k events (this blueprint's own research, section 3.5) — modest, but a third meter to
+  watch alongside PostHog's usage page and CloudWatch's existing costs.
+- **Tool sprawl**: this would be a *third* observability surface (CloudWatch, PostHog, RUM), each with its own
+  dashboard, retention window and query language, for a team that just finished consolidating logging into one
+  pipeline (Phases 1–6) specifically to stop that kind of fragmentation.
+- **Fit**: Core Web Vitals matter most for public, SEO-ranked, conversion-sensitive pages. DalTime is an
+  internal B2B scheduling tool behind Cognito auth — no SEO exposure, and the user base has to use the app
+  regardless of load time, unlike a marketing site where a slow LCP directly costs signups. PostHog's session
+  replay already surfaces *felt* slowness (a recording shows a user waiting on a spinner) even without a
+  dedicated Web Vitals metric.
+
+**Revisit if**: users start reporting perceived slowness that CloudWatch/PostHog can't diagnose, or DalTime adds
+a public-facing (unauthenticated, SEO-relevant) page where Core Web Vitals would affect real outcomes. Neither
+is true today. No RUM code or infra was added — this is a recommendation only, per the blueprint's "wait for
+approval" instruction.
+
+**Human gate — not done:** verifying the device/UA classifier on a real Capacitor iOS/Android WebView (or the
+`platform: "ios"` check above) needs a physical device or simulator not available in this environment.
+
+**Verification:** `npm test` 736/737 pass (frontend) — the one failure is `schedule-filters.spec.ts`'s
+pre-existing, unrelated "OR logic" case (confirmed already failing before this phase's changes, not touched
+here). `npm run lint` clean. `npm run build` succeeds.
 
 ---
 

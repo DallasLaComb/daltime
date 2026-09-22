@@ -53,6 +53,8 @@ export class LoggerService {
   private rateCount = 0;
   private lastBreakpoint: ClientLogEntry['breakpoint'] | null = null;
   private lastOrientation: ClientLogEntry['orientation'] | null = null;
+  /** Set once `registerNativeFlush()` resolves `App.getInfo()`. Stays undefined on web (Phase 11). */
+  private appVersion: string | undefined;
 
   constructor() {
     if (typeof document === 'undefined') return;
@@ -195,6 +197,7 @@ export class LoggerService {
       os: detectOs(),
       browser: detectBrowser(),
       is_native: Capacitor.isNativePlatform(),
+      app_version: this.appVersion,
       authenticated: this.auth.isAuthenticatedSignal(),
       role: this.auth.roleSignal() ?? undefined,
       org_id: this.auth.orgId() ?? undefined,
@@ -239,13 +242,17 @@ export class LoggerService {
     this.enqueue({ type: 'viewport_change', level: 'info' });
   }
 
+  /** Phase 7's pause-flush hook, extended in Phase 11 to also capture `app_version` — one lazy
+   * `@capacitor/app` import rather than two, since both only matter on native. */
   private async registerNativeFlush(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
     try {
       const { App } = await import('@capacitor/app');
       await App.addListener('pause', () => this.flush());
+      const info = await App.getInfo();
+      this.appVersion = info.version;
     } catch {
-      // Best-effort: missing native flush hook must not break app startup.
+      // Best-effort: missing native flush hook / app info must not break app startup.
     }
   }
 }
