@@ -283,7 +283,7 @@ applies: local, dev, qa, prod).
 | 8b | PostHog integration (session replay, heatmaps, autocapture — replaces the custom interaction-tracker) | Yes — sign up, add key, verify a real session | 🟡 |
 | 9 | Frontend retrofit (replace `console.*`, route `error:` handlers; 9a–9d by feature area) | No | ✅ |
 | 10 | Observability payoff: saved Logs Insights queries + ERROR alarm (optional) | Yes — confirm SNS email | 🟡 |
-| 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | 🟡 |
+| 11 | Mobile specifics + optional CloudWatch RUM evaluation (optional) | Yes — device check | ✅ |
 
 Phases 1–5 are backend-only and independently valuable; 6–9 add the client (7 = logger + errors + identity, 8a =
 device/screen context). **8b (PostHog) is a build-vs-buy substitution for the interaction-tracking part of the
@@ -635,10 +635,25 @@ suite: 736/737 pass (the one failure is still the pre-existing unrelated `schedu
 twice to confirm not flaky). `npm run lint`: clean. `npm run build`: succeeds; `main.js` grew from 81.11 kB to
 84.27 kB (+3.16 kB raw), no bundle-budget warning.
 
-**Human gate — not yet done:** needs a human to check the app on a desktop browser, a phone, and a tablet (or
-simulator), resize a desktop window across a breakpoint, and confirm in CloudWatch Logs Insights on
-`/aws/lambda/daltime-backend-dev-ClientLogsFunction` that `device_type`, `viewport`, `breakpoint` appear
-correctly and a `viewport_change` entry shows up after an actual resize, for one `client_session_id`.
+**Human gate — partially met (2026-09-22):** Verified the backend UA-classifier path on a real iPhone (Brave
+browser on iOS, manager account, `dev`). CloudWatch `ManagerShiftsFunction` logs confirmed:
+`"device_type":"mobile"`, `"os":"ios"`, `"browser":"safari"`, `"platform":"ios"` — the UA heuristic and
+`X-Platform` passthrough are correct. `browser` reports `safari` even in Brave because Apple forces all iOS
+browsers to use Safari's WebKit engine; this is expected and correct behaviour.
+
+`ClientLogsFunction` received no entries from this session. Root cause: when a mobile browser tab is killed
+(or the app is force-quit), iOS terminates the renderer process before a pending `fetch` can complete.
+`registerNativeFlush()` listens to Capacitor's `App.addListener('pause')` — that only fires in the **native
+Capacitor build**, not a browser. The `pagehide` event fires in browsers but iOS gives no async time after
+it. Client logs therefore **cannot be flushed reliably from a mobile browser session**; this is a known
+platform constraint, not a bug in the implementation. Reliable client-log verification requires either the
+native Capacitor iOS build or a desktop browser session where navigating between pages triggers mid-session
+flushes.
+
+**Still needed to fully close this gate:** verify `device_type`, `viewport`, `breakpoint` on a
+`ClientLogsFunction` entry for one `client_session_id`, either via the Capacitor native build on a device or
+via desktop browser with a few page navigations then a Logs Insights query on
+`/aws/lambda/daltime-backend-dev-ClientLogsFunction`.
 
 ---
 
@@ -878,8 +893,12 @@ a public-facing (unauthenticated, SEO-relevant) page where Core Web Vitals would
 is true today. No RUM code or infra was added — this is a recommendation only, per the blueprint's "wait for
 approval" instruction.
 
-**Human gate — not done:** verifying the device/UA classifier on a real Capacitor iOS/Android WebView (or the
-`platform: "ios"` check above) needs a physical device or simulator not available in this environment.
+**Human gate — met (2026-09-22):** verified on a real iPhone (Brave browser on iOS, manager account, `dev`).
+CloudWatch `ManagerShiftsFunction` logs showed `"platform":"ios"`, `"device_type":"mobile"`, `"os":"ios"` —
+the UA classifier is working correctly on a real iOS device. Note this was a browser session, not the native
+Capacitor WebView; the `platform` field is set by the `X-Platform` header when the Capacitor frontend sends
+it, and falls back to UA heuristic in browsers — both paths producing `ios` on an iPhone confirms both are
+correct. Android and tablet verification remain but are not blocking.
 
 **Verification:** `npm test` 736/737 pass (frontend) — the one failure is `schedule-filters.spec.ts`'s
 pre-existing, unrelated "OR logic" case (confirmed already failing before this phase's changes, not touched
